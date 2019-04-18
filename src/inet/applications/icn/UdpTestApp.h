@@ -56,6 +56,17 @@ class INET_API UdpTestApp : public ApplicationBase, public UdpSocket::ICallback
     virtual void sendPacket();
     virtual void processPacket(Packet *msg);
 
+    /**
+     * Find the source interface for the given packet. In case
+     * there is no InterfaceInd tag or the specified interface
+     * does not exist this will return a nullptr.
+     *
+     * @param packet The packet to examine.
+     *
+     * @return InterfaceEntry* (nullptr if not found)
+     */
+    const InterfaceEntry* getSourceInterface(Packet* packet);
+
     virtual void processStart();
     virtual void processSend();
 

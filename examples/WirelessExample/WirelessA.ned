@@ -17,14 +17,22 @@ package inet.examples.WirelessExample;
 
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.INetworkNode;
+import inet.node.inet.StandardHost;
+import inet.node.inet.WirelessHost;
 import inet.physicallayer.contract.packetlevel.IRadioMedium;
 import inet.visualizer.integrated.IntegratedCanvasVisualizer;
+import ned.DatarateChannel;
 
 network WirelessA
 {
     parameters:
         @display("bgb=650,500;bgg=100,1,grey95");
-
+    types:
+        channel C extends DatarateChannel
+        {
+            datarate = 100Mbps;
+            delay = 0.1us;
+        }
     submodules:
         configurator: Ipv4NetworkConfigurator {
             @display("p=580,200");
@@ -32,7 +40,7 @@ network WirelessA
         radioMedium: <default("UnitDiskRadioMedium")> like IRadioMedium {
             @display("p=580,275");
         }
-        hostA: <default("WirelessHost")> like INetworkNode {
+        hostA: WirelessHost {
             @display("p=50,325");
         }
         hostB: <default("WirelessHost")> like INetworkNode {
@@ -41,7 +49,12 @@ network WirelessA
         hostC: <default("WirelessHost")> like INetworkNode {
             @display("p=286.272,232.848");
         }
+        hostD: StandardHost {
+            @display("p=156.24,428.40002");
+        }
         visualizer: IntegratedCanvasVisualizer {
             @display("p=98.8575,209.81999");
         }
+	connections:
+	    hostA.pppg++ <--> C <--> hostD.pppg++;
 }

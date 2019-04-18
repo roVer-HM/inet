@@ -16,16 +16,15 @@
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "inet/applications/udpapp/UdpTestApp_m.h"
-#include "inet/applications/udpapp/UdpTestApp.h"
+#include "inet/applications/icn/UdpTestApp.h"
+
+#include "inet/applications/icn/UdpTestApp_m.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/TagBase_m.h"
 #include "inet/common/TimeTag_m.h"
 #include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/packet/Packet.h"
-#include "inet/networklayer/common/FragmentationTag_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 
 namespace inet {
@@ -63,7 +62,7 @@ void UdpTestApp::sendPacket()
     EV_DEBUG << "Found " << interfaceTableModule->getNumInterfaces() << " interfaces:" << endl;
     for (int interface = 0; interface < interfaceTableModule->getNumInterfaces(); ++interface) {
         InterfaceEntry* interfaceEntry = interfaceTableModule->getInterface(interface);
-        EV_DEBUG << "Postition: " << interface << " Name: " << interfaceEntry->getInterfaceName() << " InterfaceID: " << interfaceEntry->getInterfaceId() << endl;
+        EV_DEBUG << "Position: " << interface << " Name: " << interfaceEntry->getInterfaceName() << " InterfaceID: " << interfaceEntry->getInterfaceId() << endl;
     }
 
     // -----
@@ -78,15 +77,23 @@ void UdpTestApp::sendPacket()
     // resolve address and send data
     L3Address destinationAddress;
     L3AddressResolver().tryResolve("224.0.0.1", destinationAddress);
+
+    // duplicate packet
+    Packet* duplicate = packet->dup();
+
+    // first to interface with id 101:
+    socket.setMulticastOutputInterface(101);
     socket.sendTo(packet, destinationAddress, port);
+
+    // next to interface with id 102:
+    socket.setMulticastOutputInterface(102);
+    socket.sendTo(duplicate, destinationAddress, port);
+
 }
 
 void UdpTestApp::processStart()
 {
     socket.setOutputGate(gate("socketOut"));
-    // this specifies on which interface multicasts should be sent out
-    // TODO: at a later point we need to do this dynamically
-    socket.setMulticastOutputInterface(101);
     // this is important to prevent packets from arriving on loopback when sending
     socket.setMulticastLoop(false);
     // bind socket to port to only receive udp packets directed at my protocol
@@ -156,15 +163,35 @@ void UdpTestApp::refreshDisplay() const
     ApplicationBase::refreshDisplay();
 }
 
+const InterfaceEntry* UdpTestApp::getSourceInterface(Packet* packet)
+{
+    auto tag = packet->findTag<InterfaceInd>();
+    return tag != nullptr ? interfaceTableModule->getInterfaceById(tag->getInterfaceId()) : nullptr;
+}
+
 void UdpTestApp::processPacket(Packet *pk)
 {
-    auto udpTestAppHeader = pk->popAtFront<UdpTestAppPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
-    std::string name(udpTestAppHeader->getName());
-    if (name == mLocalContentBasedAddress) {
-        EV_INFO << "########## Received data interesting for me with name: " <<  name << " ##########"<< endl;
+    // get the interface id on that the packet arrived on
+    const InterfaceEntry* interface = getSourceInterface(pk);
+
+    if (interface == nullptr) {
+        EV_DEBUG << "The interface that this packet arrived on was not found :<" << endl;
     } else {
-        EV_INFO << "########## Received data not interesting for me with name: " <<  name << " ##########"<< endl;
+
+        EV_DEBUG << "The packet arrived on interface with id " << interface->getInterfaceId() << " and name " << interface->getInterfaceName() << endl;
+
+        // interface found: we can now investigate the actual content of the packet
+        auto udpTestAppHeader = pk->popAtFront<UdpTestAppPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+
+        std::string name(udpTestAppHeader->getName());
+        if (name == mLocalContentBasedAddress) {
+            EV_INFO << "########## Received data interesting for me with name: " <<  name << " ##########"<< endl;
+        } else {
+            EV_INFO << "########## Received data not interesting for me with name: " <<  name << " ##########"<< endl;
+        }
+
     }
+
     delete pk;
 }
 
