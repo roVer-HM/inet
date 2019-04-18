@@ -13,7 +13,7 @@ enum ICNPacketType
 };
 
 
-class UdpTestAppPacket extends FieldsChunk
+class ICNPacket extends FieldsChunk
 {
     int packetType @enum(ICNPacketType);
     string name;

@@ -16,9 +16,9 @@
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "inet/applications/icn/UdpTestApp.h"
+#include "inet/applications/icn/ICNUdpInterface.h"
 
-#include "inet/applications/icn/UdpTestApp_m.h"
+#include "inet/applications/icn/ICNPacket_m.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/TagBase_m.h"
 #include "inet/common/TimeTag_m.h"
@@ -29,14 +29,14 @@
 
 namespace inet {
 
-Define_Module(UdpTestApp);
+Define_Module(ICNUdpInterface);
 
-UdpTestApp::~UdpTestApp()
+ICNUdpInterface::~ICNUdpInterface()
 {
     cancelAndDelete(selfMsg);
 }
 
-void UdpTestApp::initialize(int stage)
+void ICNUdpInterface::initialize(int stage)
 {
     ApplicationBase::initialize(stage);
 
@@ -49,12 +49,12 @@ void UdpTestApp::initialize(int stage)
     }
 }
 
-void UdpTestApp::finish()
+void ICNUdpInterface::finish()
 {
     ApplicationBase::finish();
 }
 
-void UdpTestApp::sendPacket()
+void ICNUdpInterface::sendPacket()
 {
     // -----
     // test area
@@ -69,7 +69,7 @@ void UdpTestApp::sendPacket()
 
     // create and fill stuff into packet
     Packet *packet = new Packet("ContentBasedData");
-    const auto& payload = makeShared<UdpTestAppPacket>();
+    const auto& payload = makeShared<ICNPacket>();
     payload->setChunkLength(B(1000));
     payload->setName(mDestinationContentBasedAddress.c_str());
     payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
@@ -91,7 +91,7 @@ void UdpTestApp::sendPacket()
 
 }
 
-void UdpTestApp::processStart()
+void ICNUdpInterface::processStart()
 {
     socket.setOutputGate(gate("socketOut"));
     // this is important to prevent packets from arriving on loopback when sending
@@ -113,7 +113,7 @@ void UdpTestApp::processStart()
 
 }
 
-void UdpTestApp::processSend()
+void ICNUdpInterface::processSend()
 {
     sendPacket();
     simtime_t d = simTime() + par("sendInterval");
@@ -122,7 +122,7 @@ void UdpTestApp::processSend()
 
 }
 
-void UdpTestApp::handleMessageWhenUp(cMessage *msg)
+void ICNUdpInterface::handleMessageWhenUp(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
         ASSERT(msg == selfMsg);
@@ -141,35 +141,35 @@ void UdpTestApp::handleMessageWhenUp(cMessage *msg)
         socket.processMessage(msg);
 }
 
-void UdpTestApp::socketDataArrived(UdpSocket *socket, Packet *packet)
+void ICNUdpInterface::socketDataArrived(UdpSocket *socket, Packet *packet)
 {
     // process incoming packet
     processPacket(packet);
 }
 
-void UdpTestApp::socketErrorArrived(UdpSocket *socket, Indication *indication)
+void ICNUdpInterface::socketErrorArrived(UdpSocket *socket, Indication *indication)
 {
     EV_WARN << "Ignoring UDP error report " << indication->getName() << endl;
     delete indication;
 }
 
-void UdpTestApp::socketClosed(UdpSocket *socket)
+void ICNUdpInterface::socketClosed(UdpSocket *socket)
 {
     startActiveOperationExtraTimeOrFinish(-1);
 }
 
-void UdpTestApp::refreshDisplay() const
+void ICNUdpInterface::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
 }
 
-const InterfaceEntry* UdpTestApp::getSourceInterface(Packet* packet)
+const InterfaceEntry* ICNUdpInterface::getSourceInterface(Packet* packet)
 {
     auto tag = packet->findTag<InterfaceInd>();
     return tag != nullptr ? interfaceTableModule->getInterfaceById(tag->getInterfaceId()) : nullptr;
 }
 
-void UdpTestApp::processPacket(Packet *pk)
+void ICNUdpInterface::processPacket(Packet *pk)
 {
     // get the interface id on that the packet arrived on
     const InterfaceEntry* interface = getSourceInterface(pk);
@@ -181,9 +181,9 @@ void UdpTestApp::processPacket(Packet *pk)
         EV_DEBUG << "The packet arrived on interface with id " << interface->getInterfaceId() << " and name " << interface->getInterfaceName() << endl;
 
         // interface found: we can now investigate the actual content of the packet
-        auto udpTestAppHeader = pk->popAtFront<UdpTestAppPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+        auto icnPacketHeader = pk->popAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
 
-        std::string name(udpTestAppHeader->getName());
+        std::string name(icnPacketHeader->getName());
         if (name == mLocalContentBasedAddress) {
             EV_INFO << "########## Received data interesting for me with name: " <<  name << " ##########"<< endl;
         } else {
@@ -195,21 +195,21 @@ void UdpTestApp::processPacket(Packet *pk)
     delete pk;
 }
 
-void UdpTestApp::handleStartOperation(LifecycleOperation *operation)
+void ICNUdpInterface::handleStartOperation(LifecycleOperation *operation)
 {
     simtime_t start = simTime();
     selfMsg->setKind(START);
     scheduleAt(start, selfMsg);
 }
 
-void UdpTestApp::handleStopOperation(LifecycleOperation *operation)
+void ICNUdpInterface::handleStopOperation(LifecycleOperation *operation)
 {
     cancelEvent(selfMsg);
     socket.close();
     delayActiveOperationFinish(2);
 }
 
-void UdpTestApp::handleCrashOperation(LifecycleOperation *operation)
+void ICNUdpInterface::handleCrashOperation(LifecycleOperation *operation)
 {
     cancelEvent(selfMsg);
     socket.destroy();         //TODO  in real operating systems, program crash detected by OS and OS closes sockets of crashed programs.

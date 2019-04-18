@@ -20,8 +20,7 @@ package inet.applications.icn;
 
 import inet.applications.contract.IApp;
 
-
-simple UdpTestApp like IApp
+simple ICNUdpInterface like IApp
 {
     parameters:
         bool publisher = default(false);

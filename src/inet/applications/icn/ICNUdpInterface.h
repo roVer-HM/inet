@@ -28,10 +28,7 @@
 
 namespace inet {
 
-/**
- * UDP application. See NED for more info.
- */
-class INET_API UdpTestApp : public ApplicationBase, public UdpSocket::ICallback
+class INET_API ICNUdpInterface : public ApplicationBase, public UdpSocket::ICallback
 {
   protected:
     enum SelfMsgKinds { START = 1, SEND, STOP };
@@ -79,8 +76,8 @@ class INET_API UdpTestApp : public ApplicationBase, public UdpSocket::ICallback
     virtual void socketClosed(UdpSocket *socket) override;
 
   public:
-    UdpTestApp() {}
-    ~UdpTestApp();
+    ICNUdpInterface() {}
+    ~ICNUdpInterface();
 };
 
 } // namespace inet
