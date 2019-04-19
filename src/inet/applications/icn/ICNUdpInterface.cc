@@ -19,126 +19,40 @@
 #include "inet/applications/icn/ICNUdpInterface.h"
 
 #include "inet/applications/icn/ICNPacket_m.h"
-#include "inet/common/ModuleAccess.h"
 #include "inet/common/TagBase_m.h"
-#include "inet/common/TimeTag_m.h"
-#include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 
 namespace inet {
 
-Define_Module(ICNUdpInterface);
+void ICNUdpInterface::initialize(IInterfaceTable* interfaceTableModule, cGate* gate) {
+    mInterfaceTableModule = interfaceTableModule;
 
-ICNUdpInterface::~ICNUdpInterface()
-{
-    cancelAndDelete(selfMsg);
-}
-
-void ICNUdpInterface::initialize(int stage)
-{
-    ApplicationBase::initialize(stage);
-
-    if (stage == INITSTAGE_LOCAL) {
-        port = 5000;
-        mDestinationContentBasedAddress = par("destinationContentBasedAddress").stdstringValue();
-        mLocalContentBasedAddress = par("localContentBasedAddress").stdstringValue();
-        selfMsg = new cMessage("sendTimer");
-        interfaceTableModule = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-    }
-}
-
-void ICNUdpInterface::finish()
-{
-    ApplicationBase::finish();
-}
-
-void ICNUdpInterface::sendPacket()
-{
-    // -----
-    // test area
-
-    EV_DEBUG << "Found " << interfaceTableModule->getNumInterfaces() << " interfaces:" << endl;
-    for (int interface = 0; interface < interfaceTableModule->getNumInterfaces(); ++interface) {
-        InterfaceEntry* interfaceEntry = interfaceTableModule->getInterface(interface);
-        EV_DEBUG << "Position: " << interface << " Name: " << interfaceEntry->getInterfaceName() << " InterfaceID: " << interfaceEntry->getInterfaceId() << endl;
-    }
-
-    // -----
-
-    // create and fill stuff into packet
-    Packet *packet = new Packet("ContentBasedData");
-    const auto& payload = makeShared<ICNPacket>();
-    payload->setChunkLength(B(1000));
-    payload->setName(mDestinationContentBasedAddress.c_str());
-    payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
-    packet->insertAtBack(payload);
-    // resolve address and send data
-    L3Address destinationAddress;
-    L3AddressResolver().tryResolve("224.0.0.1", destinationAddress);
-
-    // duplicate packet
-    Packet* duplicate = packet->dup();
-
-    // first to interface with id 101:
-    socket.setMulticastOutputInterface(101);
-    socket.sendTo(packet, destinationAddress, port);
-
-    // next to interface with id 102:
-    socket.setMulticastOutputInterface(102);
-    socket.sendTo(duplicate, destinationAddress, port);
-
-}
-
-void ICNUdpInterface::processStart()
-{
-    socket.setOutputGate(gate("socketOut"));
+    mSocket.setOutputGate(gate);
     // this is important to prevent packets from arriving on loopback when sending
-    socket.setMulticastLoop(false);
+    mSocket.setMulticastLoop(false);
     // bind socket to port to only receive udp packets directed at my protocol
-    socket.bind(port);
+    mSocket.bind(ICN_PORT);
     L3Address address;
-    L3AddressResolver().tryResolve("224.0.0.1", address);
+    L3AddressResolver().tryResolve(ICN_MULTICAST_ADDRESS.c_str(), address);
     // need to join the multicast group to receive the packets myself
-    socket.joinMulticastGroup(address);
+    mSocket.joinMulticastGroup(address);
     // when a packet is received this class is called
-    socket.setCallback(this);
-
-    bool sender = par("publisher");
-    if (sender) {
-        selfMsg->setKind(SEND);
-        processSend();
-    }
+    mSocket.setCallback(this);
 
 }
 
-void ICNUdpInterface::processSend()
-{
-    sendPacket();
-    simtime_t d = simTime() + par("sendInterval");
-    selfMsg->setKind(SEND);
-    scheduleAt(d, selfMsg);
-
+void ICNUdpInterface::processMessage(cMessage* message) {
+    mSocket.processMessage(message);
 }
 
-void ICNUdpInterface::handleMessageWhenUp(cMessage *msg)
-{
-    if (msg->isSelfMessage()) {
-        ASSERT(msg == selfMsg);
-        switch (selfMsg->getKind()) {
-            case START:
-                processStart();
-                break;
-            case SEND:
-                processSend();
-                break;
-            default:
-                throw cRuntimeError("Invalid kind %d in self message", (int)selfMsg->getKind());
-        }
-    }
-    else
-        socket.processMessage(msg);
+void ICNUdpInterface::closeSocket(void) {
+    mSocket.close();
+}
+
+void ICNUdpInterface::destroySocket(void) {
+    mSocket.destroy();
 }
 
 void ICNUdpInterface::socketDataArrived(UdpSocket *socket, Packet *packet)
@@ -155,64 +69,45 @@ void ICNUdpInterface::socketErrorArrived(UdpSocket *socket, Indication *indicati
 
 void ICNUdpInterface::socketClosed(UdpSocket *socket)
 {
-    startActiveOperationExtraTimeOrFinish(-1);
-}
-
-void ICNUdpInterface::refreshDisplay() const
-{
-    ApplicationBase::refreshDisplay();
+    getCallback()->interfaceClosed();
 }
 
 const InterfaceEntry* ICNUdpInterface::getSourceInterface(Packet* packet)
 {
     auto tag = packet->findTag<InterfaceInd>();
-    return tag != nullptr ? interfaceTableModule->getInterfaceById(tag->getInterfaceId()) : nullptr;
+    return tag != nullptr ? mInterfaceTableModule->getInterfaceById(tag->getInterfaceId()) : nullptr;
 }
 
-void ICNUdpInterface::processPacket(Packet *pk)
+void ICNUdpInterface::processPacket(Packet* packet)
 {
     // get the interface id on that the packet arrived on
-    const InterfaceEntry* interface = getSourceInterface(pk);
+    const InterfaceEntry* interface = getSourceInterface(packet);
 
     if (interface == nullptr) {
-        EV_DEBUG << "The interface that this packet arrived on was not found :<" << endl;
+        EV_DEBUG << "We received a packet on an interface that does not exist!" << endl;
     } else {
 
-        EV_DEBUG << "The packet arrived on interface with id " << interface->getInterfaceId() << " and name " << interface->getInterfaceName() << endl;
+        EV_DEBUG << "A packet arrived on interface with id " << interface->getInterfaceId() << " and name " << interface->getInterfaceName() << endl;
 
         // interface found: we can now investigate the actual content of the packet
-        auto icnPacketHeader = pk->popAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+        const Ptr<const ICNPacket> icnPacketHeader = packet->popAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
 
-        std::string name(icnPacketHeader->getName());
-        if (name == mLocalContentBasedAddress) {
-            EV_INFO << "########## Received data interesting for me with name: " <<  name << " ##########"<< endl;
-        } else {
-            EV_INFO << "########## Received data not interesting for me with name: " <<  name << " ##########"<< endl;
-        }
-
+        getCallback()->receiveICNPacket(icnPacketHeader, interface->getInterfaceId());
     }
 
-    delete pk;
+    delete packet;
 }
 
-void ICNUdpInterface::handleStartOperation(LifecycleOperation *operation)
-{
-    simtime_t start = simTime();
-    selfMsg->setKind(START);
-    scheduleAt(start, selfMsg);
-}
+void ICNUdpInterface::sendICNPacket(const inet::Ptr<ICNPacket>& icnPacket, int interfaceId) {
+    Packet* packet = new Packet("ICNData");
 
-void ICNUdpInterface::handleStopOperation(LifecycleOperation *operation)
-{
-    cancelEvent(selfMsg);
-    socket.close();
-    delayActiveOperationFinish(2);
-}
+    packet->insertAtBack(icnPacket);
+    // resolve address and send data
+    L3Address destinationAddress;
+    L3AddressResolver().tryResolve(ICN_MULTICAST_ADDRESS.c_str(), destinationAddress);
 
-void ICNUdpInterface::handleCrashOperation(LifecycleOperation *operation)
-{
-    cancelEvent(selfMsg);
-    socket.destroy();         //TODO  in real operating systems, program crash detected by OS and OS closes sockets of crashed programs.
+    mSocket.setMulticastOutputInterface(interfaceId);
+    mSocket.sendTo(packet, destinationAddress, ICN_PORT);
 }
 
 } // namespace inet

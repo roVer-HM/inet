@@ -16,8 +16,8 @@
 // along with this program; if not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __INET_UDPBASICAPP_H
-#define __INET_UDPBASICAPP_H
+#ifndef INET_APPLICATIONS_ICN_ICNUdpInterface_H_
+#define INET_APPLICATIONS_ICN_ICNUdpInterface_H_
 
 #include <vector>
 
@@ -25,34 +25,32 @@
 
 #include "inet/applications/base/ApplicationBase.h"
 #include "inet/transportlayer/contract/udp/UdpSocket.h"
+#include "inet/applications/icn/ICNTransportInterface.h"
 
 namespace inet {
 
-class INET_API ICNUdpInterface : public ApplicationBase, public UdpSocket::ICallback
+class INET_API ICNUdpInterface : public UdpSocket::ICallback, public ICNTransportInterface
 {
+public:
+    /**
+     * Constructor.
+     */
+    ICNUdpInterface() = default;
+
+    /**
+     * Destructor.
+     */
+    ~ICNUdpInterface() = default;
+
+
+    // ICNTransportInterface
+    void sendICNPacket(const inet::Ptr<ICNPacket>& icnPacket, int interfaceId) override;
+    void initialize(IInterfaceTable* interfaceTableModule, cGate* gate) override;
+    void processMessage(cMessage* message) override;
+    virtual void closeSocket(void) override;
+    virtual void destroySocket(void) override;
+
   protected:
-    enum SelfMsgKinds { START = 1, SEND, STOP };
-
-    int port;
-    std::string mDestinationContentBasedAddress;
-    std::string mLocalContentBasedAddress;
-
-    // state
-    UdpSocket socket;
-    cMessage *selfMsg = nullptr;
-    IInterfaceTable* interfaceTableModule = nullptr;
-
-
-  protected:
-    virtual int numInitStages() const override { return NUM_INIT_STAGES; }
-    virtual void initialize(int stage) override;
-    virtual void handleMessageWhenUp(cMessage *msg) override;
-    virtual void finish() override;
-    virtual void refreshDisplay() const override;
-
-    virtual void sendPacket();
-    virtual void processPacket(Packet *msg);
-
     /**
      * Find the source interface for the given packet. In case
      * there is no InterfaceInd tag or the specified interface
@@ -64,23 +62,27 @@ class INET_API ICNUdpInterface : public ApplicationBase, public UdpSocket::ICall
      */
     const InterfaceEntry* getSourceInterface(Packet* packet);
 
-    virtual void processStart();
-    virtual void processSend();
-
-    virtual void handleStartOperation(LifecycleOperation *operation) override;
-    virtual void handleStopOperation(LifecycleOperation *operation) override;
-    virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
     virtual void socketDataArrived(UdpSocket *socket, Packet *packet) override;
     virtual void socketErrorArrived(UdpSocket *socket, Indication *indication) override;
     virtual void socketClosed(UdpSocket *socket) override;
 
-  public:
-    ICNUdpInterface() {}
-    ~ICNUdpInterface();
+
+private:
+
+    /**
+    * The transport socket that this interface will use.
+    */
+    UdpSocket mSocket;
+
+
+    IInterfaceTable* mInterfaceTableModule = nullptr;
+
+    void processPacket(Packet* packet);
+
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_UDPBASICAPP_H
+#endif // ifndef INET_APPLICATIONS_ICN_ICNUdpInterface_H_
 
