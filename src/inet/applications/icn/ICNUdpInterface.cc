@@ -98,16 +98,13 @@ void ICNUdpInterface::processPacket(Packet* packet)
     delete packet;
 }
 
-void ICNUdpInterface::sendICNPacket(const inet::Ptr<ICNPacket>& icnPacket, int interfaceId) {
-    Packet* packet = new Packet("ICNData");
-
-    packet->insertAtBack(icnPacket);
+void ICNUdpInterface::sendICNPacket(Packet* icnPacket, int interfaceId) {
     // resolve address and send data
     L3Address destinationAddress;
     L3AddressResolver().tryResolve(ICN_MULTICAST_ADDRESS.c_str(), destinationAddress);
 
     mSocket.setMulticastOutputInterface(interfaceId);
-    mSocket.sendTo(packet, destinationAddress, ICN_PORT);
+    mSocket.sendTo(icnPacket, destinationAddress, ICN_PORT);
 }
 
 } // namespace inet

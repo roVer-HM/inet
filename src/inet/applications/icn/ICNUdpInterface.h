@@ -44,7 +44,7 @@ public:
 
 
     // ICNTransportInterface
-    void sendICNPacket(const inet::Ptr<ICNPacket>& icnPacket, int interfaceId) override;
+    void sendICNPacket(Packet* icnPacket, int interfaceId) override;
     void initialize(IInterfaceTable* interfaceTableModule, cGate* gate) override;
     void processMessage(cMessage* message) override;
     virtual void closeSocket(void) override;

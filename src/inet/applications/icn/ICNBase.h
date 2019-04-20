@@ -1,6 +1,6 @@
 
-#ifndef INET_APPLICATIONS_ICN_ICN_H_
-#define INET_APPLICATIONS_ICN_ICN_H_
+#ifndef INET_APPLICATIONS_ICN_ICNBASE_H_
+#define INET_APPLICATIONS_ICN_ICNBASE_H_
 
 #include <memory>
 
@@ -13,17 +13,17 @@
 
 namespace inet {
 
-class ICN: public ICNTransportInterfaceCallback, public ApplicationBase {
+class ICNBase: public ICNTransportInterfaceCallback, public ApplicationBase {
 public:
     /**
      * Constructor.
      */
-    ICN();
+    ICNBase();
 
     /**
      * Destructor.
      */
-    virtual ~ICN() = default;
+    virtual ~ICNBase() = default;
 
     // ICNTransportInterfaceCallback
     virtual void receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId) override;
@@ -42,8 +42,8 @@ protected:
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
 private:
+    const std::string PUBLISHER_GATE_NAME = "icnPublisherIn";
     enum SelfMsgKinds { START = 1, SEND, STOP };
-    std::string mDestinationContentBasedAddress;
     std::string mLocalContentBasedAddress;
     cMessage* mSelfMessage;
 
@@ -58,23 +58,12 @@ private:
     std::unique_ptr<ICNTransportInterface> mTransportInterface;
 
     /**
-     * Send a packet via the transport interface.
-     */
-    virtual void sendPacket();
-
-    /**
      * Startup the application by initializing transport interface and
      * sending a packet if this is a publisher.
      */
     virtual void processStart();
-
-    /**
-     * Calls sendPacket and schedules another send
-     * message.
-     */
-    virtual void processSend();
 };
 
 } /* namespace inet */
 
-#endif /* INET_APPLICATIONS_ICN_ICN_H_ */
+#endif /* INET_APPLICATIONS_ICN_ICNBASE_H_ */

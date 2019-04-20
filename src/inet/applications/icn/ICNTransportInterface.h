@@ -6,6 +6,7 @@
 
 #include "inet/applications/icn/ICNTransportInterfaceCallback.h"
 #include "inet/applications/icn/ICNPacket_m.h"
+#include "inet/common/packet/Packet.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 
 namespace inet {
@@ -36,10 +37,10 @@ public:
     /**
      * Send the given packet via the given interface id.
      *
-     * @param icnPacket the icn packet to send
+     * @param icnPacket encpsulated into packet
      * @param interfaceId the interface id which will be used to send the data
      */
-    virtual void sendICNPacket(const inet::Ptr<ICNPacket>& icnPacket, int interfaceId) = 0;
+    virtual void sendICNPacket(Packet* icnPacket, int interfaceId) = 0;
 
     /**
      * Initialize the interface.
