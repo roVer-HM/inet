@@ -43,7 +43,8 @@ void ICNPublisher::handleMessage(cMessage* msg) {
         // create and fill ICNPacket
         const auto& payload = makeShared<ICNPacket>();
         payload->setChunkLength(B(mDataSize));
-        payload->setName(mDataName.c_str());
+        payload->setIcnName(mDataName.c_str());
+        payload->setPacketType(ICNPacketType::PUBLISH);
         payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
 
         // encapsulate into packet
@@ -56,6 +57,8 @@ void ICNPublisher::handleMessage(cMessage* msg) {
         if (mRepeat) {
             scheduleAt(simTime() + mDelay, mSendMessage);
         }
+
+        EV_INFO << "Publisher send message to base to publish some data!" << endl;
 
     } else {
         throw cRuntimeError("Publisher encountered message he can't handle!");

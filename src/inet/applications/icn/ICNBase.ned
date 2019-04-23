@@ -23,10 +23,10 @@ import inet.applications.contract.IApp;
 simple ICNBase
 {
     parameters:
-        bool publisher = default(false);
-        bool forwarding = default(false);
+        bool icnForwarding = default(false);
         string interfaceTableModule;   // The path to the InterfaceTable module
-        string localContentBasedAddress;	// one should always define this to tell the app which data it is interested in
+        string routerModule;
+        string subscriberModule;
         @display("i=block/app");
         @lifecycleSupport;
 
@@ -35,5 +35,7 @@ simple ICNBase
         output socketOut @labels(UdpControlInfo/down);
         // gate for messages from publisher module
         input icnPublisherIn;
+        // gate for messages that contain an icnSubscription
+        input icnSubscriberIn;
 }
 

@@ -23,6 +23,7 @@ public:
     const int ICN_PORT = 5555;
     const std::string ICN_MULTICAST_ADDRESS = "224.0.0.1";
     const std::string ICN_OUTPUT_GATE_NAME = "socketOut";
+    const std::string ICN_MULTICAST_MAC_ADDRESS = "01005E000001";
 
     /**
      * Constructor.

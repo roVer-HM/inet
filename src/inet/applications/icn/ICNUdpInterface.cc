@@ -29,6 +29,12 @@ namespace inet {
 void ICNUdpInterface::initialize(IInterfaceTable* interfaceTableModule, cGate* gate) {
     mInterfaceTableModule = interfaceTableModule;
 
+    // need to multicast address of all interfaces
+    for (int interfacePosition = 0; interfacePosition < mInterfaceTableModule->getNumInterfaces(); interfacePosition++) {
+        mInterfaceTableModule->getInterface(interfacePosition)->setMacAddress(MacAddress::makeMulticastAddress(Ipv4Address(ICN_MULTICAST_ADDRESS.c_str())));
+    }
+
+
     mSocket.setOutputGate(gate);
     // this is important to prevent packets from arriving on loopback when sending
     mSocket.setMulticastLoop(false);

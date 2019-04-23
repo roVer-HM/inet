@@ -23,6 +23,14 @@ module ICN like IApp
     parameters:
         string interfaceTableModule;   // The path to the InterfaceTable module
         bool hasPublisher = default(false);
+        // when this is set to false the node will not store subscriptions in its router
+        // therefore setting publisher to true and forwarding to false is pointless
+        // because the published packet will not be forwarded
+        bool icnForwarding = default(false); 
+        // being a subscriber is possible without having forwarding set to true
+        bool hasSubscriber = default(false);
+       	icnBase.routerModule = default(absPath(".router"));
+       	icnBase.subscriberModule = default(absPath(".subscriber"));
     gates:
         // needed for IApp. The data from lower layers will flow through these gates
         input socketIn;
@@ -31,8 +39,11 @@ module ICN like IApp
         icnBase: ICNBase {
     		parameters:
     		    interfaceTableModule = interfaceTableModule;
+    		    icnForwarding = icnForwarding;
     	}
     	publisher: ICNPublisher if hasPublisher;
+    	router: ICNRouter;
+    	subscriber: ICNSubscriber if hasSubscriber;
     	
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
@@ -41,4 +52,7 @@ module ICN like IApp
 		
 		// publisher will send messages to icnBase when he wants to publish something
 		publisher.icnPublisherOut --> icnBase.icnPublisherIn if hasPublisher;
+		
+		// subscriber will send messages to icnBase when he want to subscribe to something
+		subscriber.icnSubscriberOut --> icnBase.icnSubscriberIn if hasSubscriber;
 }

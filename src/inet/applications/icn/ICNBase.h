@@ -10,6 +10,7 @@
 #include "inet/applications/icn/ICNTransportInterface.h"
 #include "inet/applications/icn/ICNUdpInterface.h"
 #include "inet/applications/base/ApplicationBase.h"
+#include "inet/applications/icn/ICNRouter.h"
 
 namespace inet {
 
@@ -43,8 +44,12 @@ protected:
 
 private:
     const std::string PUBLISHER_GATE_NAME = "icnPublisherIn";
-    enum SelfMsgKinds { START = 1, SEND, STOP };
-    std::string mLocalContentBasedAddress;
+    const std::string SUBSCRIBER_GATE_NAME_IN = "icnSubscriberIn";
+    enum SelfMsgKinds { START = 1, STOP };
+
+    /**
+     * Self message to trigger start and stop.
+     */
     cMessage* mSelfMessage;
 
     /**
@@ -56,6 +61,17 @@ private:
      * Stores the ICNTransportInterface
      */
     std::unique_ptr<ICNTransportInterface> mTransportInterface;
+
+    /**
+     * States if this is forwarding packages.
+     */
+    bool mForwarding;
+
+    /**
+     * The router module in case this is a router otherwise this will
+     * be nullptr.
+     */
+    ICNRouter* mICNRouterModule;
 
     /**
      * Startup the application by initializing transport interface and

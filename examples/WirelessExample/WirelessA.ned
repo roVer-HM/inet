@@ -38,23 +38,32 @@ network WirelessA
             @display("p=580,200");
         }
         radioMedium: <default("UnitDiskRadioMedium")> like IRadioMedium {
-            @display("p=580,275");
+            @display("p=580,275");   
         }
         hostA: WirelessHost {
-            @display("p=50,325");
+            parameters:
+                @display("p=345.74402,254.016");
+                numLoInterfaces = 0;
         }
         hostB: <default("WirelessHost")> like INetworkNode {
-            @display("p=389.088,415.29602");
+            parameters:
+                @display("p=432.432,375.984");
+                numLoInterfaces = 0;
         }
         hostC: <default("WirelessHost")> like INetworkNode {
-            @display("p=286.272,232.848");
+            parameters:
+                @display("p=262.08002,375.984");
+                numLoInterfaces = 0;
         }
         hostD: StandardHost {
-            @display("p=156.24,428.40002");
+            parameters:
+                @display("p=354.816,69.552");
+                numLoInterfaces = 0;
         }
         visualizer: IntegratedCanvasVisualizer {
-            @display("p=98.8575,209.81999");
+            parameters:
+                @display("p=98.8575,209.81999");
         }
-	connections:
-	    hostA.pppg++ <--> C <--> hostD.pppg++;
+    connections:
+        hostA.pppg++ <--> C <--> hostD.pppg++;
 }

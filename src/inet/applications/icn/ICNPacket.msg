@@ -16,7 +16,7 @@ enum ICNPacketType
 class ICNPacket extends FieldsChunk
 {
     int packetType @enum(ICNPacketType);
-    string name;
+    string icnName;
 }
 
 

@@ -15,21 +15,5 @@
 
 package inet.applications.icn;
 
-// A simple module that should be used with ICN. You can use this to make a
-// node send test data.
-simple ICNPublisher {
-
-parameters:
-    // if this is true the publishment will be repeated
-    bool repeat = default(false);
-    // set this to specify when the first message is being sent and in case repeat 
-    // is true this will specifiy the delay between to messages
-    int delay @unit(s);
-    // the name of the data that is being published
-    string dataName = default("ICNPublisherDefaultDataName");
-    // the size of the data
-    int dataSize @unit(B) = default(1000B);
-	gates:
-	    output icnPublisherOut;
-	    
+simple ICNRouter {
 }
