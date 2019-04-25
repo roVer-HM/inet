@@ -38,7 +38,7 @@ network WirelessA
             @display("p=580,200");
         }
         radioMedium: <default("UnitDiskRadioMedium")> like IRadioMedium {
-            @display("p=580,275");   
+            @display("p=580,275");
         }
         hostA: WirelessHost {
             parameters:
@@ -47,12 +47,12 @@ network WirelessA
         }
         hostB: <default("WirelessHost")> like INetworkNode {
             parameters:
-                @display("p=432.432,375.984");
+                @display("p=560.448,344.73602");
                 numLoInterfaces = 0;
         }
         hostC: <default("WirelessHost")> like INetworkNode {
             parameters:
-                @display("p=262.08002,375.984");
+                @display("p=511.05603,448.56003");
                 numLoInterfaces = 0;
         }
         hostD: StandardHost {

@@ -14,6 +14,7 @@ ICNBase::ICNBase()
 , mTransportInterface(new ICNUdpInterface())
 , mForwarding(false)
 , mICNRouterModule(nullptr)
+, mICNSubscriberModule(nullptr)
 {
 }
 
@@ -44,7 +45,8 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
 
             for (int& interfaceId: forwardTo) {
                 if (interfaceId == ICNRouter::LOCAL_APPLICATION_ID) {
-                    // TODO: notify local application of received data
+                    // notify local application
+                    mICNSubscriberModule->receiveData(icnPacket);
                     EV_INFO << "Packet with name '" << name << "' forwarded to local app." << endl;
                 } else if (mForwarding) {
                     mTransportInterface->sendICNPacket(packet->dup(), interfaceId);
@@ -86,12 +88,16 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
         } else {
             EV_INFO << "Not forwarding the subscription becuse we already had one with the same name!" << endl;
         }
-    } else if (icnPacket->getPacketType() == ICNPacketType::LOCAL_REQUEST || icnPacket->getPacketType() == ICNPacketType::RESPONSE || icnPacket->getPacketType() == ICNPacketType::UNSUBSCRIBE) {
+
+    } else if (icnPacket->getPacketType() == ICNPacketType::ADVERTISEMENT) {
+
+        // message we received was an AP advertisement
+        // tell subscriber about it
+        mICNSubscriberModule->advertisementReceived();
+
+    } else if (icnPacket->getPacketType() == ICNPacketType::UNSUBSCRIBE) {
         throw cRuntimeError("Received local request, response or unsubscribe which cant be handled yet!");
     }
-
-
-
 
 }
 
@@ -109,9 +115,10 @@ void ICNBase::initialize(int stage)
         mInterfaceTableModule = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
         mForwarding = par("icnForwarding").boolValue();
         mICNRouterModule = getModuleFromPar<ICNRouter>(par("routerModule"), this);
+        mICNSubscriberModule = getModuleFromPar<ICNSubscriber>(par("subscriberModule"), this);
         mTransportInterface->setCallback(this);
-//        InterfaceEntry* interface = mInterfaceTableModule->getInterfaceById(101);
-//        interface->getMacAddress().
+    } else if (stage == INITSTAGE_APPLICATION_LAYER) {
+        mTransportInterface->initialize(mInterfaceTableModule, gate("socketOut"));
     }
 }
 
@@ -122,7 +129,6 @@ void ICNBase::finish()
 
 void ICNBase::processStart()
 {
-    mTransportInterface->initialize(mInterfaceTableModule, gate("socketOut"));
 }
 
 void ICNBase::handleMessageWhenUp(cMessage* msg)
@@ -153,6 +159,7 @@ void ICNBase::handleMessageWhenUp(cMessage* msg)
                 copy = packet->dup();
             }
         }
+
         delete packet;
 
     } else if (msg->arrivedOn(SUBSCRIBER_GATE_NAME_IN.c_str())) {
@@ -172,6 +179,20 @@ void ICNBase::handleMessageWhenUp(cMessage* msg)
         }
         delete packet;
 
+    } else if (msg->arrivedOn(ADVERTISER_GATE_NAME_IN.c_str())) {
+        // received message from advertiser
+
+        Packet* packet = check_and_cast<Packet*>(msg);
+
+        Packet* copy = packet->dup();
+        // we need to tell everyone we can reach about it
+        for (int interfacePosition = 0; interfacePosition < mInterfaceTableModule->getNumInterfaces(); interfacePosition++) {
+            int interfaceId = mInterfaceTableModule->getInterface(interfacePosition)->getInterfaceId();
+            mTransportInterface->sendICNPacket(copy, interfaceId);
+            copy = packet->dup();
+        }
+
+        delete packet;
     } else {
         mTransportInterface->processMessage(msg);
     }

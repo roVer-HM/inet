@@ -37,5 +37,7 @@ simple ICNBase
         input icnPublisherIn;
         // gate for messages that contain an icnSubscription
         input icnSubscriberIn;
+        // gate for messages that contain an advertisement
+        input icnAdvertiserIn;
 }
 

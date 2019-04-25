@@ -27,8 +27,7 @@ module ICN like IApp
         // therefore setting publisher to true and forwarding to false is pointless
         // because the published packet will not be forwarded
         bool icnForwarding = default(false); 
-        // being a subscriber is possible without having forwarding set to true
-        bool hasSubscriber = default(false);
+        bool hasAdvertiser = default(false);
        	icnBase.routerModule = default(absPath(".router"));
        	icnBase.subscriberModule = default(absPath(".subscriber"));
     gates:
@@ -43,8 +42,8 @@ module ICN like IApp
     	}
     	publisher: ICNPublisher if hasPublisher;
     	router: ICNRouter;
-    	subscriber: ICNSubscriber if hasSubscriber;
-    	
+    	subscriber: ICNSubscriber;
+    	advertiser: ICNAdvertiser if hasAdvertiser;
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
 		socketIn --> icnBase.socketIn;
@@ -54,5 +53,8 @@ module ICN like IApp
 		publisher.icnPublisherOut --> icnBase.icnPublisherIn if hasPublisher;
 		
 		// subscriber will send messages to icnBase when he want to subscribe to something
-		subscriber.icnSubscriberOut --> icnBase.icnSubscriberIn if hasSubscriber;
+		subscriber.icnSubscriberOut --> icnBase.icnSubscriberIn;
+		
+		// advertiser will send messsages to icnBase when he wants to advertise
+		advertiser.icnAdvertiserOut --> icnBase.icnAdvertiserIn if hasAdvertiser;
 }

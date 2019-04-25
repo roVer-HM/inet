@@ -11,6 +11,7 @@
 #include "inet/applications/icn/ICNUdpInterface.h"
 #include "inet/applications/base/ApplicationBase.h"
 #include "inet/applications/icn/ICNRouter.h"
+#include "inet/applications/icn/ICNSubscriber.h"
 
 namespace inet {
 
@@ -45,6 +46,8 @@ protected:
 private:
     const std::string PUBLISHER_GATE_NAME = "icnPublisherIn";
     const std::string SUBSCRIBER_GATE_NAME_IN = "icnSubscriberIn";
+    const std::string ADVERTISER_GATE_NAME_IN = "icnAdvertiserIn";
+
     enum SelfMsgKinds { START = 1, STOP };
 
     /**
@@ -72,6 +75,12 @@ private:
      * be nullptr.
      */
     ICNRouter* mICNRouterModule;
+
+    /**
+     * Stores the subscriber module to notify about received data and
+     * about when an access point advertisement was encountered.
+     */
+    ICNSubscriber* mICNSubscriberModule;
 
     /**
      * Startup the application by initializing transport interface and

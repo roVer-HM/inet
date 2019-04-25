@@ -19,7 +19,16 @@ package inet.applications.icn;
 // to icn base who will manage it.
 simple ICNSubscriber {
     parameters:
-        string subscriptionName; // specify the data you want to subscribe to
+        // specifies if this subscriber should subscribe periodically to certain data
+        bool periodicSubscriber = default(false);
+        // specifies the seconds between two periodic subsciption messages
+        int delay @unit(s) = default(5s);
+        // specifies if this subscriber should subscribe when an advertisement is encountered
+        bool advertisementSubscriber = default(false);
+        // specifies the seconds until this is allowed to react to a subscription again
+        int delayAdvertismentReactions @unit(s) = default(60s);
+        // specify the data you want to subscribe to
+        string subscriptionName = default("TestDataSubscription"); 
     gates:
         // messages going to icn base
         output icnSubscriberOut;

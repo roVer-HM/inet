@@ -42,9 +42,15 @@ public:
      */
     void receiveData(const inet::Ptr<const ICNPacket>& icnPacket);
 
+    /**
+     * Tell this subscriber that an advertisement was received.
+     */
+    void advertisementReceived();
+
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage* msg) override;
+
 private:
 
     /**
@@ -54,15 +60,50 @@ private:
     const std::string ICN_SUBSCRIBER_OUT = "icnSubscriberOut";
 
     /**
+     * Stores if this subscriber should send periodic subscriptions.
+     */
+    bool mPeriodicSubscriber;
+
+    /**
+     * Stores the time between two periodic subscriptions.
+     */
+    int mDelay;
+
+    /**
+     * Stores if this subscriber should send a subscription message
+     * when an advertisement of an access point was received.
+     */
+    bool mAdvertisementSubscriber;
+
+    /**
+     * This stores how long to wait until to react to another advertisment.
+     */
+    int mAdvertisementDelay;
+
+    /**
      * Stores the name of the data this is subscribing to.
      */
     std::string mSubscriptionName;
 
     /**
-     * Stores the message that will be sent to myself to
-     * initiate the subscription process.
+     * This is is sent to myself to trigger periodic subscriptions.
      */
     cMessage* mSubscribeMessage;
+
+    /**
+     * This is sent to myself
+     */
+    cMessage* mResetAdvertisementMessage;
+
+    /**
+     * States if this subscriber should react to the next advertisement.
+     */
+    bool mReactToAdvertisement;
+
+    /**
+     * Helper method to send icn packet to the given gate.
+     */
+    void createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName);
 };
 
 } /* namespace inet */
