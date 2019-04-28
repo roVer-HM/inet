@@ -35,38 +35,66 @@ void ICNRouter::handleMessage(cMessage *msg)
     throw cRuntimeError("This module doesn't process messages");
 }
 
-bool ICNRouter::addSubscription(int interfaceId, std::string& subscription) {
+bool ICNRouter::addSubscription(int interfaceId, ICNName& subscription) {
     bool result = false;
 
-    auto search = mRoutingTable.find(subscription);
-    if (search != mRoutingTable.end()) {
-        // we've found something
-        std::vector<int> interfaces = search->second;
-        // check if the interface is already stored
-        bool alreadyStored = false;
-        for (int& interface: interfaces) {
-            alreadyStored = (interface == interfaceId) || alreadyStored;
+    if (subscription.isPrefixMatched()) {
+        EV_INFO << "Routing table got a subscription that is prefix matched. That is not allowed! Discarding subscription with name "
+                << subscription.generateString() << "!" << endl;
+    }
+
+    std::vector<int> search = find(subscription);
+    if (!search.empty()) {
+
+        // iterate all entries
+        for (int& index: search) {
+            // extract already stored interfaces
+            std::vector<int> alreadyStoredInterfaces = mRoutingTable[index].second;
+
+            // check if the interface we want to add is already stored
+            bool alreadyStored = false;
+            for (int& interface: alreadyStoredInterfaces) {
+                alreadyStored = (interface == interfaceId) || alreadyStored;
+            }
+            if (!alreadyStored) {
+                mRoutingTable[index].second.push_back(interfaceId);
+                // when we reach this we added a new entry
+                result = true;
+                EV_INFO << "Added a new interface to subscription with name " << subscription.generateString() << endl;
+            }
         }
-        if (!alreadyStored) {
-            search->second.push_back(interfaceId);
-            // when we reach this we added a new entry
-            result = true;
-            EV_INFO << "Added a new interface to subscription with name " << subscription << endl;
-        }
+
+
     } else {
-        mRoutingTable[subscription] = {interfaceId};
-        EV_INFO << "Added a new entry to the routing table for subscription with name " << subscription << endl;
+        // add a new entry
+        std::vector<int> interfaceList;
+        interfaceList.push_back(interfaceId);
+        mRoutingTable.push_back(std::make_pair(subscription, interfaceList));
+        EV_INFO << "Added a new entry to the routing table for subscription with name " << subscription.generateString() << endl;
         // we also added a new entry when we reached this
         result = true;
     }
     return result;
 }
 
-std::vector<int> ICNRouter::getInterestedInterfaces(std::string& publication) {
+std::vector<int> ICNRouter::getInterestedInterfaces(ICNName& publication) {
     std::vector<int> result;
-    auto search = mRoutingTable.find(publication);
-    if (search != mRoutingTable.end()) {
-        result = search->second;
+    std::vector<int> relevantIndices = find(publication);
+    for (auto& index: relevantIndices) {
+        for (auto& interfaceID: mRoutingTable[index].second) {
+            result.push_back(interfaceID);
+        }
+    }
+    return result;
+}
+
+std::vector<int> ICNRouter::find(ICNName& nameToFind) const {
+    std::vector<int> result;
+
+    for (size_t index = 0; index < mRoutingTable.size(); index++) {
+        if (mRoutingTable.at(index).first.matches(nameToFind)) {
+            result.push_back(index);
+        }
     }
     return result;
 }

@@ -22,14 +22,22 @@ simple ICNSubscriber {
         // specifies if this subscriber should subscribe periodically to certain data
         bool periodicSubscriber = default(false);
         // specifies the seconds between two periodic subsciption messages
-        int delay @unit(s) = default(5s);
-        // specifies if this subscriber should subscribe when an advertisement is encountered
-        bool advertisementSubscriber = default(false);
-        // specifies the seconds until this is allowed to react to a subscription again
-        int delayAdvertismentReactions @unit(s) = default(60s);
+        int periodicSubscriptionDelay @unit(s) = default(5s);
+        // specifies if this subscriber should subscribe when a heartbeat is encountered
+        bool heartbeatSubscriber = default(false);
+        // specifies the seconds until this is allowed to react to a heartbeat again
+        int heartbeatSubscriptionDelay @unit(s) = default(60s);
         // specify the data you want to subscribe to
         string subscriptionName = default("TestDataSubscription"); 
     gates:
-        // messages going to icn base
-        output icnSubscriberOut;
+        // subscription messages going to icn base
+        output subscriptions;
+        
+        // through this gate the following informations will be delivered:
+        // 		- data this subscriber subscribed to
+        // 		- information about a heartbeat received from an nearby ICN AP
+        //  	(- information about nearby subscriptions that were made by other nodes)
+        input messageInterface[];
+        
+        
 }

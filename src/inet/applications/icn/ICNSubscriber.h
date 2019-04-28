@@ -20,6 +20,8 @@
 
 #include "inet/applications/icn/ICNPacket_m.h"
 #include "inet/common/packet/Packet.h"
+#include "inet/applications/icn/ICNName.h"
+#include "inet/applications/icn/MessageKinds.h"
 
 namespace inet {
 
@@ -36,17 +38,6 @@ public:
      */
     virtual ~ICNSubscriber();
 
-    /**
-     * This can be called to notify the subscriber of data that
-     * arrived for it.
-     */
-    void receiveData(const inet::Ptr<const ICNPacket>& icnPacket);
-
-    /**
-     * Tell this subscriber that an advertisement was received.
-     */
-    void advertisementReceived();
-
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage* msg) override;
@@ -57,7 +48,7 @@ private:
      * Stores the name of the gate used to send data to
      * icnBase.
      */
-    const std::string ICN_SUBSCRIBER_OUT = "icnSubscriberOut";
+    const std::string SUBSCRIPTION_GATE = "subscriptions";
 
     /**
      * Stores if this subscriber should send periodic subscriptions.
@@ -67,23 +58,28 @@ private:
     /**
      * Stores the time between two periodic subscriptions.
      */
-    int mDelay;
+    int mPeriodicSubscriptionDelay;
 
     /**
      * Stores if this subscriber should send a subscription message
-     * when an advertisement of an access point was received.
+     * when a heartbeat of an access point was received.
      */
-    bool mAdvertisementSubscriber;
+    bool mHeartbeatSubscriber;
 
     /**
-     * This stores how long to wait until to react to another advertisment.
+     * This stores how long to wait until to react to another heartbeat.
      */
-    int mAdvertisementDelay;
+    int mHeartbeatSubscriptionDelay;
 
     /**
      * Stores the name of the data this is subscribing to.
      */
-    std::string mSubscriptionName;
+    ICNName mSubscriptionICNName;
+
+    /**
+     * States if this subscriber should react to the next advertisement.
+     */
+    bool mReactToHeartbeat;
 
     /**
      * This is is sent to myself to trigger periodic subscriptions.
@@ -93,17 +89,29 @@ private:
     /**
      * This is sent to myself
      */
-    cMessage* mResetAdvertisementMessage;
+    cMessage* mResetHeartbeatSubscriptionMessage;
 
     /**
-     * States if this subscriber should react to the next advertisement.
+     * Used to check if a subscription result is a heartbeat message
+     * from an access point.
      */
-    bool mReactToAdvertisement;
+    ICNName mHeartbeatPrefix;
+
+    /**
+     * This is to store which access point we were last subscribed to.
+     */
+    ICNName mLastSubscribedAccessPointHeartbeat;
 
     /**
      * Helper method to send icn packet to the given gate.
      */
-    void createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName);
+    void createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName, MessageKinds messageKind);
+
+    /**
+     * Helper method to handle situation when a heartbeat is received.
+     */
+    void handleReceivedHeartbeat(ICNName& heartbeatName);
+
 };
 
 } /* namespace inet */

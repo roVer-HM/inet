@@ -27,9 +27,8 @@ module ICN like IApp
         // therefore setting publisher to true and forwarding to false is pointless
         // because the published packet will not be forwarded
         bool icnForwarding = default(false); 
-        bool hasAdvertiser = default(false);
+        bool hasSubscriber = default(false);
        	icnBase.routerModule = default(absPath(".router"));
-       	icnBase.subscriberModule = default(absPath(".subscriber"));
     gates:
         // needed for IApp. The data from lower layers will flow through these gates
         input socketIn;
@@ -39,22 +38,33 @@ module ICN like IApp
     		parameters:
     		    interfaceTableModule = interfaceTableModule;
     		    icnForwarding = icnForwarding;
+    		    hasPublisher = hasPublisher;
+    		    hasSubscriber = hasSubscriber;
     	}
     	publisher: ICNPublisher if hasPublisher;
     	router: ICNRouter;
-    	subscriber: ICNSubscriber;
-    	advertiser: ICNAdvertiser if hasAdvertiser;
+    	subscriber: ICNSubscriber if hasSubscriber;
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
 		socketIn --> icnBase.socketIn;
 		socketOut <-- icnBase.socketOut;
 		
-		// publisher will send messages to icnBase when he wants to publish something
-		publisher.icnPublisherOut --> icnBase.icnPublisherIn if hasPublisher;
+		// Publisher
+		// ------------------------------
 		
-		// subscriber will send messages to icnBase when he want to subscribe to something
-		subscriber.icnSubscriberOut --> icnBase.icnSubscriberIn;
+		// publications will flow from publisher to icnBase who will broadcast them
+		publisher.publications --> icnBase.messageInterface++ if hasPublisher;
 		
-		// advertiser will send messsages to icnBase when he wants to advertise
-		advertiser.icnAdvertiserOut --> icnBase.icnAdvertiserIn if hasAdvertiser;
+		// Subscriber
+		// ------------------------------
+		
+		// subscriptions will flow from subscriber to icnBase who will broadcast them
+		subscriber.subscriptions --> icnBase.messageInterface++ if hasSubscriber;
+		
+		// transports packets that this node subscribed to to the subscriber (application data)
+		icnBase.subscribedPackets --> subscriber.messageInterface++ if hasSubscriber;
+		
+		// transports notifications about heartbeats from icn base to subscriber
+		icnBase.receivedHeartbeats --> subscriber.messageInterface++ if hasSubscriber;
+		
 }

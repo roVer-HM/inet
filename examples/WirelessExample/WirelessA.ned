@@ -47,12 +47,12 @@ network WirelessA
         }
         hostB: <default("WirelessHost")> like INetworkNode {
             parameters:
-                @display("p=560.448,344.73602");
+                @display("p=419.328,363.888");
                 numLoInterfaces = 0;
         }
         hostC: <default("WirelessHost")> like INetworkNode {
             parameters:
-                @display("p=511.05603,448.56003");
+                @display("p=282.24002,363.888");
                 numLoInterfaces = 0;
         }
         hostD: StandardHost {

@@ -20,6 +20,7 @@
 #include <map>
 
 #include "inet/common/INETDefs.h"
+#include "inet/applications/icn/ICNName.h"
 
 namespace inet {
 
@@ -52,23 +53,22 @@ public:
      *
      * @param interfaceId The id of the interface that the given subscription
      * arrived on.
-     * @param subscription A string containing the subscription. The subscription
-     * is the name of the packet.
+     * @param subscription ICNName
      *
      * @return bool true when a new entry was added to the table. False if not.
      * This should indicate if the subscription should be forwarded to neighbours.
      */
-    bool addSubscription(int interfaceId, std::string& subscription);
+    bool addSubscription(int interfaceId, ICNName& subscription);
 
     /**
      * This will return interfaces that the given publication should be forwarded
      * to.
      *
-     * @param publication identfied by its name.
+     * @param publication ICNName
      *
      * @return vector<int> a vector of interfaces (integers).
      */
-    std::vector<int> getInterestedInterfaces(std::string& publication);
+    std::vector<int> getInterestedInterfaces(ICNName& publication);
 
 protected:
     virtual void initialize();
@@ -91,7 +91,25 @@ private:
      * TODO: At some point this needs to contain information about timeouts
      * of subscriptions as well. This will likely need a different data structure.
      */
-    std::map<std::string, std::vector<int>> mRoutingTable;
+    std::map<ICNName, std::vector<int>, ICNNameCompare> mRoutingTableOld;
+
+    /**
+     * Stores all possible mappings from ICNName to a list of interfaces.
+     *
+     * When searching for interfaces that a message with a given ICNName
+     * should be forwarded to this vector will be iterated and the
+     * first element of each pair will be matched with the search parameter.
+     */
+    std::vector<std::pair<ICNName, std::vector<int>>> mRoutingTable;
+
+    /**
+     * A small helper method which will return the index of the element
+     * that is to be found.
+     *
+     * @param nameToFind The icn name to find in the routing table.
+     * @return vector<int> A vector of indices (empty if nothing was found).
+     */
+    std::vector<int> find(ICNName& nameToFind) const;
 
 };
 

@@ -23,6 +23,7 @@
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
+#include "inet/applications/icn/MessageKinds.h"
 
 namespace inet {
 

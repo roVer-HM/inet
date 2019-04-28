@@ -23,6 +23,8 @@ protected:
 
 private:
 
+    const std::string PUBLICATIONS_GATE = "publications";
+
     /**
      * Stores the name of the data that is being published.
      */
@@ -43,6 +45,11 @@ private:
      * Stores the size of the data.
      */
     int mDataSize;
+
+    /**
+     * Stores if this should only broadcast publications.
+     */
+    bool mBroadcastPublisher;
 
     /**
      * Stores the message that will be sent to myself.

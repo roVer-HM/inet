@@ -44,16 +44,8 @@ protected:
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
 private:
-    const std::string PUBLISHER_GATE_NAME = "icnPublisherIn";
-    const std::string SUBSCRIBER_GATE_NAME_IN = "icnSubscriberIn";
-    const std::string ADVERTISER_GATE_NAME_IN = "icnAdvertiserIn";
 
-    enum SelfMsgKinds { START = 1, STOP };
-
-    /**
-     * Self message to trigger start and stop.
-     */
-    cMessage* mSelfMessage;
+    const std::string GATE_TO_SUBSCRIBER_APPLICATION_DATA = "subscribedPackets";
 
     /**
      * Stores the pointer to interface table.
@@ -71,22 +63,59 @@ private:
     bool mForwarding;
 
     /**
+     * Stores if this base has a subscriber attached to it.
+     */
+    bool mHasSubscriber;
+
+    /**
+     * Stores if this base has an access point attached to it.
+     */
+    bool mIsAccessPoint;
+
+    /**
+     * Stores if this base has a publisher attached to it.
+     */
+    bool mHasPublisher;
+
+    /**
      * The router module in case this is a router otherwise this will
      * be nullptr.
      */
     ICNRouter* mICNRouterModule;
 
     /**
-     * Stores the subscriber module to notify about received data and
-     * about when an access point advertisement was encountered.
+     * Helper method for handling publication packets from ICNPublisher
+     * module.
      */
-    ICNSubscriber* mICNSubscriberModule;
+    void handlePublicationPacket(Packet* packet);
 
     /**
-     * Startup the application by initializing transport interface and
-     * sending a packet if this is a publisher.
+     * Helper method for handling subscription packets from ICNSubscriber
+     * module.
      */
-    virtual void processStart();
+    void handleSubscriptionPacket(Packet* packet);
+
+    /**
+     * Helper method for handling silent subscription packets.
+     */
+    void handleSilentSubscriptionPacket(Packet* packet);
+
+    /**
+     * Helper method to handle broadcast publications.
+     */
+    void handleBroadcastPublicationPacket(Packet* packet);
+
+    /**
+     * Helper method to handle publish packets that were received from network.
+     * Publish packets are forwarded to neighbours and/or the local application. This
+     * will ask the routing table to get info about that.
+     */
+    void handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName);
+
+    /**
+     * Helper method to handle subscribe packets which were received from the network.
+     */
+    void handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName);
 };
 
 } /* namespace inet */

@@ -1,10 +1,11 @@
-#include "ICNPublisher.h"
+#include "inet/applications/icn/ICNPublisher.h"
 
 #include <omnetpp.h>
 
 #include "inet/applications/icn/ICNPacket_m.h"
 #include "inet/common/TimeTag_m.h"
 #include "inet/common/packet/Packet.h"
+#include "inet/applications/icn/MessageKinds.h"
 
 namespace inet {
 
@@ -15,6 +16,7 @@ ICNPublisher::ICNPublisher()
 , mDelay(0)
 , mRepeat(false)
 , mDataSize(0)
+, mBroadcastPublisher(false)
 , mSendMessage(nullptr)
 {
 }
@@ -31,6 +33,7 @@ void ICNPublisher::initialize() {
     mRepeat = par("repeat").boolValue();
     mDataSize = par("dataSize").intValue();
     mSendMessage = new cMessage("sendMessage");
+    mBroadcastPublisher = par("broadcast").boolValue();
 
     // schedule the first self-message
     scheduleAt(simTime() + mDelay, mSendMessage);
@@ -38,7 +41,7 @@ void ICNPublisher::initialize() {
 
 void ICNPublisher::handleMessage(cMessage* msg) {
 
-    if (msg == mSendMessage) {
+    if (msg->isSelfMessage()) {
 
         // create and fill ICNPacket
         const auto& payload = makeShared<ICNPacket>();
@@ -50,8 +53,13 @@ void ICNPublisher::handleMessage(cMessage* msg) {
         // encapsulate into packet
         Packet* packet = new Packet("ICNPublisherData");
         packet->insertAtBack(payload);
+        if (mBroadcastPublisher) {
+            packet->setKind(MessageKinds::BROADCAST_PUBLICATION);
+        } else {
+            packet->setKind(MessageKinds::PUBLICATION);
+        }
 
-        send(packet, "icnPublisherOut");
+        send(packet, PUBLICATIONS_GATE.c_str());
 
         // if we want to repeat sending this will handle it
         if (mRepeat) {

@@ -29,7 +29,10 @@ parameters:
     string dataName = default("ICNPublisherDefaultDataName");
     // the size of the data
     int dataSize @unit(B) = default(1000B);
+    // indicates if this should broadcast all messages --> means sending to all interfaces no matter if interest are present
+    bool broadcast = default(false);
 	gates:
-	    output icnPublisherOut;
+	    // this will transport publications to icnBase who will send them 
+	    output publications;
 	    
 }

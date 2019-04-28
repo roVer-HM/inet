@@ -23,21 +23,28 @@ import inet.applications.contract.IApp;
 simple ICNBase
 {
     parameters:
-        bool icnForwarding = default(false);
+        bool icnForwarding;
         string interfaceTableModule;   // The path to the InterfaceTable module
         string routerModule;
-        string subscriberModule;
+        bool hasSubscriber;
+        bool hasPublisher;
         @display("i=block/app");
         @lifecycleSupport;
 
     gates:
         input socketIn @labels(UdpControlInfo/up);
         output socketOut @labels(UdpControlInfo/down);
-        // gate for messages from publisher module
-        input icnPublisherIn;
-        // gate for messages that contain an icnSubscription
-        input icnSubscriberIn;
-        // gate for messages that contain an advertisement
-        input icnAdvertiserIn;
+        // gate for all messages coming from other modules which sit below ICN
+        input messageInterface[];
+        
+        // a gate to deliver icn packets that this node subscribed to
+        output subscribedPackets;
+        
+        // a gate to notify modules about received heartbeats
+        output receivedHeartbeats;
+        
+        // a gate to notify modules about received nearby subscriptions ( for future use)
+        //output receivedSubscriptions;
+        
 }
 

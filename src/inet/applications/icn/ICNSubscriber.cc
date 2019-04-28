@@ -23,31 +23,34 @@ Define_Module(ICNSubscriber);
 
 ICNSubscriber::ICNSubscriber()
 : mPeriodicSubscriber(false)
-, mDelay(0)
-, mAdvertisementSubscriber(false)
-, mAdvertisementDelay(0)
-, mSubscriptionName("")
+, mPeriodicSubscriptionDelay(0)
+, mHeartbeatSubscriber(false)
+, mHeartbeatSubscriptionDelay(0)
+, mSubscriptionICNName("/undefined")
+, mReactToHeartbeat(true)
 , mSubscribeMessage(nullptr)
-, mResetAdvertisementMessage(nullptr)
-, mReactToAdvertisement(true)
+, mResetHeartbeatSubscriptionMessage(nullptr)
+, mHeartbeatPrefix("/accessPoint/heartbeat/*")
+, mLastSubscribedAccessPointHeartbeat("/undefined")
 {
 }
 
 ICNSubscriber::~ICNSubscriber() {
     cancelAndDelete(mSubscribeMessage);
-    cancelAndDelete(mResetAdvertisementMessage);
+    cancelAndDelete(mResetHeartbeatSubscriptionMessage);
 }
 
 void ICNSubscriber::initialize() {
 
     // parse parameters
-    mSubscriptionName = par("subscriptionName").stdstringValue();
+    std::string subscriptionName = par("subscriptionName").stdstringValue();
+    mSubscriptionICNName = ICNName(subscriptionName);
     mPeriodicSubscriber = par("periodicSubscriber").boolValue();
-    mDelay = par("delay").intValue();
-    mAdvertisementSubscriber = par("advertisementSubscriber").boolValue();
-    mAdvertisementDelay = par("delayAdvertismentReactions").intValue();
+    mPeriodicSubscriptionDelay = par("periodicSubscriptionDelay").intValue();
+    mHeartbeatSubscriber = par("heartbeatSubscriber").boolValue();
+    mHeartbeatSubscriptionDelay = par("heartbeatSubscriptionDelay").intValue();
     mSubscribeMessage = new cMessage("subscribeMessage");
-    mResetAdvertisementMessage = new cMessage("advertismentReset");
+    mResetHeartbeatSubscriptionMessage = new cMessage("advertisementReset");
 
     // are we a periodic subscriber?
     if (mPeriodicSubscriber) {
@@ -55,42 +58,93 @@ void ICNSubscriber::initialize() {
         scheduleAt(simTime(), mSubscribeMessage);
     }
 
+    // we need to tell icn base that we are interested in heartbeats from access points
+    if (mHeartbeatSubscriber) {
+        createAndSendPacket(1000, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
+    }
 }
 
 void ICNSubscriber::handleMessage(cMessage* msg) {
 
-    if (msg == mSubscribeMessage) {
+    if (msg->isSelfMessage()) {
+        if (msg == mSubscribeMessage) {
 
-        createAndSendPacket(1000, mSubscriptionName, ICNPacketType::SUBSCRIBE, "ICNPeriodicSubscription", ICN_SUBSCRIBER_OUT);
+            createAndSendPacket(
+                    1000,
+                    mSubscriptionICNName.generateString(),
+                    ICNPacketType::SUBSCRIBE,
+                    "ICNPeriodicSubscription",
+                    SUBSCRIPTION_GATE,
+                    MessageKinds::SUBSCRIPTION
+                    );
 
-        if (mPeriodicSubscriber) {
-            // schedule the first self-message
-            scheduleAt(simTime() + mDelay, mSubscribeMessage);
+            if (mPeriodicSubscriber) {
+                // schedule the first self-message
+                scheduleAt(simTime() + mPeriodicSubscriptionDelay, mSubscribeMessage);
+            }
+
+        } else if (msg == mResetHeartbeatSubscriptionMessage) {
+          mReactToHeartbeat = true;
         }
-
-    } else if (msg == mResetAdvertisementMessage) {
-      mReactToAdvertisement = true;
     } else {
-        throw cRuntimeError("Publisher encountered message he can't handle!");
+        // we received a data packet that we previously subscribed!!
+        if (msg->getKind() == MessageKinds::SUBSCRIPTION_RESULT) {
+            Packet* packet = check_and_cast<Packet*>(msg);
+            const Ptr<const ICNPacket> icnPacket = packet->peekAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+            ICNName resultName(icnPacket->getIcnName());
+            if (resultName.matches(mHeartbeatPrefix)) {
+                handleReceivedHeartbeat(resultName);
+            } else if (resultName.matches(mSubscriptionICNName)) {
+                // received requested data
+                EV_INFO << "Received data to my subscription. Type: " << icnPacket->getPacketType() << " Name: " << icnPacket->getIcnName() << endl;
+            } else {
+                // received unknown data --> this should not happen
+                throw cRuntimeError("Received data with a name that I did not request!");
+            }
+            delete msg;
+        } else {
+            throw cRuntimeError("Publisher encountered message he can't handle!");
+        }
     }
+
+
 }
 
-void ICNSubscriber::receiveData(const inet::Ptr<const ICNPacket>& icnPacket) {
-    Enter_Method_Silent();
-    EV_INFO << "Received data to my subscription. Type: " << icnPacket->getPacketType() << " Name: " << icnPacket->getIcnName() << endl;
-}
 
-void ICNSubscriber::advertisementReceived() {
-    Enter_Method_Silent();
-    if (mAdvertisementSubscriber && mReactToAdvertisement) {
-        createAndSendPacket(1000, mSubscriptionName, ICNPacketType::SUBSCRIBE, "ICNAdvertisementSubscription", ICN_SUBSCRIBER_OUT);
-        mReactToAdvertisement = false;
-        scheduleAt(simTime() + mAdvertisementDelay, mResetAdvertisementMessage);
+// TODO: There can be done much more here:
+//      1. Store a list access points (heartbeat identifier) which I subscribed to
+//      2. When there was no heartbeat received from an access point in a while we remove it
+//      3. When we receive heartbeat but a certain time has passed we renew the subscription
+void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
+    // received a heartbeat
+    EV_INFO << "Received a heartbeat!" << std::endl;
+    ASSERT(mHeartbeatSubscriber);
 
+    if (mLastSubscribedAccessPointHeartbeat.matches(heartbeatName)) {
+        if (mReactToHeartbeat) {
+            createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+            mReactToHeartbeat = false;
+            scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
+            EV_INFO << "We haven't sent a subscription in a while to access point with heartbeat '"
+                    << mLastSubscribedAccessPointHeartbeat.generateString()
+                    << "'. Therefore we sent a new one!" << std::endl;
+        } else {
+            EV_INFO << "A subscription has recently been sent we don't need to send another one to access point with heartbeat '"
+                    << mLastSubscribedAccessPointHeartbeat.generateString() << "'!" << EV_INFO;
+        }
+    } else {
+        // this means we found a new access point!
+        mLastSubscribedAccessPointHeartbeat = heartbeatName;
+        mReactToHeartbeat = false;
+        cancelEvent(mResetHeartbeatSubscriptionMessage);
+        scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
+        createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
     }
+
+
 }
 
-void ICNSubscriber::createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName) {
+void ICNSubscriber::createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName, MessageKinds messageKind) {
     // create and fill ICNPacket
     const auto& payload = makeShared<ICNPacket>();
     payload->setChunkLength(B(chunkLength));
@@ -100,6 +154,7 @@ void ICNSubscriber::createAndSendPacket(const int chunkLength, const std::string
     // encapsulate into packet
     Packet* packet = new Packet(packetName.c_str());
     packet->insertAtBack(payload);
+    packet->setKind(messageKind);
 
     send(packet, gateName.c_str());
 }
