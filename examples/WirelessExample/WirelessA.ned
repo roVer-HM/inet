@@ -22,6 +22,9 @@ import inet.node.inet.WirelessHost;
 import inet.physicallayer.contract.packetlevel.IRadioMedium;
 import inet.visualizer.integrated.IntegratedCanvasVisualizer;
 import ned.DatarateChannel;
+import inet.node.icn.ICNAccessPoint;
+import inet.node.icn.ICNPublisherHost;
+import inet.node.icn.ICNSubscriberHost;
 
 network WirelessA
 {
@@ -40,25 +43,26 @@ network WirelessA
         radioMedium: <default("UnitDiskRadioMedium")> like IRadioMedium {
             @display("p=580,275");
         }
-        hostA: WirelessHost {
+        hostA: ICNAccessPoint {
             parameters:
                 @display("p=345.74402,254.016");
                 numLoInterfaces = 0;
         }
-        hostB: <default("WirelessHost")> like INetworkNode {
+        hostB: ICNSubscriberHost {
             parameters:
                 @display("p=419.328,363.888");
                 numLoInterfaces = 0;
         }
-        hostC: <default("WirelessHost")> like INetworkNode {
+        hostC: ICNSubscriberHost {
             parameters:
                 @display("p=282.24002,363.888");
                 numLoInterfaces = 0;
         }
-        hostD: StandardHost {
+        hostD: ICNPublisherHost {
             parameters:
                 @display("p=354.816,69.552");
                 numLoInterfaces = 0;
+                numWlanInterfaces = 0;
         }
         visualizer: IntegratedCanvasVisualizer {
             parameters:
