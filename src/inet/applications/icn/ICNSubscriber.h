@@ -25,7 +25,7 @@
 
 namespace inet {
 
-class ICNSubscriber: public cSimpleModule {
+class ICNSubscriber: public cSimpleModule, public cListener {
 public:
 
     /**
@@ -41,6 +41,11 @@ public:
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage* msg) override;
+
+    /**
+     * Override receive signal from cListener.
+     */
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
 
 private:
 
@@ -101,6 +106,12 @@ private:
      * This is to store which access point we were last subscribed to.
      */
     ICNName mLastSubscribedAccessPointHeartbeat;
+
+    /**
+     * This is to store if this subscriber should send a subscription
+     * when the node is associated to an access point.
+     */
+    bool mSubscribeOnAssociation;
 
     /**
      * Helper method to send icn packet to the given gate.

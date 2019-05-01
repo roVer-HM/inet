@@ -26,6 +26,6 @@ module ICNSubscriberHost extends ICNHostBase {
 	    // set subscriber params
 	    app[0].icnForwarding = false;
 	    app[0].hasSubscriber = true;
-	    app[0].subscriber.heartbeatSubscriber = true;
+	    app[0].subscriber.associationSubscriber = true;
 	    app[0].subscriber.subscriptionName = subscribeTo;
 }

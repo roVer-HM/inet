@@ -23,13 +23,5 @@ module ICNHostBase extends WirelessHost {
 	    numApps = 1;
 	    ipv4.arp.typename = "GlobalArp";
 	    app[0].typename = "ICN";
-	    wlan[0].typename = "WirelessInterface";
-	    wlan[0].radio.typename = "UnitDiskRadio";
-	    wlan[0].mac.typename = "CsmaCaMac";
-	    wlan[0].radio.receiver.ignoreInterference = false;
-        wlan[0].radio.transmitter.interferenceRange = 300m;
-        wlan[0].mac.ackTimeout = 300us;
-        **.bitrate = 10Mbps;
-        wlan[0].radio.transmitter.communicationRange = 280m;
-        wlan[0].mac.useAck = false;
+	    numLoInterfaces = 0;
 }

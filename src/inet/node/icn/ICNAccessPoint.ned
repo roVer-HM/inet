@@ -15,20 +15,11 @@
 
 package inet.node.icn;
 
-import inet.node.icn.ICNPublisherHost;
+import inet.node.icn.ICNRouterHost;
 
-module ICNAccessPoint extends ICNPublisherHost {
+module ICNAccessPoint extends ICNRouterHost {
 	parameters:
 	    @display("i=device/accesspoint");
-	    // specifies the id (name) of this access point
-	    string id;
-	    
-	    // specify values of publisher host
-	    messageDelay = 2s;
-	    repeatPublications = true;
-	    icnPublicationName = "/accessPoint/heartbeat/" + id;
-	    publicationSize = 10B;
-	    
-	    // we need to broadcast 
-	    app[0].publisher.broadcast = true;
+	    wlan[0].mgmt.typename = "Ieee80211MgmtAp";
+        wlan[0].agent.typename = "";
 }

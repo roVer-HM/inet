@@ -27,8 +27,11 @@ simple ICNSubscriber {
         bool heartbeatSubscriber = default(false);
         // specifies the seconds until this is allowed to react to a heartbeat again
         int heartbeatSubscriptionDelay @unit(s) = default(60s);
+        // specifies if this subscriber should subscribe when the node is associated to an
+        // access point
+        bool associationSubscriber = default(false);
         // specify the data you want to subscribe to
-        string subscriptionName = default("TestDataSubscription"); 
+        string subscriptionName; 
     gates:
         // subscription messages going to icn base
         output subscriptions;

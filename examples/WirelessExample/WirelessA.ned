@@ -25,6 +25,7 @@ import ned.DatarateChannel;
 import inet.node.icn.ICNAccessPoint;
 import inet.node.icn.ICNPublisherHost;
 import inet.node.icn.ICNSubscriberHost;
+import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
 
 network WirelessA
 {
@@ -40,28 +41,24 @@ network WirelessA
         configurator: Ipv4NetworkConfigurator {
             @display("p=580,200");
         }
-        radioMedium: <default("UnitDiskRadioMedium")> like IRadioMedium {
+        radioMedium: Ieee80211ScalarRadioMedium {
             @display("p=580,275");
         }
         hostA: ICNAccessPoint {
             parameters:
                 @display("p=345.74402,254.016");
-                numLoInterfaces = 0;
         }
         hostB: ICNSubscriberHost {
             parameters:
                 @display("p=419.328,363.888");
-                numLoInterfaces = 0;
         }
         hostC: ICNSubscriberHost {
             parameters:
                 @display("p=282.24002,363.888");
-                numLoInterfaces = 0;
         }
         hostD: ICNPublisherHost {
             parameters:
                 @display("p=354.816,69.552");
-                numLoInterfaces = 0;
                 numWlanInterfaces = 0;
         }
         visualizer: IntegratedCanvasVisualizer {

@@ -17,6 +17,8 @@
 
 #include <omnetpp/simutil.h>
 
+#include "inet/common/ModuleAccess.h"
+
 namespace inet {
 
 Define_Module(ICNSubscriber);
@@ -32,6 +34,7 @@ ICNSubscriber::ICNSubscriber()
 , mResetHeartbeatSubscriptionMessage(nullptr)
 , mHeartbeatPrefix("/accessPoint/heartbeat/*")
 , mLastSubscribedAccessPointHeartbeat("/undefined")
+, mSubscribeOnAssociation(false)
 {
 }
 
@@ -51,6 +54,7 @@ void ICNSubscriber::initialize() {
     mHeartbeatSubscriptionDelay = par("heartbeatSubscriptionDelay").intValue();
     mSubscribeMessage = new cMessage("subscribeMessage");
     mResetHeartbeatSubscriptionMessage = new cMessage("advertisementReset");
+    mSubscribeOnAssociation = par("associationSubscriber").boolValue();
 
     // are we a periodic subscriber?
     if (mPeriodicSubscriber) {
@@ -62,6 +66,12 @@ void ICNSubscriber::initialize() {
     if (mHeartbeatSubscriber) {
         createAndSendPacket(1000, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
     }
+    if (mSubscribeOnAssociation) {
+        cModule* host = getContainingNode(this);
+        // when we receive the association we send a subscription
+        host->subscribe(l2AssociatedSignal, this);
+    }
+
 }
 
 void ICNSubscriber::handleMessage(cMessage* msg) {
@@ -109,7 +119,6 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
 
 
 }
-
 
 // TODO: There can be done much more here:
 //      1. Store a list access points (heartbeat identifier) which I subscribed to
@@ -159,4 +168,10 @@ void ICNSubscriber::createAndSendPacket(const int chunkLength, const std::string
     send(packet, gateName.c_str());
 }
 
+void ICNSubscriber::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) {
+    Enter_Method_Silent();
+    printSignalBanner(signalID, obj, details);
+    EV_INFO << "We are associated to a signal. Sending a subscription..." << endl;
+    createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNAssociatedSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+}
 } /* namespace inet */
