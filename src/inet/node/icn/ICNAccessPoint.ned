@@ -20,6 +20,7 @@ import inet.node.icn.ICNRouterHost;
 module ICNAccessPoint extends ICNRouterHost {
 	parameters:
 	    @display("i=device/accesspoint");
+	    numWlanInterfaces = 1;
 	    wlan[0].mgmt.typename = "Ieee80211MgmtAp";
         wlan[0].agent.typename = "";
 }

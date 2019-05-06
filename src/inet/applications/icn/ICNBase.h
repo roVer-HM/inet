@@ -84,6 +84,16 @@ private:
     ICNRouter* mICNRouterModule;
 
     /**
+     * The id of the interface that is used for infrastructure communication.
+     */
+    int mInfrastructureCommunicationInterfaceId;
+
+    /**
+     * The id of the interface that is used for local communication.
+     */
+    int mLocalCommunicationInterfaceId;
+
+    /**
      * Helper method for handling publication packets from ICNPublisher
      * module.
      */

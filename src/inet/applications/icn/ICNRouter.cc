@@ -38,10 +38,10 @@ void ICNRouter::handleMessage(cMessage *msg)
 bool ICNRouter::addSubscription(int interfaceId, ICNName& subscription) {
     bool result = false;
 
-    if (subscription.isPrefixMatched()) {
-        EV_INFO << "Routing table got a subscription that is prefix matched. That is not allowed! Discarding subscription with name "
-                << subscription.generateString() << "!" << endl;
-    }
+//    if (subscription.isPrefixMatched()) {
+//        EV_INFO << "Routing table got a subscription that is prefix matched. That is not allowed! Discarding subscription with name "
+//                << subscription.generateString() << "!" << endl;
+//    }
 
     std::vector<int> search = find(subscription);
     if (!search.empty()) {

@@ -46,7 +46,9 @@ void ICNPublisher::handleMessage(cMessage* msg) {
         // create and fill ICNPacket
         const auto& payload = makeShared<ICNPacket>();
         payload->setChunkLength(B(mDataSize));
-        payload->setIcnName(mDataName.c_str());
+        std::stringstream stringStream;
+        stringStream << mDataName << "/" << simTime();
+        payload->setIcnName(stringStream.str().c_str());
         payload->setPacketType(ICNPacketType::PUBLISH);
         payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
 

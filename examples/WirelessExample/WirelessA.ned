@@ -25,6 +25,7 @@ import ned.DatarateChannel;
 import inet.node.icn.ICNAccessPoint;
 import inet.node.icn.ICNPublisherHost;
 import inet.node.icn.ICNSubscriberHost;
+import inet.node.icn.ICNAdvancedSubscriberHost;
 import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
 
 network WirelessA
@@ -48,11 +49,11 @@ network WirelessA
             parameters:
                 @display("p=345.74402,254.016");
         }
-        hostB: ICNSubscriberHost {
+        hostB: ICNAdvancedSubscriberHost {
             parameters:
                 @display("p=419.328,363.888");
         }
-        hostC: ICNSubscriberHost {
+        hostC: ICNAdvancedSubscriberHost {
             parameters:
                 @display("p=282.24002,363.888");
         }
