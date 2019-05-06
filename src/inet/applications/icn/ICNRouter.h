@@ -35,6 +35,19 @@ public:
     static const int LOCAL_APPLICATION_ID = -1;
 
     /**
+     * This will be stored in the routing table
+     * in case the name should be forwarded to a
+     * local communicator.
+     */
+    static const int LOCAL_COMMUNICATOR_ID = -2;
+
+    /**
+     * This will be used as a placeholder when
+     * an interface is not defined.
+     */
+    static const int UNDEFINED_ID = -100;
+
+    /**
      * Constructor.
      */
     ICNRouter();

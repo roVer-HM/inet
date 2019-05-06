@@ -28,14 +28,19 @@ simple ICNBase
         string routerModule;
         bool hasSubscriber;
         bool hasPublisher;
+        bool hasLocalCommunicator;
         @display("i=block/app");
         @lifecycleSupport;
 
     gates:
         input socketIn @labels(UdpControlInfo/up);
         output socketOut @labels(UdpControlInfo/down);
-        // gate for all messages coming from other modules which sit below ICN
-        input messageInterface[];
+        // gate for all messages coming from other modules which want to communicate via the infrastructure interface
+        input messageInterfaceInfrastructure[];
+        
+        // gate for all messages coming from other modules which want to communicate via the infrastructure interface
+        input messageInterfaceLocal[];
+        
         
         // a gate to deliver icn packets that this node subscribed to
         output subscribedPackets;
@@ -43,8 +48,8 @@ simple ICNBase
         // a gate to notify modules about received heartbeats
         output receivedHeartbeats;
         
-        // a gate to notify modules about received nearby subscriptions ( for future use)
-        //output receivedSubscriptions;
+        // a gate to notify modules about locally received packets
+        output localPublications;
         
 }
 

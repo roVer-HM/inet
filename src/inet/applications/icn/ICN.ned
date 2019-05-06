@@ -26,45 +26,60 @@ module ICN like IApp
         // when this is set to false the node will not store subscriptions in its router
         // therefore setting publisher to true and forwarding to false is pointless
         // because the published packet will not be forwarded
-        bool icnForwarding = default(false); 
+        bool icnForwarding = default(false);
         bool hasSubscriber = default(false);
-       	icnBase.routerModule = default(absPath(".router"));
+        bool hasLocalCommunicator = default(false);
+        icnBase.routerModule = default(absPath(".router"));
     gates:
         // needed for IApp. The data from lower layers will flow through these gates
         input socketIn;
         output socketOut;
     submodules:
         icnBase: ICNBase {
-    		parameters:
-    		    interfaceTableModule = interfaceTableModule;
-    		    icnForwarding = icnForwarding;
-    		    hasPublisher = hasPublisher;
-    		    hasSubscriber = hasSubscriber;
-    	}
-    	publisher: ICNPublisher if hasPublisher;
-    	router: ICNRouter;
-    	subscriber: ICNSubscriber if hasSubscriber;
+            parameters:
+                interfaceTableModule = interfaceTableModule;
+                icnForwarding = icnForwarding;
+                hasPublisher = hasPublisher;
+                hasSubscriber = hasSubscriber;
+                hasLocalCommunicator = hasLocalCommunicator;
+                @display("p=301,92");
+        }
+        publisher: ICNPublisher if hasPublisher {
+            @display("p=209,23");
+        }
+        router: ICNRouter;
+        subscriber: ICNSubscriber if hasSubscriber {
+            @display("p=124,111");
+        }
+        //localCommunicator: ICNLocalCommunicator if hasLocalCommunicator;
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
-		socketIn --> icnBase.socketIn;
-		socketOut <-- icnBase.socketOut;
-		
+        socketIn --> icnBase.socketIn;
+        socketOut <-- icnBase.socketOut;
+
+		// Infrastructure Communication
+		// ------------------------------------------------------------
+
 		// Publisher
 		// ------------------------------
-		
-		// publications will flow from publisher to icnBase who will broadcast them
-		publisher.publications --> icnBase.messageInterface++ if hasPublisher;
-		
+
+        // publications will flow from publisher to icnBase who will broadcast them
+        publisher.publications --> icnBase.messageInterfaceInfrastructure++ if hasPublisher;
+
 		// Subscriber
 		// ------------------------------
+
+        // subscriptions will flow from subscriber to icnBase who will broadcast them
+        subscriber.subscriptions --> icnBase.messageInterfaceInfrastructure++ if hasSubscriber;
+
+        // transports packets that this node subscribed to to the subscriber (application data)
+        icnBase.subscribedPackets --> subscriber.messageInterface++ if hasSubscriber;
+
+        // transports notifications about heartbeats from icn base to subscriber
+        icnBase.receivedHeartbeats --> subscriber.messageInterface++ if hasSubscriber;
+
+		// Local Communication
+		// ------------------------------------------------------------
 		
-		// subscriptions will flow from subscriber to icnBase who will broadcast them
-		subscriber.subscriptions --> icnBase.messageInterface++ if hasSubscriber;
-		
-		// transports packets that this node subscribed to to the subscriber (application data)
-		icnBase.subscribedPackets --> subscriber.messageInterface++ if hasSubscriber;
-		
-		// transports notifications about heartbeats from icn base to subscriber
-		icnBase.receivedHeartbeats --> subscriber.messageInterface++ if hasSubscriber;
-		
+
 }

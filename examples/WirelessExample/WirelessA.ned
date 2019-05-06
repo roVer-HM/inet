@@ -27,6 +27,7 @@ import inet.node.icn.ICNPublisherHost;
 import inet.node.icn.ICNSubscriberHost;
 import inet.node.icn.ICNAdvancedSubscriberHost;
 import inet.physicallayer.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
+import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
 
 network WirelessA
 {
@@ -51,7 +52,7 @@ network WirelessA
         }
         hostB: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=419.328,363.888");
+                @display("p=374.976,363.888");
         }
         hostC: ICNAdvancedSubscriberHost {
             parameters:
@@ -61,10 +62,6 @@ network WirelessA
             parameters:
                 @display("p=354.816,69.552");
                 numWlanInterfaces = 0;
-        }
-        visualizer: IntegratedCanvasVisualizer {
-            parameters:
-                @display("p=98.8575,209.81999");
         }
     connections:
         hostA.pppg++ <--> C <--> hostD.pppg++;

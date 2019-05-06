@@ -27,11 +27,17 @@ module ICNAdvancedSubscriberHost extends ICNSubscriberHost {
 		
 		// the first one of the wireless cards will operate with default
 		// parameters
-		// the second one will operate in adhoc mode meaning that it will
-		// discard all mgmt frames from access points but will allow me
-		// to listen to all packets received
-		wlan[1].mgmt.typename = "Ieee80211MgmtAdhoc";
-		wlan[1].agent.typename = "";
-		// use different frequency on 2nd card
-		wlan[1].radio.bandName = "5 GHz";
+		// the second one will operate with csmacamac
+
+       	wlan[1].typename = "WirelessInterface";
+        wlan[1].radio.typename = "Ieee80211ScalarRadio";
+        wlan[1].mac.typename = "CsmaCaMac";
+        wlan[1].mac.useAck = false;
+        wlan[1].radio.bandName = "5 GHz";
+        wlan[1].radio.transmitter.carrierFrequency = 5.0GHz;
+        // this way it is possible to reduce the communication range of a host
+        //wlan[1].radio.transmitter.power = 2mW;
+
+		// application
+		app[0].hasLocalCommunicator = true;
 }

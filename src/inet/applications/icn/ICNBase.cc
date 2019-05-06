@@ -16,9 +16,11 @@ ICNBase::ICNBase()
 , mForwarding(false)
 , mHasSubscriber(false)
 , mHasPublisher(false)
+, mHasLocalCommunicator(false)
 , mICNRouterModule(nullptr)
-, mInfrastructureCommunicationInterfaceId(-100) // undefined
-, mLocalCommunicationInterfaceId(-100)          // undefined
+, mInfrastructureCommunicationInterfaceId(ICNRouter::UNDEFINED_ID)
+, mLocalCommunicationInterfaceId(ICNRouter::UNDEFINED_ID)
+, mContentMap()
 {
 }
 
@@ -29,7 +31,6 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
         EV_INFO << "Processing packet with name '" << icnName.generateString() << "' arrived on infrastructure communication interface " << "..." << endl;
         // find the appropriate handler for each type of message
         if (icnPacket->getPacketType() == ICNPacketType::PUBLISH) {
-            // delegate...
             handlePublishPacketFromNetwork(icnPacket, arrivalInterfaceId, icnName);
         } else if (icnPacket->getPacketType() == ICNPacketType::SUBSCRIBE) {
             // delegate...
@@ -37,16 +38,20 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
         }  else if (icnPacket->getPacketType() == ICNPacketType::UNSUBSCRIBE) {
             throw cRuntimeError("Received local request, response or unsubscribe which cant be handled yet!");
         }
-
     } else {
         EV_INFO << "Processing packet with name '" << icnName.generateString() << "' arrived on local communication interface " << "..." << endl;
-        EV_INFO << "This is currently not handled" << endl;
+        // find the appropriate handler for each type of message
+        if (icnPacket->getPacketType() == ICNPacketType::PUBLISH) {
+            // delegate...
+            handlePublishPacketFromNetwork(icnPacket, arrivalInterfaceId, icnName);
+        } else {
+            throw cRuntimeError("Received packet type on local interface that is not handled yet!");
+        }
     }
 
 
 
 }
-
 
 void ICNBase::handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName) {
     // in case we receive subscribe packet and we have forwarding enabled we will store the subscription
@@ -82,6 +87,9 @@ void ICNBase::handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>&
 
 void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName) {
 
+    auto search = mContentMap.find(icnName.generateString());
+    bool seenBefore = search != mContentMap.end();
+
     // get the interfaces we need to forward this message to
     std::vector<int> forwardTo = mICNRouterModule->getInterestedInterfaces(icnName);
 
@@ -100,12 +108,20 @@ void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& i
         packet->insertAtBack(icnPacket);
 
         for (int& interfaceId: forwardTo) {
-            if (interfaceId == ICNRouter::LOCAL_APPLICATION_ID) {
-                // notify local application
+            if (interfaceId == ICNRouter::LOCAL_APPLICATION_ID && !seenBefore) {
                 Packet* duplicate = packet->dup();
+                // notify local application
                 duplicate->setKind(MessageKinds::SUBSCRIPTION_RESULT);
                 send(duplicate, GATE_TO_SUBSCRIBER_APPLICATION_DATA.c_str());
                 EV_INFO << "Packet with name '" << icnName.generateString() << "' forwarded to local app." << endl;
+                mContentMap[icnName.generateString()] = false;
+                if (mHasLocalCommunicator) {
+                    mContentMap[icnName.generateString()] = true;
+                    EV_INFO << "Packet with name " << icnName.generateString() << " will be broadcasted on local interface!" << endl;
+                    Packet* localPacket = new Packet("ICNLocalForwardedPublisherData");
+                    localPacket->insertAtBack(icnPacket);
+                    mTransportInterface->sendICNPacket(localPacket, mLocalCommunicationInterfaceId);
+                }
             } else if (mForwarding) {
                 mTransportInterface->sendICNPacket(packet->dup(), interfaceId);
                 EV_INFO << "Packet with name '" << icnName.generateString() << "' forwarded to interface with id " << interfaceId << endl;
@@ -116,7 +132,6 @@ void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& i
     } else {
         // the list was empty that means that there is no interest for this packet here
         EV_INFO << "Packet with name '" << icnName.generateString() << "' is not interesting for a local app or for forwarding!" << endl;
-        // TODO: in case we are a forwarder we might want to tell some1 that we are not interested anymore
     }
 }
 
@@ -134,6 +149,7 @@ void ICNBase::initialize(int stage)
         mForwarding = par("icnForwarding").boolValue();
         mHasSubscriber = par("hasSubscriber").boolValue();
         mHasPublisher = par("hasPublisher").boolValue();
+        mHasLocalCommunicator = par("hasLocalCommunicator").boolValue();
         mICNRouterModule = getModuleFromPar<ICNRouter>(par("routerModule"), this);
         mTransportInterface->setCallback(this);
     } else if (stage == INITSTAGE_APPLICATION_LAYER) {
@@ -142,13 +158,15 @@ void ICNBase::initialize(int stage)
         for (int interfacePosition = 0; interfacePosition < mInterfaceTableModule->getNumInterfaces(); interfacePosition++) {
             int interfaceId = mInterfaceTableModule->getInterface(interfacePosition)->getInterfaceId();
             std::string interfaceName(mInterfaceTableModule->getInterface(interfacePosition)->getInterfaceName());
+            // static: the first wlan interface on all hosts will be used for infrastructure communication
+            // the second one will be used for local communication
+            // if there is no second wlan interface mLocalCommunicationInterfaceId will stay undefined
             if (interfaceName == "wlan0") {
                 mInfrastructureCommunicationInterfaceId = interfaceId;
             } else if (interfaceName == "wlan1") {
                 mLocalCommunicationInterfaceId = interfaceId;
             }
         }
-        mInterfaceTableModule->getInterface(0)->getInterfaceName();
     }
 }
 
@@ -186,7 +204,8 @@ void ICNBase::handleMessageWhenUp(cMessage* msg) {
             // this is the same as a subscription with the difference that it is
             // only registered in the routing module but not sent to other interfaces
             Packet* packet = check_and_cast<Packet*>(msg);
-            handleSilentSubscriptionPacket(packet);
+            bool infrastructure = msg->arrivedOn("messageInterfaceInfrastructure");
+            handleSilentSubscriptionPacket(packet, infrastructure);
             delete packet;
         } else {
             mTransportInterface->processMessage(msg);
@@ -206,13 +225,19 @@ void ICNBase::handleBroadcastPublicationPacket(Packet* packet) {
     delete copy;
 }
 
-void ICNBase::handleSilentSubscriptionPacket(Packet* packet) {
+void ICNBase::handleSilentSubscriptionPacket(Packet* packet, bool infrastructure) {
     // we need to investigate the contents
     const Ptr<const ICNPacket> icnPacket = packet->peekAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
     std::string subscriptionName = icnPacket->getIcnName();
     // transform to ICNName
     ICNName icnName(subscriptionName);
-    mICNRouterModule->addSubscription(ICNRouter::LOCAL_APPLICATION_ID, icnName);
+    if (infrastructure) {
+        mICNRouterModule->addSubscription(ICNRouter::LOCAL_APPLICATION_ID, icnName);
+    } else {
+        mICNRouterModule->addSubscription(ICNRouter::LOCAL_COMMUNICATOR_ID, icnName);
+    }
+
+
 }
 
 void ICNBase::handlePublicationPacket(Packet* packet) {

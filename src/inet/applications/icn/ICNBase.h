@@ -78,6 +78,11 @@ private:
     bool mHasPublisher;
 
     /**
+     * Stores if this base has a local communicatior attached to it.
+     */
+    bool mHasLocalCommunicator;
+
+    /**
      * The router module in case this is a router otherwise this will
      * be nullptr.
      */
@@ -94,6 +99,13 @@ private:
     int mLocalCommunicationInterfaceId;
 
     /**
+     * Stores the following mapping:
+     *      icnName (as string) --> rebroadcasted
+     *      where rebroadcasted means that the content with that name was rebroadcasted on the local interface
+     */
+    std::map<std::string, bool> mContentMap;
+
+    /**
      * Helper method for handling publication packets from ICNPublisher
      * module.
      */
@@ -107,8 +119,10 @@ private:
 
     /**
      * Helper method for handling silent subscription packets.
+     *
+     * @param infrastructure States if this subscription is for local or infrastructure communication.
      */
-    void handleSilentSubscriptionPacket(Packet* packet);
+    void handleSilentSubscriptionPacket(Packet* packet, bool infrastructure);
 
     /**
      * Helper method to handle broadcast publications.
