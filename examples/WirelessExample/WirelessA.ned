@@ -32,7 +32,7 @@ import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
 network WirelessA
 {
     parameters:
-        @display("bgb=650,500;bgg=100,1,grey95");
+        @display("bgb=1000,1000;bgg=100,1,grey95");
     types:
         channel C extends DatarateChannel
         {
@@ -44,23 +44,29 @@ network WirelessA
             @display("p=580,200");
         }
         radioMedium: Ieee80211ScalarRadioMedium {
-            @display("p=580,275");
+            @display("p=645.12,276.19202");
         }
         hostA: ICNAccessPoint {
             parameters:
-                @display("p=345.74402,254.016");
+                @display("p=500.00,250.00");
         }
+        // 160 meters away from ap
         hostB: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=374.976,363.888");
+                @display("p=340,250.00");
+        }
+        // to far away from access point but close enough to receive from hostB
+        hostE: ICNAdvancedSubscriberHost {
+            parameters:
+                @display("p=290.00,250.00");
         }
         hostC: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=282.24002,363.888");
+                @display("p=500.00,300.00");
         }
         hostD: ICNPublisherHost {
             parameters:
-                @display("p=354.816,69.552");
+                @display("p=530.208,77.616005");
                 numWlanInterfaces = 0;
         }
     connections:
