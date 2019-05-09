@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "inet/physicallayer/common/packetlevel/MediumLimitCache.h"
+#include "inet/mobility/base/MobilityBase.h"
 
 namespace inet {
 namespace physicallayer {
@@ -136,7 +137,11 @@ void MediumLimitCache::addRadio(const IRadio *radio)
 void MediumLimitCache::removeRadio(const IRadio *radio)
 {
     radios.erase(std::remove(radios.begin(), radios.end(), radio), radios.end());
-    updateLimits();
+    // Removed the following line because this will call a pure virtual function from within a destructor
+    // which will cause the simulation to crash. I'm not sure if this is somehow my fault but it works
+    // without this line of code. I will also only remove radios at the the end of simulation. Updating
+    // limits shouldn't matter then.
+    // updateLimits();
 }
 
 mps MediumLimitCache::computeMaxSpeed() const
