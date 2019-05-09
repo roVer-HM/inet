@@ -35,6 +35,7 @@ ICNSubscriber::ICNSubscriber()
 , mHeartbeatPrefix("/accessPoint/heartbeat/*")
 , mLastSubscribedAccessPointHeartbeat("/undefined")
 , mSubscribeOnAssociation(false)
+, mDataArrivedSignal()
 {
 }
 
@@ -55,6 +56,7 @@ void ICNSubscriber::initialize() {
     mSubscribeMessage = new cMessage("subscribeMessage");
     mResetHeartbeatSubscriptionMessage = new cMessage("advertisementReset");
     mSubscribeOnAssociation = par("associationSubscriber").boolValue();
+    mDataArrivedSignal = registerSignal("dataArrived");
 
     // are we a periodic subscriber?
     if (mPeriodicSubscriber) {
@@ -71,6 +73,7 @@ void ICNSubscriber::initialize() {
         // when we receive the association we send a subscription
         host->subscribe(l2AssociatedSignal, this);
     }
+    createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
 
 }
 
@@ -107,6 +110,10 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
             } else if (resultName.matches(mSubscriptionICNName)) {
                 // received requested data
                 EV_INFO << "Received data to my subscription. Type: " << icnPacket->getPacketType() << " Name: " << icnPacket->getIcnName() << endl;
+                ICNName icnName(icnPacket->getIcnName());
+                simtime_t sendTime = std::stoi(icnName.getLevels().at(icnName.getNumberOfLevels() - 1));
+                // emit signal for statistic collection
+                emit(mDataArrivedSignal, simTime() - sendTime);
             } else {
                 // received unknown data --> this should not happen
                 throw cRuntimeError("Received data with a name that I did not request!");

@@ -113,6 +113,8 @@ private:
      */
     bool mSubscribeOnAssociation;
 
+    simsignal_t mDataArrivedSignal;
+
     /**
      * Helper method to send icn packet to the given gate.
      */
