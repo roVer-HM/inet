@@ -35,8 +35,9 @@ module ICNAdvancedSubscriberHost extends ICNSubscriberHost {
         wlan[1].mac.useAck = false;
         wlan[1].radio.bandName = "5 GHz";
         wlan[1].radio.transmitter.carrierFrequency = 5.0GHz;
-        // this way it is possible to reduce the communication range of a host
-        //wlan[1].radio.transmitter.power = 2mW;
+        wlan[1].mac.bitrate = 1Mbps;
+        // this should limit the local communication range to roughly 70 meters
+        wlan[1].radio.transmitter.power = 0.4mW;
 
 		// application
 		app[0].hasLocalCommunicator = true;

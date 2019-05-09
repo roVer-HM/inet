@@ -24,4 +24,6 @@ module ICNHostBase extends WirelessHost {
 	    ipv4.arp.typename = "GlobalArp";
 	    app[0].typename = "ICN";
 	    numLoInterfaces = 0;
+	    // 1mW is roughly 175m
+	    wlan[0].radio.transmitter.power = 1mW;
 }
