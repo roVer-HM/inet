@@ -19,8 +19,8 @@ package inet.applications.icn;
 // to icn base who will manage it.
 simple ICNSubscriber {
     parameters:
-        @signal[dataArrived](type="simtime_t");
-        @statistic[dataArrivedStatistic](title="data arrived statistic"; source="dataArrived"; record=last; interpolationmode=none);
+        @signal[dataArrived](type="long");
+        @statistic[dataArrivedStatistic](title="data arrived statistic"; source="dataArrived"; record=vector; interpolationmode=none);
         // specifies if this subscriber should subscribe periodically to certain data
         bool periodicSubscriber = default(false);
         // specifies the seconds between two periodic subsciption messages

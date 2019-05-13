@@ -111,9 +111,9 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
                 // received requested data
                 EV_INFO << "Received data to my subscription. Type: " << icnPacket->getPacketType() << " Name: " << icnPacket->getIcnName() << endl;
                 ICNName icnName(icnPacket->getIcnName());
-                simtime_t sendTime = std::stoi(icnName.getLevels().at(icnName.getNumberOfLevels() - 1));
                 // emit signal for statistic collection
-                emit(mDataArrivedSignal, simTime() - sendTime);
+                emit(mDataArrivedSignal, std::stoi(icnName.getLevels().at(icnName.getNumberOfLevels() - 1)));
+                recordScalar("informed", simTime());
             } else {
                 // received unknown data --> this should not happen
                 throw cRuntimeError("Received data with a name that I did not request!");
