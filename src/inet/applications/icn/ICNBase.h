@@ -46,6 +46,8 @@ protected:
 private:
 
     const std::string GATE_TO_SUBSCRIBER_APPLICATION_DATA = "subscribedPackets";
+    const std::string GATE_TO_LOCAL_COMMUNICATOR_REQUESTS = "receivedRequests";
+    const std::string GATE_TO_LOCAL_COMMUNICATOR_PUBLICATIONS = "receivedPublications";
 
     /**
      * Stores the pointer to interface table.
@@ -109,7 +111,7 @@ private:
      * Helper method for handling publication packets from ICNPublisher
      * module.
      */
-    void handlePublicationPacket(Packet* packet);
+    void handlePublicationPacket(Packet* packet, bool floodingPublication);
 
     /**
      * Helper method for handling subscription packets from ICNSubscriber
@@ -140,6 +142,12 @@ private:
      * Helper method to handle subscribe packets which were received from the network.
      */
     void handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName);
+
+    /**
+     * Helper method to handle subscribe packets received from network interface cards. The request will
+     * be forwarded to icn local communicator to be processed.
+     */
+    void handleRequestPacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName);
 };
 
 } /* namespace inet */

@@ -15,11 +15,13 @@ enum MessageKinds {
     BROADCAST_PUBLICATION,
     // --- From ICNSubscriber:
     SUBSCRIPTION,
-    // --- And from ICNLocalCommunicator:
     SILENT_SUBSCRIPTION,
     // - From ICNBase:
     // --- To Subscriber:
     SUBSCRIPTION_RESULT,
+    // --- To ICNLocalCommunicator
+    REQUEST,
+    RECEIVED_PUBLICATION
 };
 
 

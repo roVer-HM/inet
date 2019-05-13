@@ -7,7 +7,7 @@ enum ICNPacketType
 {
    SUBSCRIBE = 0;
    PUBLISH = 1;
-   UNSUBSCRIBE = 3;
+   REQUEST = 3;
 };
 
 

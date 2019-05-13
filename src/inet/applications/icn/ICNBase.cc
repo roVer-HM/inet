@@ -35,8 +35,8 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
         } else if (icnPacket->getPacketType() == ICNPacketType::SUBSCRIBE) {
             // delegate...
             handleSubscribePacketFromNetwork(icnPacket, arrivalInterfaceId, icnName);
-        }  else if (icnPacket->getPacketType() == ICNPacketType::UNSUBSCRIBE) {
-            throw cRuntimeError("Received local request, response or unsubscribe which cant be handled yet!");
+        }  else if (icnPacket->getPacketType() == ICNPacketType::REQUEST) {
+            throw cRuntimeError("Received request on infrastructure communication interface which can't be handled yet!");
         }
     } else {
         EV_INFO << "Processing packet with name '" << icnName.generateString() << "' arrived on local communication interface " << "..." << endl;
@@ -44,13 +44,29 @@ void ICNBase::receiveICNPacket(const inet::Ptr<const ICNPacket>& icnPacket, int 
         if (icnPacket->getPacketType() == ICNPacketType::PUBLISH) {
             // delegate...
             handlePublishPacketFromNetwork(icnPacket, arrivalInterfaceId, icnName);
+        } else if (icnPacket->getPacketType() == ICNPacketType::REQUEST) {
+            // delegate...
+            handleRequestPacketFromNetwork(icnPacket, arrivalInterfaceId, icnName);
         } else {
-            throw cRuntimeError("Received packet type on local interface that is not handled yet!");
+            throw cRuntimeError("Received subscribe packet local interface that is not handled!");
         }
     }
 
 
 
+}
+
+void ICNBase::handleRequestPacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName) {
+    ASSERT(arrivalInterfaceId == mLocalCommunicationInterfaceId);
+
+    if (mHasLocalCommunicator) {
+        // encapsulate into packet and forward to local communicator
+        Packet* packet = new Packet("ForwardedRequest");
+        packet->insertAtBack(icnPacket);
+        packet->setKind(MessageKinds::REQUEST);
+
+        send(packet, GATE_TO_LOCAL_COMMUNICATOR_REQUESTS.c_str());
+    }
 }
 
 void ICNBase::handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName) {
@@ -86,12 +102,12 @@ void ICNBase::handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>&
 }
 
 void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& icnPacket, int arrivalInterfaceId, ICNName& icnName) {
-
-    auto search = mContentMap.find(icnName.generateString());
-    bool seenBefore = search != mContentMap.end();
-
     // get the interfaces we need to forward this message to
     std::vector<int> forwardTo = mICNRouterModule->getInterestedInterfaces(icnName);
+
+    // encapsulate into packet
+    Packet* packet = new Packet("ICNForwardedPublisherData");
+    packet->insertAtBack(icnPacket);
 
     if (!forwardTo.empty()) {
         // iterate whole vector and remove elements equal to arrivalInterfaceId
@@ -103,36 +119,34 @@ void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& i
             }
         }
 
-        // encapsulate into packet
-        Packet* packet = new Packet("ICNForwardedPublisherData");
-        packet->insertAtBack(icnPacket);
-
         for (int& interfaceId: forwardTo) {
-            if (interfaceId == ICNRouter::LOCAL_APPLICATION_ID && !seenBefore) {
+            if (interfaceId == ICNRouter::LOCAL_APPLICATION_ID) {
                 Packet* duplicate = packet->dup();
                 // notify local application
                 duplicate->setKind(MessageKinds::SUBSCRIPTION_RESULT);
                 send(duplicate, GATE_TO_SUBSCRIBER_APPLICATION_DATA.c_str());
                 EV_INFO << "Packet with name '" << icnName.generateString() << "' forwarded to local app." << endl;
-                mContentMap[icnName.generateString()] = false;
-                if (mHasLocalCommunicator) {
-                    mContentMap[icnName.generateString()] = true;
-                    EV_INFO << "Packet with name " << icnName.generateString() << " will be broadcasted on local interface!" << endl;
-                    Packet* localPacket = new Packet("ICNLocalForwardedPublisherData");
-                    localPacket->insertAtBack(icnPacket);
-                    mTransportInterface->sendICNPacket(localPacket, mLocalCommunicationInterfaceId);
-                }
             } else if (mForwarding) {
                 mTransportInterface->sendICNPacket(packet->dup(), interfaceId);
                 EV_INFO << "Packet with name '" << icnName.generateString() << "' forwarded to interface with id " << interfaceId << endl;
             }
         }
 
-        delete packet;
+
     } else {
         // the list was empty that means that there is no interest for this packet here
         EV_INFO << "Packet with name '" << icnName.generateString() << "' is not interesting for a local app or for forwarding!" << endl;
     }
+
+    //  if we have a local communicator we will forward the packet to it
+    if (mHasLocalCommunicator) {
+        Packet* duplicate = packet->dup();
+        duplicate->setKind(MessageKinds::RECEIVED_PUBLICATION);
+
+        send(duplicate, GATE_TO_LOCAL_COMMUNICATOR_PUBLICATIONS.c_str());
+    }
+
+    delete packet;
 }
 
 void ICNBase::interfaceClosed(void) {
@@ -180,10 +194,12 @@ void ICNBase::handleMessageWhenUp(cMessage* msg) {
         throw cRuntimeError("ICNBase does not send self Messages!");
     } else {
         if(msg->getKind() == MessageKinds::PUBLICATION) {
-            ASSERT(mHasPublisher);
-            // we received a message from the publisher
+            ASSERT(mHasPublisher || mHasLocalCommunicator);
+            // we received a message from the publisher or the local communicator
+            // find out who sent it
+            bool fromLocalCommunicator = msg->arrivedOn("messageInterfaceLocal");
             Packet* packet = check_and_cast<Packet*>(msg);
-            handlePublicationPacket(packet);
+            handlePublicationPacket(packet, fromLocalCommunicator);
             delete packet;
         // this is not used anymore
         } else if (msg->getKind() == MessageKinds::BROADCAST_PUBLICATION) {
@@ -240,22 +256,27 @@ void ICNBase::handleSilentSubscriptionPacket(Packet* packet, bool infrastructure
 
 }
 
-void ICNBase::handlePublicationPacket(Packet* packet) {
-    // extract name of publication
-    const Ptr<const ICNPacket> icnPacket = packet->peekAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
-    std::string publicationName = icnPacket->getIcnName();
-    // transform to ICNName
-    ICNName icnName(publicationName);
+void ICNBase::handlePublicationPacket(Packet* packet, bool floodingPublication) {
 
-    Packet* copy = packet->dup();
-    std::vector<int> interestedInterfaces = mICNRouterModule->getInterestedInterfaces(icnName);
-    for (int& interfaceId: interestedInterfaces) {
-        if (interfaceId != ICNRouter::LOCAL_APPLICATION_ID) {
-            mTransportInterface->sendICNPacket(copy, interfaceId);
-            copy = packet->dup();
+    if (floodingPublication) {
+        mTransportInterface->sendICNPacket(packet->dup(), mLocalCommunicationInterfaceId);
+    } else {
+        // extract name of publication
+        const Ptr<const ICNPacket> icnPacket = packet->peekAtFront<ICNPacket>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+        std::string publicationName = icnPacket->getIcnName();
+        // transform to ICNName
+        ICNName icnName(publicationName);
+
+        Packet* copy = packet->dup();
+        std::vector<int> interestedInterfaces = mICNRouterModule->getInterestedInterfaces(icnName);
+        for (int& interfaceId: interestedInterfaces) {
+            if (interfaceId != ICNRouter::LOCAL_APPLICATION_ID) {
+                mTransportInterface->sendICNPacket(copy, interfaceId);
+                copy = packet->dup();
+            }
         }
+        delete copy;
     }
-    delete copy;
 }
 
 void ICNBase::handleSubscriptionPacket(Packet* packet) {

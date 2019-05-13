@@ -15,11 +15,19 @@
 
 package inet.applications.icn;
 
+// The local communicator has 2 jobs:
+// 		- his first job is to rebroadcast every publication he receives once (flooding)
+// 		- his second job is to answer to local request with cached content
 simple ICNLocalCommunicator  {
+    parameters:
+        // whether to do flooding
+        bool doFlooding = default(true);
     gates:
-        // subscription messages going to icn base
-        output subscriptions;
+        // subscription messages going to icn base (these are broadcasted on the local interface)
+        output publications;
         
-        // messages coming in from icn base (for example: publications received on local communication interface)
+        // messages coming in from icn base:
+        // 	- publications
+        // 	- requests
         input messageInterface[];
 }

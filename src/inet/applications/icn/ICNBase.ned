@@ -42,14 +42,16 @@ simple ICNBase
         input messageInterfaceLocal[];
         
         
-        // a gate to deliver icn packets that this node subscribed to
+        // a gate to deliver icn packets that this node subscribed to (connected to icnSubscriber)
         output subscribedPackets;
         
         // a gate to notify modules about received heartbeats
         output receivedHeartbeats;
         
-        // a gate to notify modules about locally received packets
-        output localPublications;
+        // a gate to notifiy the local communicator about received publications (connected to icnLocalComunicator)
+        output receivedPublications;
         
+        // a gate to notify the local communicator about received requests (connected to icnLocalCommunicator)
+        output receivedRequests;
 }
 

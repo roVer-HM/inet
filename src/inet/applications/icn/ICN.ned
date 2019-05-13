@@ -51,7 +51,7 @@ module ICN like IApp
         subscriber: ICNSubscriber if hasSubscriber {
             @display("p=124,111");
         }
-        //localCommunicator: ICNLocalCommunicator if hasLocalCommunicator;
+        localCommunicator: ICNLocalCommunicator if hasLocalCommunicator;
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
         socketIn --> icnBase.socketIn;
@@ -80,6 +80,19 @@ module ICN like IApp
 
 		// Local Communication
 		// ------------------------------------------------------------
+		
+		// a request that is received locall will be forwarded to local communicator
+		icnBase.receivedRequests --> localCommunicator.messageInterface++ if hasLocalCommunicator;
+		
+		// the local communicator will react to requests and publications by sending publications
+		localCommunicator.publications --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
+		
+		// Mixed: Local + Infrastructure Communication
+		// ------------------------------------------------------------
+		
+		// all publications that are received will be sent to local communicator
+		icnBase.receivedPublications --> localCommunicator.messageInterface++ if hasLocalCommunicator;
+		
 		
 
 }
