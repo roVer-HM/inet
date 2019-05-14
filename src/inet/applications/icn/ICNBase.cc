@@ -61,7 +61,9 @@ void ICNBase::handleRequestPacketFromNetwork(const inet::Ptr<const ICNPacket>& i
 
     if (mHasLocalCommunicator) {
         // encapsulate into packet and forward to local communicator
-        Packet* packet = new Packet("ForwardedRequest");
+        std::stringstream stringStream;
+        stringStream << "ForwardedRequest(" << icnName.generateString() << ")";
+        Packet* packet = new Packet(stringStream.str().c_str());
         packet->insertAtBack(icnPacket);
         packet->setKind(MessageKinds::REQUEST);
 
@@ -197,7 +199,7 @@ void ICNBase::handleMessageWhenUp(cMessage* msg) {
             ASSERT(mHasPublisher || mHasLocalCommunicator);
             // we received a message from the publisher or the local communicator
             // find out who sent it
-            bool fromLocalCommunicator = msg->arrivedOn("messageInterfaceLocal");
+            bool fromLocalCommunicator = msg->arrivedOn(GATE_MESSAGE_INTERFACE_LOCAL.c_str());
             Packet* packet = check_and_cast<Packet*>(msg);
             handlePublicationPacket(packet, fromLocalCommunicator);
             delete packet;
@@ -223,10 +225,24 @@ void ICNBase::handleMessageWhenUp(cMessage* msg) {
             bool infrastructure = msg->arrivedOn("messageInterfaceInfrastructure");
             handleSilentSubscriptionPacket(packet, infrastructure);
             delete packet;
+        } else if (msg->getKind() == MessageKinds::REQUEST) {
+            ASSERT(mHasLocalCommunicator);
+            ASSERT(msg->arrivedOn(GATE_MESSAGE_INTERFACE_LOCAL.c_str()));
+            Packet* packet = check_and_cast<Packet*>(msg);
+            handleRequestPacket(packet);
+            delete packet;
         } else {
             mTransportInterface->processMessage(msg);
         }
     }
+}
+
+void ICNBase::handleRequestPacket(Packet* packet) {
+    // set this to zero to avoid that the next icnbase will assume its a packet
+    // received locally
+    Packet* duplicate = packet->dup();
+    duplicate->setKind(0);
+    mTransportInterface->sendICNPacket(duplicate, mLocalCommunicationInterfaceId);
 }
 
 void ICNBase::handleBroadcastPublicationPacket(Packet* packet) {

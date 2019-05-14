@@ -49,7 +49,12 @@ std::string ICNName::generateString() const {
     }
 
     if (mIsPrefixMatched) {
-        stringStream << "/*";
+        if (mLevelContainer.size() == 0) {
+            stringStream << "*";
+        } else {
+            stringStream << "/*";
+        }
+
     }
 
     return stringStream.str();
@@ -101,8 +106,68 @@ std::vector<std::string> ICNName::getLevels(void) const {
     return std::vector<std::string>(mLevelContainer);
 }
 
+ICNName ICNName::removeLastLevel(void) const {
+    // String representation of this
+    std::string stringRepresentation = generateString();
+
+    auto const position = stringRepresentation.find_last_of('/');
+
+    std::string substring = stringRepresentation.substr(0, position+1);
+    ICNName result(substring);
+    return result;
+}
+
+ICNName ICNName::makePrefixMatched(void) const {
+    // String representation of this
+    std::string stringRepresentation = generateString();
+
+    std::stringstream stringStream;
+    stringStream << stringRepresentation << "/*";
+
+    ICNName result(stringStream.str());
+    return result;
+}
+
+bool ICNName::matchWithoutVersion(ICNName& other) {
+    // this whole thing is kinda dirty but only needed at one place
+    bool result = false;
+    if (isPrefixMatched() || other.isPrefixMatched()) {
+        throw cRuntimeError("Cant match without version when one of them is prefix matched!");
+    } else {
+        if (!hasVersion() || !other.hasVersion()) {
+            throw cRuntimeError("Match without version expects two icn names with version at the end'!");
+        } else {
+            ICNName thisComparisonObject = removeLastLevel();
+            ICNName otherComparisonObject = other.removeLastLevel();
+            result = thisComparisonObject.matches(otherComparisonObject);
+        }
+    }
+    return result;
+}
+
+bool ICNName::hasHigherVersion(ICNName& other) {
+    bool result = false;
+    if (hasVersion() && other.hasVersion()) {
+        int thisVersion = std::stoi(mLevelContainer.at(mLevelContainer.size() - 1));
+        int otherVersion = std::stoi(other.getLevels().at(other.getNumberOfLevels() - 1));
+        result = otherVersion > thisVersion;
+    }
+    return result;
+}
+
+bool ICNName::hasVersion(void) {
+    bool result = true;
+    std::string toCheck = mLevelContainer[mLevelContainer.size() - 1];
+    for (char& character: toCheck) {
+        result = result && std::isdigit(character);
+    }
+    return result;
+}
+
 bool ICNNameCompare::operator()(const ICNName& lhs, const ICNName& rhs) const {
     return lhs.generateString() < rhs.generateString();
 }
+
+
 
 } /* namespace inet */

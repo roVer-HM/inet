@@ -48,7 +48,7 @@ private:
     const std::string GATE_TO_SUBSCRIBER_APPLICATION_DATA = "subscribedPackets";
     const std::string GATE_TO_LOCAL_COMMUNICATOR_REQUESTS = "receivedRequests";
     const std::string GATE_TO_LOCAL_COMMUNICATOR_PUBLICATIONS = "receivedPublications";
-
+    const std::string GATE_MESSAGE_INTERFACE_LOCAL = "messageInterfaceLocal";
     /**
      * Stores the pointer to interface table.
      */
@@ -130,6 +130,12 @@ private:
      * Helper method to handle broadcast publications.
      */
     void handleBroadcastPublicationPacket(Packet* packet);
+
+    /**
+     * This will take the packet and send it to the network
+     * interface card for local communication.
+     */
+    void handleRequestPacket(Packet* packet);
 
     /**
      * Helper method to handle publish packets that were received from network.

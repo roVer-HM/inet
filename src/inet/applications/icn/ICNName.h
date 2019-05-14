@@ -93,6 +93,40 @@ public:
      * @return bool
      */
     bool isPrefixMatched(void) const;
+
+    /**
+     * Remove the last level from this icnname.
+     * This will not modify this object and return a new ICNName. An exact
+     * copy of this will be returned if there is no more level to remove.
+     *
+     * @return ICNName The new icn with the last level removed
+     */
+    ICNName removeLastLevel(void) const;
+
+    /**
+     * This will turn a non prefix matched name into a prefix matched
+     * name.
+     */
+    ICNName makePrefixMatched(void) const;
+
+    /**
+     * Some ICNName have version numbers as their last level. This checks
+     * if both have a version number and both match without it.
+     */
+    bool matchWithoutVersion(ICNName& other);
+
+    /**
+     * This checks if other has the higher version. This checks if both
+     * have a version number at the end.
+     */
+    bool hasHigherVersion(ICNName& other);
+
+    /**
+     * Checks if the last level of this icnname has a version
+     * number in it.
+     */
+    bool hasVersion(void);
+
 private:
 
     /**
@@ -137,6 +171,8 @@ private:
      * @return true if they match.
      */
     bool completeMatches(ICNName& other) const;
+
+
 };
 
 class ICNNameCompare {

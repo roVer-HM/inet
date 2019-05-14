@@ -87,6 +87,9 @@ module ICN like IApp
 		// the local communicator will react to requests and publications by sending publications
 		localCommunicator.publications --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
 		
+		// the local communicator will send requests himself if he is not associated to an access point
+		localCommunicator.requests --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
+		
 		// Mixed: Local + Infrastructure Communication
 		// ------------------------------------------------------------
 		
