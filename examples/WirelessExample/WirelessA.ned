@@ -50,12 +50,10 @@ network WirelessA
             parameters:
                 @display("p=500.00,250.00");
         }
-        // 160 meters away from ap
         hostB: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=340,250.00");
+                @display("p=450,250.00");
         }
-        // to far away from access point but close enough to receive from hostB
         hostE: ICNAdvancedSubscriberHost {
             parameters:
                 @display("p=290.00,250.00");
