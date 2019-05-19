@@ -20,14 +20,15 @@ package inet.applications.icn;
 simple ICNSubscriber {
     parameters:
         @signal[dataArrived](type="long");
+        // this records a data point every time something is received. the version of the data will be recorded.
         @statistic[dataArrivedStatistic](title="data arrived statistic"; source="dataArrived"; record=vector; interpolationmode=none);
-        // specifies if this subscriber should subscribe periodically to certain data
+        // should not be used: specifies if this subscriber should subscribe periodically to certain data
         bool periodicSubscriber = default(false);
-        // specifies the seconds between two periodic subsciption messages
+        // should not be used: specifies the seconds between two periodic subsciption messages
         int periodicSubscriptionDelay @unit(s) = default(5s);
-        // specifies if this subscriber should subscribe when a heartbeat is encountered
+        // should not be used: specifies if this subscriber should subscribe when a heartbeat is encountered
         bool heartbeatSubscriber = default(false);
-        // specifies the seconds until this is allowed to react to a heartbeat again
+        // should not be used: specifies the seconds until this is allowed to react to a heartbeat again
         int heartbeatSubscriptionDelay @unit(s) = default(60s);
         // specifies if this subscriber should subscribe when the node is associated to an
         // access point

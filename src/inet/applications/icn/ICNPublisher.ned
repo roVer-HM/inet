@@ -20,10 +20,11 @@ package inet.applications.icn;
 simple ICNPublisher {
 
 parameters:
+    // specifiy when the first message is being sent
+    int startTime @unit(s);
     // if this is true the publishment will be repeated
     bool repeat = default(false);
-    // set this to specify when the first message is being sent and in case repeat 
-    // is true this will specifiy the delay between to messages
+    // the delay between two messages (only has an effect if repeat is set to true)
     int delay @unit(s);
     // the name of the data that is being published
     string dataName = default("ICNPublisherDefaultDataName");

@@ -38,6 +38,8 @@ public:
      */
     virtual ~ICNSubscriber();
 
+    static int NUMBER_OF_INFORMED_PERSONS;
+
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage* msg) override;
@@ -116,6 +118,11 @@ private:
     simsignal_t mDataArrivedSignal;
 
     /**
+     * Stores which data has already been received.
+     */
+    std::vector<ICNName> mAlreadyReceivedData;
+
+    /**
      * Helper method to send icn packet to the given gate.
      */
     void createAndSendPacket(const int chunkLength, const std::string& icnName, const ICNPacketType packetType, const std::string packetName, const std::string& gateName, MessageKinds messageKind);
@@ -124,6 +131,13 @@ private:
      * Helper method to handle situation when a heartbeat is received.
      */
     void handleReceivedHeartbeat(ICNName& heartbeatName);
+
+    /**
+     * Checks if this subscriber has already seen
+     * the given ICNName. This will return true
+     * if only the version is different.
+     */
+    bool alreadySeen(ICNName& toCheck);
 
 };
 

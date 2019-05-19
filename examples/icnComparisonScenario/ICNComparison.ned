@@ -50,10 +50,6 @@ network ICNComparison
             parameters:
                 @display("p=345.74402,254.016");
         }
-        hostB: WirelessHost {
-            parameters:
-                @display("p=419.328,363.888");
-        }
         hostC: WirelessHost {
             parameters:
                 @display("p=282.24002,363.888");

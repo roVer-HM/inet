@@ -37,6 +37,7 @@ class INET_API TcpBasicClientAppAdapted : public TcpAppBase
     int numRequestsToSend = 0;    // requests to send in this session
     simtime_t startTime;
     simtime_t stopTime;
+    bool informed;
 
     virtual void sendRequest();
     virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind);

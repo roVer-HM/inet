@@ -83,12 +83,10 @@ void ICNBase::handleSubscribePacketFromNetwork(const inet::Ptr<const ICNPacket>&
             const auto& icnPacketDuplicate = icnPacket->dupShared();
             packet->insertAtBack(icnPacketDuplicate);
 
-            Packet* copy = packet->dup();
             for (int interfacePosition = 0; interfacePosition < mInterfaceTableModule->getNumInterfaces(); interfacePosition++) {
                 int interfaceId = mInterfaceTableModule->getInterface(interfacePosition)->getInterfaceId();
                 if (interfaceId != arrivalInterfaceId) {
-                    mTransportInterface->sendICNPacket(copy, interfaceId);
-                    copy = packet->dup();
+                    mTransportInterface->sendICNPacket(packet->dup(), interfaceId);
                     EV_INFO << "Forwarded subscription to interface with id: " << interfaceId << endl;
                 } else {
                     EV_INFO << "Not forwarding subscription to interface with id " << interfaceId << " becuse its the interface the packet arrived on!" << endl;
@@ -108,7 +106,9 @@ void ICNBase::handlePublishPacketFromNetwork(const inet::Ptr<const ICNPacket>& i
     std::vector<int> forwardTo = mICNRouterModule->getInterestedInterfaces(icnName);
 
     // encapsulate into packet
-    Packet* packet = new Packet("ICNForwardedPublisherData");
+    std::stringstream stringStream;
+    stringStream << "ForwardedPublisherData(" << icnName.generateString() << ")";
+    Packet* packet = new Packet(stringStream.str().c_str());
     packet->insertAtBack(icnPacket);
 
     if (!forwardTo.empty()) {

@@ -23,6 +23,8 @@ namespace inet {
 
 Define_Module(ICNSubscriber);
 
+int ICNSubscriber::NUMBER_OF_INFORMED_PERSONS = 0;
+
 ICNSubscriber::ICNSubscriber()
 : mPeriodicSubscriber(false)
 , mPeriodicSubscriptionDelay(0)
@@ -36,6 +38,7 @@ ICNSubscriber::ICNSubscriber()
 , mLastSubscribedAccessPointHeartbeat("/undefined")
 , mSubscribeOnAssociation(false)
 , mDataArrivedSignal()
+, mAlreadyReceivedData()
 {
 }
 
@@ -66,14 +69,14 @@ void ICNSubscriber::initialize() {
 
     // we need to tell icn base that we are interested in heartbeats from access points
     if (mHeartbeatSubscriber) {
-        createAndSendPacket(1000, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
+        createAndSendPacket(500, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
     }
     if (mSubscribeOnAssociation) {
         cModule* host = getContainingNode(this);
         // when we receive the association we send a subscription
         host->subscribe(l2AssociatedSignal, this);
     }
-    createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
+    createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
 
 }
 
@@ -83,7 +86,7 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
         if (msg == mSubscribeMessage) {
 
             createAndSendPacket(
-                    1000,
+                    500,
                     mSubscriptionICNName.generateString(),
                     ICNPacketType::SUBSCRIBE,
                     "ICNPeriodicSubscription",
@@ -111,9 +114,20 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
                 // received requested data
                 EV_INFO << "Received data to my subscription. Type: " << icnPacket->getPacketType() << " Name: " << icnPacket->getIcnName() << endl;
                 ICNName icnName(icnPacket->getIcnName());
-                // emit signal for statistic collection
-                emit(mDataArrivedSignal, std::stoi(icnName.getLevels().at(icnName.getNumberOfLevels() - 1)));
-                recordScalar("informed", simTime());
+                if (!alreadySeen(icnName)) {
+                    // not seen yet
+                    // emit signal for statistic collection
+                    NUMBER_OF_INFORMED_PERSONS++;
+                    std::stringstream stringStream;
+                    stringStream << this->getFullPath() << ": DataArrived(" << mSubscriptionICNName.generateString() << ")";
+                    recordScalar(stringStream.str().c_str(), simTime());
+                    mAlreadyReceivedData.push_back(icnName);
+                }
+                int version = 0;
+                if (icnName.hasVersion()) {
+                    version = std::stoi(icnName.getLevels()[icnName.getNumberOfLevels() - 1]);
+                }
+                emit(mDataArrivedSignal, version);
             } else {
                 // received unknown data --> this should not happen
                 throw cRuntimeError("Received data with a name that I did not request!");
@@ -131,6 +145,7 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
 //      1. Store a list access points (heartbeat identifier) which I subscribed to
 //      2. When there was no heartbeat received from an access point in a while we remove it
 //      3. When we receive heartbeat but a certain time has passed we renew the subscription
+// UPDATE: REPLACED WITH SIGNAL LISTENER
 void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
     // received a heartbeat
     EV_INFO << "Received a heartbeat!" << std::endl;
@@ -138,7 +153,7 @@ void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
 
     if (mLastSubscribedAccessPointHeartbeat.matches(heartbeatName)) {
         if (mReactToHeartbeat) {
-            createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+            createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
             mReactToHeartbeat = false;
             scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
             EV_INFO << "We haven't sent a subscription in a while to access point with heartbeat '"
@@ -154,7 +169,7 @@ void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
         mReactToHeartbeat = false;
         cancelEvent(mResetHeartbeatSubscriptionMessage);
         scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
-        createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+        createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
     }
 
 
@@ -179,6 +194,19 @@ void ICNSubscriber::receiveSignal(cComponent *source, simsignal_t signalID, cObj
     Enter_Method_Silent();
     printSignalBanner(signalID, obj, details);
     EV_INFO << "We are associated to a signal. Sending a subscription..." << endl;
-    createAndSendPacket(1000, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNAssociatedSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+    createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNAssociatedSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+}
+
+bool ICNSubscriber::alreadySeen(ICNName& toCheck) {
+    bool result = false;
+    for (ICNName& name: mAlreadyReceivedData) {
+        if (toCheck.hasVersion() && name.hasVersion() && toCheck.matchWithoutVersion(name)) {
+            result = true;
+        }
+        if (toCheck.matches(name)) {
+            result = true;
+        }
+    }
+    return result;
 }
 } /* namespace inet */

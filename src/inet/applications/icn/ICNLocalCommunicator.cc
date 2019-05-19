@@ -241,16 +241,19 @@ bool ICNLocalCommunicator::addToContentStore(ICNName& name) {
         //          - we already have something stored that it is identical (prefix matched names are not possible)
         //          - we already have something stored with a higher version number
         // in any other case we add the new name
-        for (auto iterator = mContentStore.begin(); iterator != mContentStore.end(); iterator++) {
+        for (size_t index = 0; index < mContentStore.size(); index++) {
+            ICNName currentName = mContentStore[index];
             // identical match
-            if (name.matches(*iterator)) {
+            if (name.matches(currentName)) {
                 needToAdd = false;
-            // both have a version and match without it
-            } else if (name.hasVersion() && (*iterator).hasVersion() && name.matchWithoutVersion((*iterator))) {
+                index = mContentStore.size();
+                // both have a version and match without it
+            } else if (name.hasVersion() && currentName.hasVersion() && name.matchWithoutVersion(currentName)) {
                 // need to decide which one to keep
-                if (name.hasHigherVersion((*iterator))) {
+                if (name.hasHigherVersion(currentName)) {
                     // the new one has the higher version we keep that
-                    mContentStore.erase(iterator);
+                    mContentStore.erase(mContentStore.begin() + index);
+                    index = mContentStore.size();
                 } else {
                     needToAdd = false;
                 }

@@ -49,6 +49,7 @@ void TcpBasicClientAppAdapted::initialize(int stage)
         if (stopTime >= SIMTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
         timeoutMsg = new cMessage("timer");
+        informed = false;
     }
 }
 
@@ -160,8 +161,12 @@ void TcpBasicClientAppAdapted::socketDataArrived(TcpSocket *socket, Packet *msg,
 
     if (bytesRcvd % par("replyLength").intValue() == 0) {
         EV_INFO << "A complete reply has arrived! Checking if we need to send more requests in this session..." << endl;
+        // only do this once
+        if (!informed) {
+            recordScalar("informed", simTime());
+            informed = true;
+        }
 
-        recordScalar("informed", simTime());
 
         if (numRequestsToSend > 0) {
             EV_INFO << numRequestsToSend << " requests need to be sent" << endl;

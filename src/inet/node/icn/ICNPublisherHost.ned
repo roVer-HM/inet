@@ -20,7 +20,9 @@ import inet.node.icn.ICNRouterHost;
 module ICNPublisherHost extends ICNRouterHost {
 	parameters:
 	    @display("i=device/pc2");
-	   	// delay until first message is sent and if repeatPublications is set to true the delay between two messages)
+	    // define when the first message will be sent. every following message will be sent with messageDelay seconds delay
+	    int firstMessageTimestamp @unit(s);
+	   	// delay between two messages (only works when repeatPublications is set to true)
 	    int messageDelay @unit(s);
 	    // state if publication should be repeated
 	    bool repeatPublications;
@@ -34,4 +36,5 @@ module ICNPublisherHost extends ICNRouterHost {
 	    app[0].publisher.delay = messageDelay;
 	    app[0].publisher.dataName = icnPublicationName;
 	    app[0].publisher.dataSize = publicationSize;
+	    app[0].publisher.startTime = firstMessageTimestamp;
 }

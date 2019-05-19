@@ -35,8 +35,19 @@ void ICNPublisher::initialize() {
     mSendMessage = new cMessage("sendMessage");
     mBroadcastPublisher = par("broadcast").boolValue();
 
+    simtime_t startTime = par("startTime").intValue();
+    if (startTime < SimTime::ZERO) {
+        throw cRuntimeError("Invalid start time!");
+    }
     // schedule the first self-message
-    scheduleAt(simTime() + mDelay, mSendMessage);
+    if (startTime <= simTime()) {
+        // immediately
+        scheduleAt(simTime(), mSendMessage);
+    } else {
+        // later
+        scheduleAt(startTime, mSendMessage);
+    }
+
 }
 
 void ICNPublisher::handleMessage(cMessage* msg) {
