@@ -119,7 +119,7 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
                     // emit signal for statistic collection
                     NUMBER_OF_INFORMED_PERSONS++;
                     std::stringstream stringStream;
-                    stringStream << this->getFullPath() << ": DataArrived(" << mSubscriptionICNName.generateString() << ")";
+                    stringStream << "DataArrived(" << icnName.generateString() << ")";
                     recordScalar(stringStream.str().c_str(), simTime());
                     mAlreadyReceivedData.push_back(icnName);
                 }
@@ -200,9 +200,6 @@ void ICNSubscriber::receiveSignal(cComponent *source, simsignal_t signalID, cObj
 bool ICNSubscriber::alreadySeen(ICNName& toCheck) {
     bool result = false;
     for (ICNName& name: mAlreadyReceivedData) {
-        if (toCheck.hasVersion() && name.hasVersion() && toCheck.matchWithoutVersion(name)) {
-            result = true;
-        }
         if (toCheck.matches(name)) {
             result = true;
         }

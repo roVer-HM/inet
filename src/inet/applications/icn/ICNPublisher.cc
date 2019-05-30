@@ -74,6 +74,8 @@ void ICNPublisher::handleMessage(cMessage* msg) {
 
         send(packet, PUBLICATIONS_GATE.c_str());
 
+        recordScalar(stringStream.str().c_str(), 0);
+
         // if we want to repeat sending this will handle it
         if (mRepeat) {
             scheduleAt(simTime() + mDelay, mSendMessage);

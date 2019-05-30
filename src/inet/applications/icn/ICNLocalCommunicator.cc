@@ -220,52 +220,51 @@ void ICNLocalCommunicator::receiveSignal(cComponent *source, simsignal_t signalI
 
 bool ICNLocalCommunicator::findInContentStore(ICNName& name, size_t& index) {
     bool result = false;
-    // iterate the content store
+    // find the first that match
+    ICNName first("/placeholder");
+    // iterate the content store to find the first one that matches
     for (size_t position = 0; position < mContentStore.size(); position++) {
         if (mContentStore.at(position).matches(name)) {
             // only one should be found (if not the one with the highest position will be used as that one is the newest)
             index = position;
             result = true;
+            first = mContentStore.at(position);
         }
     }
+    if (result) {
+        // iterate a second time to find the one with the highest version
+        for (size_t position = 0; position < mContentStore.size(); position++) {
+            if (first.hasHigherVersion(mContentStore.at(position))) {
+                // we found one with a higher version
+                index = position;
+                first = mContentStore.at(position);
+            }
+        }
+    }
+
     return result;
 }
 
 bool ICNLocalCommunicator::addToContentStore(ICNName& name) {
-    bool addedSomethingToContentStore = false;
+    bool alreadyStored = false;
     if (name.isPrefixMatched()) {
         EV_INFO << "Prefix matched names are not added to the content store!" << endl;
     } else {
-        bool needToAdd = true;
-        // there is two possible ways when we dont need to add the new name:
-        //          - we already have something stored that it is identical (prefix matched names are not possible)
-        //          - we already have something stored with a higher version number
-        // in any other case we add the new name
         for (size_t index = 0; index < mContentStore.size(); index++) {
             ICNName currentName = mContentStore[index];
             // identical match
             if (name.matches(currentName)) {
-                needToAdd = false;
+                // abort the loop
                 index = mContentStore.size();
-                // both have a version and match without it
-            } else if (name.hasVersion() && currentName.hasVersion() && name.matchWithoutVersion(currentName)) {
-                // need to decide which one to keep
-                if (name.hasHigherVersion(currentName)) {
-                    // the new one has the higher version we keep that
-                    mContentStore.erase(mContentStore.begin() + index);
-                    index = mContentStore.size();
-                } else {
-                    needToAdd = false;
-                }
+                alreadyStored = true;
             }
         }
-        if (needToAdd) {
+        if (!alreadyStored) {
             mContentStore.push_back(name);
-            addedSomethingToContentStore = true;
             EV_INFO << "Added " << name.generateString() << " to content store!" << endl;
         }
     }
-    return addedSomethingToContentStore;
+    return !alreadyStored;
 }
 
 

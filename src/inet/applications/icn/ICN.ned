@@ -30,6 +30,7 @@ module ICN like IApp
         bool hasSubscriber = default(false);
         bool hasLocalCommunicator = default(false);
         icnBase.routerModule = default(absPath(".router"));
+        @display("bgb=866,324");
     gates:
         // needed for IApp. The data from lower layers will flow through these gates
         input socketIn;
@@ -45,13 +46,17 @@ module ICN like IApp
                 @display("p=301,92");
         }
         publisher: ICNPublisher if hasPublisher {
-            @display("p=209,23");
+            @display("p=196,196");
         }
-        router: ICNRouter;
+        router: ICNRouter {
+            @display("p=445,72");
+        }
         subscriber: ICNSubscriber if hasSubscriber {
             @display("p=124,111");
         }
-        localCommunicator: ICNLocalCommunicator if hasLocalCommunicator;
+        localCommunicator: ICNLocalCommunicator if hasLocalCommunicator {
+            @display("p=430,206");
+        }
     connections allowunconnected:
         // socket connections to icn base. icn base handles sending and receiving packets
         socketIn --> icnBase.socketIn;
@@ -80,22 +85,22 @@ module ICN like IApp
 
 		// Local Communication
 		// ------------------------------------------------------------
-		
-		// a request that is received locall will be forwarded to local communicator
-		icnBase.receivedRequests --> localCommunicator.messageInterface++ if hasLocalCommunicator;
-		
-		// the local communicator will react to requests and publications by sending publications
-		localCommunicator.publications --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
-		
-		// the local communicator will send requests himself if he is not associated to an access point
-		localCommunicator.requests --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
-		
+
+        // a request that is received locall will be forwarded to local communicator
+        icnBase.receivedRequests --> localCommunicator.messageInterface++ if hasLocalCommunicator;
+
+        // the local communicator will react to requests and publications by sending publications
+        localCommunicator.publications --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
+
+        // the local communicator will send requests himself if he is not associated to an access point
+        localCommunicator.requests --> icnBase.messageInterfaceLocal++ if hasLocalCommunicator;
+
 		// Mixed: Local + Infrastructure Communication
 		// ------------------------------------------------------------
-		
-		// all publications that are received will be sent to local communicator
-		icnBase.receivedPublications --> localCommunicator.messageInterface++ if hasLocalCommunicator;
-		
-		
+
+        // all publications that are received will be sent to local communicator
+        icnBase.receivedPublications --> localCommunicator.messageInterface++ if hasLocalCommunicator;
+
+
 
 }
