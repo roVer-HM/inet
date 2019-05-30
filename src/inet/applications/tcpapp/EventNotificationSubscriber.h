@@ -1,19 +1,4 @@
-//
-// Copyright (C) 2004 Andras Varga
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #ifndef __INET_TCPBASICCLIENTAPPADAPTED_H
 #define __INET_TCPBASICCLIENTAPPADAPTED_H
@@ -29,7 +14,7 @@ namespace inet {
 /**
  * An example request-reply based client application.
  */
-class INET_API TcpBasicClientAppAdapted : public TcpAppBase
+class INET_API EventNotificationSubscriber : public TcpAppBase
 {
   protected:
     cMessage *timeoutMsg = nullptr;
@@ -58,8 +43,8 @@ class INET_API TcpBasicClientAppAdapted : public TcpAppBase
     virtual void close() override;
 
   public:
-    TcpBasicClientAppAdapted() {}
-    virtual ~TcpBasicClientAppAdapted();
+    EventNotificationSubscriber() {}
+    virtual ~EventNotificationSubscriber();
 };
 
 } // namespace inet

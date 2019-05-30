@@ -1,22 +1,6 @@
-//
-// Copyright (C) 2004 Andras Varga
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
 
-#include "inet/applications/tcpapp/TcpBasicClientAppAdapted.h"
 
+#include "inet/applications/tcpapp/EventNotificationSubscriber.h"
 #include "inet/applications/tcpapp/GenericAppMsg_m.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/lifecycle/ModuleOperations.h"
@@ -28,14 +12,14 @@ namespace inet {
 #define MSGKIND_CONNECT    0
 #define MSGKIND_SEND       1
 
-Define_Module(TcpBasicClientAppAdapted);
+Define_Module(EventNotificationSubscriber);
 
-TcpBasicClientAppAdapted::~TcpBasicClientAppAdapted()
+EventNotificationSubscriber::~EventNotificationSubscriber()
 {
     cancelAndDelete(timeoutMsg);
 }
 
-void TcpBasicClientAppAdapted::initialize(int stage)
+void EventNotificationSubscriber::initialize(int stage)
 {
     TcpAppBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
@@ -53,7 +37,7 @@ void TcpBasicClientAppAdapted::initialize(int stage)
     }
 }
 
-void TcpBasicClientAppAdapted::handleStartOperation(LifecycleOperation *operation)
+void EventNotificationSubscriber::handleStartOperation(LifecycleOperation *operation)
 {
     simtime_t now = simTime();
     simtime_t start = std::max(startTime, now);
@@ -63,21 +47,21 @@ void TcpBasicClientAppAdapted::handleStartOperation(LifecycleOperation *operatio
     }
 }
 
-void TcpBasicClientAppAdapted::handleStopOperation(LifecycleOperation *operation)
+void EventNotificationSubscriber::handleStopOperation(LifecycleOperation *operation)
 {
     cancelEvent(timeoutMsg);
     if (socket.getState() == TcpSocket::CONNECTED || socket.getState() == TcpSocket::CONNECTING || socket.getState() == TcpSocket::PEER_CLOSED)
         close();
 }
 
-void TcpBasicClientAppAdapted::handleCrashOperation(LifecycleOperation *operation)
+void EventNotificationSubscriber::handleCrashOperation(LifecycleOperation *operation)
 {
     cancelEvent(timeoutMsg);
     if (operation->getRootModule() != getContainingNode(this))
         socket.destroy();
 }
 
-void TcpBasicClientAppAdapted::sendRequest()
+void EventNotificationSubscriber::sendRequest()
 {
     long requestLength = par("requestLength");
     long replyLength = par("replyLength");
@@ -100,7 +84,7 @@ void TcpBasicClientAppAdapted::sendRequest()
     sendPacket(packet);
 }
 
-void TcpBasicClientAppAdapted::handleTimer(cMessage *msg)
+void EventNotificationSubscriber::handleTimer(cMessage *msg)
 {
     switch (msg->getKind()) {
         case MSGKIND_CONNECT:
@@ -125,7 +109,7 @@ void TcpBasicClientAppAdapted::handleTimer(cMessage *msg)
     }
 }
 
-void TcpBasicClientAppAdapted::socketEstablished(TcpSocket *socket)
+void EventNotificationSubscriber::socketEstablished(TcpSocket *socket)
 {
     TcpAppBase::socketEstablished(socket);
 
@@ -141,7 +125,7 @@ void TcpBasicClientAppAdapted::socketEstablished(TcpSocket *socket)
     numRequestsToSend--;
 }
 
-void TcpBasicClientAppAdapted::rescheduleOrDeleteTimer(simtime_t d, short int msgKind)
+void EventNotificationSubscriber::rescheduleOrDeleteTimer(simtime_t d, short int msgKind)
 {
     cancelEvent(timeoutMsg);
 
@@ -155,7 +139,7 @@ void TcpBasicClientAppAdapted::rescheduleOrDeleteTimer(simtime_t d, short int ms
     }
 }
 
-void TcpBasicClientAppAdapted::socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent)
+void EventNotificationSubscriber::socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent)
 {
     TcpAppBase::socketDataArrived(socket, msg, urgent);
 
@@ -187,13 +171,13 @@ void TcpBasicClientAppAdapted::socketDataArrived(TcpSocket *socket, Packet *msg,
 
 }
 
-void TcpBasicClientAppAdapted::close()
+void EventNotificationSubscriber::close()
 {
     TcpAppBase::close();
     cancelEvent(timeoutMsg);
 }
 
-void TcpBasicClientAppAdapted::socketClosed(TcpSocket *socket)
+void EventNotificationSubscriber::socketClosed(TcpSocket *socket)
 {
     TcpAppBase::socketClosed(socket);
 
@@ -204,7 +188,7 @@ void TcpBasicClientAppAdapted::socketClosed(TcpSocket *socket)
     }
 }
 
-void TcpBasicClientAppAdapted::socketFailure(TcpSocket *socket, int code)
+void EventNotificationSubscriber::socketFailure(TcpSocket *socket, int code)
 {
     TcpAppBase::socketFailure(socket, code);
 
