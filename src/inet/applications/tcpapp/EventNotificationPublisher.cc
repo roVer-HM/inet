@@ -2,7 +2,7 @@
 #include "inet/applications/tcpapp/EventNotificationPublisher.h"
 
 #include "inet/applications/common/SocketTag_m.h"
-#include "inet/applications/tcpapp/GenericAppMsg_m.h"
+#include "inet/applications/tcpapp/EventNotificationMsg_m.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/lifecycle/NodeStatus.h"
@@ -21,8 +21,6 @@ void EventNotificationPublisher::initialize(int stage)
     cSimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
-        delay = par("replyDelay");
-        maxMsgDelay = 0;
 
         //statistics
         msgsRcvd = msgsSent = bytesRcvd = bytesSent = 0;
@@ -35,6 +33,15 @@ void EventNotificationPublisher::initialize(int stage)
     else if (stage == INITSTAGE_APPLICATION_LAYER) {
         const char *localAddress = par("localAddress");
         int localPort = par("localPort");
+        publicationName = par("publicationName").stdstringValue();
+        publicationSize = par("dataSize");
+        simtime_t startTime = par("startTime").intValue();
+        if (startTime < SimTime::ZERO) {
+            throw cRuntimeError("Invalid start time!");
+        }
+        delay = par("delay");
+        repeat = par("repeat");
+        selfMessage = new cMessage("timer");
         socket.setOutputGate(gate("socketOut"));
         socket.bind(localAddress[0] ? L3AddressResolver().resolve(localAddress) : L3Address(), localPort);
         socket.listen();
@@ -44,41 +51,56 @@ void EventNotificationPublisher::initialize(int stage)
         bool isOperational = (!nodeStatus) || nodeStatus->getState() == NodeStatus::UP;
         if (!isOperational)
             throw cRuntimeError("This module doesn't support starting in node DOWN state");
+
+        // schedule the first self-message
+        if (startTime <= simTime()) {
+            // immediately
+            scheduleAt(simTime(), selfMessage);
+        } else {
+            // later
+            scheduleAt(startTime, selfMessage);
+        }
     }
 }
 
-void EventNotificationPublisher::sendOrSchedule(cMessage *msg, simtime_t delay)
+void EventNotificationPublisher::sendPublications()
 {
-    if (delay == 0)
-        sendBack(msg);
-    else
-        scheduleAt(simTime() + delay, msg);
-}
+    // first create the packet
+    std::stringstream stringStream;
+    stringStream << publicationName << "/" << simTime();
+    std::string name = stringStream.str();
+    stringStream.str("");
+    stringStream << "ClassicPublication(" << name << ")";
+    Packet* publicationPacket = new Packet(stringStream.str().c_str());
 
-void EventNotificationPublisher::sendBack(cMessage *msg)
-{
-    Packet *packet = dynamic_cast<Packet *>(msg);
+    // set settings for the packet that are the same for all connection ids
+    publicationPacket->setKind(TCP_C_SEND);
+    publicationPacket->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::tcp);
+    const auto& payload = makeShared<EventNotificationMsg>();
+    payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
+    payload->setChunkLength(B(publicationSize));
+    payload->setIcnComparisonName(name.c_str());
+    payload->setType(PacketType::PUBLISH);
+    publicationPacket->insertAtBack(payload);
 
-    if (packet) {
+    for (auto connId: subscribedClients) {
+        publicationPacket->addTagIfAbsent<SocketReq>()->setSocketId(connId);
+        send(publicationPacket->dup(), "socketOut");
         msgsSent++;
-        bytesSent += packet->getByteLength();
-        emit(packetSentSignal, packet);
-
-        EV_INFO << "sending \"" << packet->getName() << "\" to TCP, " << packet->getByteLength() << " bytes\n";
-    }
-    else {
-        EV_INFO << "sending \"" << msg->getName() << "\" to TCP\n";
+        bytesSent += publicationPacket->getByteLength();
+        EV_INFO << "Sending subscription packet with name " << name << " to TCP. Connection id is: " << connId << std::endl;
     }
 
-    auto& tags = getTags(msg);
-    tags.addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::tcp);
-    send(msg, "socketOut");
+    delete publicationPacket;
 }
 
 void EventNotificationPublisher::handleMessage(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
-        sendBack(msg);
+        sendPublications();
+        if (repeat) {
+            scheduleAt(simTime() + delay, msg);
+        }
     }
     else if (msg->getKind() == TCP_I_PEER_CLOSED) {
         // we'll close too, but only after there's surely no message
@@ -87,51 +109,32 @@ void EventNotificationPublisher::handleMessage(cMessage *msg)
         delete msg;
         auto request = new Request("close", TCP_C_CLOSE);
         request->addTagIfAbsent<SocketReq>()->setSocketId(connId);
-        sendOrSchedule(request, delay + maxMsgDelay);
+        scheduleAt(simTime(), request);
+
+        // remove from subscribed clients
+        size_t numberOfElementsRemoved = subscribedClients.erase(connId);
+        if (numberOfElementsRemoved != 1) {
+            throw cRuntimeError("A connection got closed that was never opened!");
+        }
     }
     else if (msg->getKind() == TCP_I_DATA || msg->getKind() == TCP_I_URGENT_DATA) {
+
+        // cast to packet
         Packet *packet = check_and_cast<Packet *>(msg);
-        int connId = packet->getTag<SocketInd>()->getSocketId();
-        ChunkQueue &queue = socketQueue[connId];
-        auto chunk = packet->peekDataAt(B(0), packet->getTotalLength());
-        queue.push(chunk);
-        emit(packetReceivedSignal, packet);
-
-        bool doClose = false;
-        while (const auto& appmsg = queue.pop<GenericAppMsg>(b(-1), Chunk::PF_ALLOW_NULLPTR)) {
-            msgsRcvd++;
-            bytesRcvd += B(appmsg->getChunkLength()).get();
-            B requestedBytes = appmsg->getExpectedReplyLength();
-            simtime_t msgDelay = appmsg->getReplyDelay();
-            if (msgDelay > maxMsgDelay)
-                maxMsgDelay = msgDelay;
-
-            if (requestedBytes > B(0)) {
-                Packet *outPacket = new Packet(msg->getName());
-                outPacket->addTagIfAbsent<SocketReq>()->setSocketId(connId);
-                outPacket->setKind(TCP_C_SEND);
-                const auto& payload = makeShared<GenericAppMsg>();
-                payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
-                payload->setChunkLength(requestedBytes);
-                payload->setExpectedReplyLength(B(0));
-                payload->setReplyDelay(0);
-                outPacket->insertAtBack(payload);
-                sendOrSchedule(outPacket, delay + msgDelay);
-            }
-            if (appmsg->getServerClose()) {
-                doClose = true;
-                break;
-            }
+        // extract data
+        const Ptr<const EventNotificationMsg> eventNotificationPacket = packet->peekAtFront<EventNotificationMsg>(b(-1), Chunk::PF_ALLOW_INCORRECT);
+        // we expect a subscription
+        if (eventNotificationPacket->getType() == PacketType::SUBSCRIBE) {
+            // add to subscribers
+            int connId = packet->getTag<SocketInd>()->getSocketId();
+            subscribedClients.insert(connId);
+            // this is all wee need to do
+        } else {
+            EV_INFO << "Received non subscription packet type. Discarding packet..." << std::endl;
         }
+
         delete msg;
 
-        if (doClose) {
-            auto request = new Request("close", TCP_C_CLOSE);
-            TcpCommand *cmd = new TcpCommand();
-            request->addTagIfAbsent<SocketReq>()->setSocketId(connId);
-            request->setControlInfo(cmd);
-            sendOrSchedule(request, delay + maxMsgDelay);
-        }
     }
     else if (msg->getKind() == TCP_I_AVAILABLE)
         socket.processMessage(msg);

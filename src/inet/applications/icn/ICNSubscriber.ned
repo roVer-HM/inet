@@ -35,6 +35,8 @@ simple ICNSubscriber {
         bool associationSubscriber = default(false);
         // specify the data you want to subscribe to
         string subscriptionName; 
+        // size of subscritpions
+        int subscriptionSize @unit(B) = default(500B);
     gates:
         // subscription messages going to icn base
         output subscriptions;

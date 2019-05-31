@@ -39,6 +39,7 @@ ICNSubscriber::ICNSubscriber()
 , mSubscribeOnAssociation(false)
 , mDataArrivedSignal()
 , mAlreadyReceivedData()
+, mSubscriptionSize(0)
 {
 }
 
@@ -60,6 +61,7 @@ void ICNSubscriber::initialize() {
     mResetHeartbeatSubscriptionMessage = new cMessage("advertisementReset");
     mSubscribeOnAssociation = par("associationSubscriber").boolValue();
     mDataArrivedSignal = registerSignal("dataArrived");
+    mSubscriptionSize = par("subscriptionSize");
 
     // are we a periodic subscriber?
     if (mPeriodicSubscriber) {
@@ -69,14 +71,14 @@ void ICNSubscriber::initialize() {
 
     // we need to tell icn base that we are interested in heartbeats from access points
     if (mHeartbeatSubscriber) {
-        createAndSendPacket(500, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
+        createAndSendPacket(mSubscriptionSize, mHeartbeatPrefix.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
     }
     if (mSubscribeOnAssociation) {
         cModule* host = getContainingNode(this);
         // when we receive the association we send a subscription
         host->subscribe(l2AssociatedSignal, this);
     }
-    createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
+    createAndSendPacket(mSubscriptionSize, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNSilentHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SILENT_SUBSCRIPTION);
 
 }
 
@@ -86,7 +88,7 @@ void ICNSubscriber::handleMessage(cMessage* msg) {
         if (msg == mSubscribeMessage) {
 
             createAndSendPacket(
-                    500,
+                    mSubscriptionSize,
                     mSubscriptionICNName.generateString(),
                     ICNPacketType::SUBSCRIBE,
                     "ICNPeriodicSubscription",
@@ -153,7 +155,7 @@ void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
 
     if (mLastSubscribedAccessPointHeartbeat.matches(heartbeatName)) {
         if (mReactToHeartbeat) {
-            createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+            createAndSendPacket(mSubscriptionSize, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
             mReactToHeartbeat = false;
             scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
             EV_INFO << "We haven't sent a subscription in a while to access point with heartbeat '"
@@ -169,7 +171,7 @@ void ICNSubscriber::handleReceivedHeartbeat(ICNName& heartbeatName) {
         mReactToHeartbeat = false;
         cancelEvent(mResetHeartbeatSubscriptionMessage);
         scheduleAt(simTime() + mHeartbeatSubscriptionDelay, mResetHeartbeatSubscriptionMessage);
-        createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+        createAndSendPacket(mSubscriptionSize, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNHeartbeatSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
     }
 
 
@@ -194,7 +196,7 @@ void ICNSubscriber::receiveSignal(cComponent *source, simsignal_t signalID, cObj
     Enter_Method_Silent();
     printSignalBanner(signalID, obj, details);
     EV_INFO << "We are associated to a signal. Sending a subscription..." << endl;
-    createAndSendPacket(500, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNAssociatedSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
+    createAndSendPacket(mSubscriptionSize, mSubscriptionICNName.generateString(), ICNPacketType::SUBSCRIBE, "ICNAssociatedSubscription", SUBSCRIPTION_GATE, MessageKinds::SUBSCRIPTION);
 }
 
 bool ICNSubscriber::alreadySeen(ICNName& toCheck) {

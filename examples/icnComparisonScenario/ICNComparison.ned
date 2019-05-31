@@ -54,6 +54,10 @@ network ICNComparison
             parameters:
                 @display("p=282.24002,363.888");
         }
+        hostE: WirelessHost {
+            parameters:
+                @display("p=410.256,363.888");
+        }
         hostD: StandardHost {
             parameters:
                 @display("p=354.816,69.552");

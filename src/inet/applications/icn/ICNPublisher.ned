@@ -22,7 +22,7 @@ simple ICNPublisher {
 parameters:
     // specifiy when the first message is being sent
     int startTime @unit(s);
-    // if this is true the publishment will be repeated
+    // if this is true the publication will be repeated
     bool repeat = default(false);
     // the delay between two messages (only has an effect if repeat is set to true)
     int delay @unit(s);

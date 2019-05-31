@@ -14,18 +14,30 @@ namespace inet {
 /**
  * An example request-reply based client application.
  */
-class INET_API EventNotificationSubscriber : public TcpAppBase
-{
-  protected:
-    cMessage *timeoutMsg = nullptr;
-    bool earlySend = false;    // if true, don't wait with sendRequest() until established()
-    int numRequestsToSend = 0;    // requests to send in this session
-    simtime_t startTime;
-    simtime_t stopTime;
-    bool informed;
+class INET_API EventNotificationSubscriber : public TcpAppBase, public cListener {
 
-    virtual void sendRequest();
-    virtual void rescheduleOrDeleteTimer(simtime_t d, short int msgKind);
+private:
+    enum messageKinds {
+        CONNECT = 1,
+        SEND = 2,
+        CLOSE = 3
+    };
+
+    std::set<std::string> contentStore;
+protected:
+    cMessage* selfMessage = nullptr;
+    std::string subscriptionName;
+    int expectedBytesResponse;
+    // this is for concatenating packets in socketDataArrived() method
+    Packet* tempPacket;
+    int bytesReceivedSinceReset;
+
+    /**
+     * Override receive signal from cListener.
+     */
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
+
+    virtual void sendSubscription();
 
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
     virtual void initialize(int stage) override;
@@ -36,13 +48,14 @@ class INET_API EventNotificationSubscriber : public TcpAppBase
     virtual void socketClosed(TcpSocket *socket) override;
     virtual void socketFailure(TcpSocket *socket, int code) override;
 
+    // functiion from operational base
     virtual void handleStartOperation(LifecycleOperation *operation) override;
     virtual void handleStopOperation(LifecycleOperation *operation) override;
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
     virtual void close() override;
 
-  public:
+public:
     EventNotificationSubscriber() {}
     virtual ~EventNotificationSubscriber();
 };

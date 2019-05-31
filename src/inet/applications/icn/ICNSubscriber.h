@@ -122,6 +122,8 @@ private:
      */
     std::vector<ICNName> mAlreadyReceivedData;
 
+    int mSubscriptionSize;
+
     /**
      * Helper method to send icn packet to the given gate.
      */

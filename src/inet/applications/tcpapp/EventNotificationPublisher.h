@@ -10,7 +10,7 @@
 namespace inet {
 
 /**
- * EventNotificationPubliserh
+ * EventNotificationPublisher
  *
  * This is the server of the event notification system. It will send messages to connected
  * clients.
@@ -19,19 +19,21 @@ class INET_API EventNotificationPublisher : public cSimpleModule, public Lifecyc
 {
   protected:
     TcpSocket socket;
-    simtime_t delay;
-    simtime_t maxMsgDelay;
 
     long msgsRcvd;
     long msgsSent;
     long bytesRcvd;
     long bytesSent;
 
-    std::map<int, ChunkQueue> socketQueue;
+    std::set<int> subscribedClients;
+    cMessage* selfMessage;
+    std::string publicationName;
+    int publicationSize;
+    int delay;
+    bool repeat;
 
   protected:
-    virtual void sendBack(cMessage *msg);
-    virtual void sendOrSchedule(cMessage *msg, simtime_t delay);
+    virtual void sendPublications();
 
     virtual void initialize(int stage) override;
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }

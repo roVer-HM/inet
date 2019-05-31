@@ -17,7 +17,7 @@ class EventNotificationMsg extends FieldsChunk
 {
     int type @enum(PacketType);
 	// identifies data to compare with icn
-	string name;
+	string icnComparisonName;
 	
 }
 
