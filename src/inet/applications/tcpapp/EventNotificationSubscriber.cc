@@ -25,14 +25,12 @@ void EventNotificationSubscriber::initialize(int stage)
 
         subscriptionName = par("subscriptionName").stdstringValue();
         expectedBytesResponse = par("expectedBytesResponse").intValue();
-        bytesReceivedSinceReset = 0;
-        tempPacket = new Packet("TempPacket");
         selfMessage = new cMessage("timer");
 
-        cModule* host = getContainingNode(this);
+        //cModule* host = getContainingNode(this);
         // when we are asssociated we connect -> when
-        host->subscribe(l2AssociatedSignal, this);
-        host->subscribe(l2BeaconLostSignal, this);
+        //host->subscribe(l2AssociatedSignal, this);
+        //host->subscribe(l2BeaconLostSignal, this);
     }
 }
 
@@ -43,12 +41,13 @@ void EventNotificationSubscriber::receiveSignal(cComponent *source, simsignal_t 
     if (cComponent::getSignalName(signalID) == cComponent::getSignalName(l2AssociatedSignal)) {
         EV_INFO << "Received association signal. Opening connection and sending subscription..." << endl;
         selfMessage->setKind(messageKinds::CONNECT);
-        scheduleAt(simTime(), selfMessage);
+        // give arp and dhcp some time to get addresses then subscribe
+        scheduleAt(simTime() + 0.5, selfMessage);
     } else if (cComponent::getSignalName(signalID) == cComponent::getSignalName(l2BeaconLostSignal)) {
         // we lost the connection to an access point
         // close the socket
-        selfMessage->setKind(messageKinds::CLOSE);
-        scheduleAt(simTime(), selfMessage);
+        //selfMessage->setKind(messageKinds::CLOSE);
+        //scheduleAt(simTime(), selfMessage);
     } else {
         throw cRuntimeError("Received signal I did not subscribe to!");
     }
@@ -57,7 +56,13 @@ void EventNotificationSubscriber::receiveSignal(cComponent *source, simsignal_t 
 
 void EventNotificationSubscriber::handleStartOperation(LifecycleOperation *operation)
 {
-    // do nothing here
+    simtime_t startTime = par("startTime").intValue();
+
+    if (startTime < simtime_t::ZERO) {
+        throw cRuntimeError("Invalid start time");
+    }
+    selfMessage->setKind(messageKinds::CONNECT);
+    scheduleAt(startTime, selfMessage);
 }
 
 void EventNotificationSubscriber::handleStopOperation(LifecycleOperation *operation)
@@ -164,7 +169,9 @@ void EventNotificationSubscriber::socketFailure(TcpSocket *socket, int code)
 {
     TcpAppBase::socketFailure(socket, code);
 
-    throw cRuntimeError("A socket failure occured! Investigate why this happened");
+    selfMessage->setKind(messageKinds::CONNECT);
+    // lets wait 5 seconds until we attempt to reconnect
+    scheduleAt(simTime() + 5, selfMessage);
 }
 
 } // namespace inet

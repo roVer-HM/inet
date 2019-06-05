@@ -60,6 +60,9 @@ void EventNotificationPublisher::initialize(int stage)
             // later
             scheduleAt(startTime, selfMessage);
         }
+
+        hasSentPublication = false;
+        latestSentPublication = "";
     }
 }
 
@@ -92,6 +95,33 @@ void EventNotificationPublisher::sendPublications()
     }
 
     delete publicationPacket;
+
+    // record scalar to track what has been published
+    recordScalar(name.c_str(), 0);
+    hasSentPublication = true;
+    latestSentPublication = name;
+}
+
+void EventNotificationPublisher::sendPublication(std::string name, int connId) {
+    std::stringstream stringStream;
+    stringStream << "ClassicPublication(" << name << ")";
+    Packet* publicationPacket = new Packet(stringStream.str().c_str());
+
+    publicationPacket->setKind(TCP_C_SEND);
+    publicationPacket->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(&Protocol::tcp);
+    const auto& payload = makeShared<EventNotificationMsg>();
+    payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
+    payload->setChunkLength(B(publicationSize));
+    payload->setIcnComparisonName(name.c_str());
+    payload->setType(PacketType::PUBLISH);
+    publicationPacket->insertAtBack(payload);
+
+    publicationPacket->addTagIfAbsent<SocketReq>()->setSocketId(connId);
+    send(publicationPacket, "socketOut");
+    msgsSent++;
+    bytesSent += publicationPacket->getByteLength();
+    EV_INFO << "Sending subscription packet with name " << name << " to TCP. Connection id is: " << connId << std::endl;
+
 }
 
 void EventNotificationPublisher::handleMessage(cMessage *msg)
@@ -128,7 +158,11 @@ void EventNotificationPublisher::handleMessage(cMessage *msg)
             // add to subscribers
             int connId = packet->getTag<SocketInd>()->getSocketId();
             subscribedClients.insert(connId);
-            // this is all wee need to do
+            // check if we already have published something
+            if (hasSentPublication) {
+                // if yes we send the latest publication immediately
+                sendPublication(latestSentPublication, connId);
+            }
         } else {
             EV_INFO << "Received non subscription packet type. Discarding packet..." << std::endl;
         }

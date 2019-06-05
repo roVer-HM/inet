@@ -16,6 +16,7 @@ simple EventNotificationSubscriber like IApp
         string subscriptionName; 
         // the expected number of bytes. this has to match the number of bytes sent by EventNotificationPublisher. otherwise this thing will crash
         int expectedBytesResponse @unit(B) = default(500B);
+        int startTime @unit(s);
         @display("i=block/app");
         @lifecycleSupport;
         double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished

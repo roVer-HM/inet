@@ -41,8 +41,8 @@ module ICNAdvancedSubscriberHost extends ICNSubscriberHost {
 
 		// application
 		app[0].hasLocalCommunicator = true;
-		app[0].localCommunicator.requestDelay = 10s;
-		app[0].localCommunicator.requestSize = 1000B;
-		app[0].localCommunicator.publicationSize = 1000B;
+		app[0].localCommunicator.requestDelay = 5s;
+		app[0].localCommunicator.requestSize = 500B;
+		app[0].localCommunicator.publicationSize = 500B;
 		app[0].localCommunicator.requestedDataName = subscribeTo;
 }

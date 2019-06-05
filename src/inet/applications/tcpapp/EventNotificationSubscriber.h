@@ -28,9 +28,6 @@ protected:
     cMessage* selfMessage = nullptr;
     std::string subscriptionName;
     int expectedBytesResponse;
-    // this is for concatenating packets in socketDataArrived() method
-    Packet* tempPacket;
-    int bytesReceivedSinceReset;
 
     /**
      * Override receive signal from cListener.
