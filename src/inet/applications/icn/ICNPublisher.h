@@ -20,6 +20,7 @@ public:
 protected:
     virtual void initialize();
     virtual void handleMessage(cMessage* msg);
+    void schedulePublicationSending();
 
 private:
 
@@ -51,10 +52,19 @@ private:
      */
     bool mBroadcastPublisher;
 
+    bool mRepeatPublication;
+    int mRepeatsPublication;
+    int mRepeatPublicationDelay;
+
     /**
-     * Stores the message that will be sent to myself.
+     * Trigger sending of a new publication.
      */
-    cMessage* mSendMessage;
+    cMessage* mPublicationTimer;
+
+    /**
+     * Stores the current publication.
+     */
+    cPacket* mCurrentPublication;
 };
 
 } /* namespace inet */
