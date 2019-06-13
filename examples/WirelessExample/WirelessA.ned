@@ -45,6 +45,7 @@ network WirelessA
         }
         radioMedium: Ieee80211ScalarRadioMedium {
             @display("p=645.12,276.19202");
+            pathLoss.typename = "LogNormalShadowing";
         }
         hostA: ICNAccessPoint {
             parameters:
@@ -52,15 +53,15 @@ network WirelessA
         }
         hostB: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=320.00,250.00");
+                @display("p=350.00,250.00");
         }
         hostE: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=290.00,250.00");
+                @display("p=30.0,900.0");
         }
         hostC: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=80.00,900.00");
+                @display("p=100.00,900.00");
         }
         hostD: ICNPublisherHost {
             parameters:

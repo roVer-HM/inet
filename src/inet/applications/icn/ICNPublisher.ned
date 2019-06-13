@@ -29,9 +29,9 @@ parameters:
     // set this to true if you want to send a publication multiple times
     bool repeatPublication = default(true);
     // how often to repeat a single publication (only has an effect if repeatPublciation is true)
-    int repeatsPublication = default(3);
+    int repeatsPublication = default(5);
     // the delay between two repetions of one publication (only has an effect if repeatPublciation is true)
-    int repeatPublicationDelay @unit(s) = default(1s);
+    int repeatPublicationDelay @unit(s) = default(10s);
     // the name of the data that is being published
     string dataName = default("ICNPublisherDefaultDataName");
     // the size of the data

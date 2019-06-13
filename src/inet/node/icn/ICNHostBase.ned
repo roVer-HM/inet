@@ -26,8 +26,8 @@ module ICNHostBase extends WirelessHost {
 	    numLoInterfaces = 0;
 	    wlan[0].radio.typename = "Ieee80211ScalarRadio";
 	    double icnBitrate @unit(bps) = default(54Mbps);
-	    // this is roughly 180m
-	    wlan[0].radio.transmitter.power = 0.43mW;
+	    // this is roughly 150m
+	    wlan[0].radio.transmitter.power = 0.75mW;
 	    wlan[0].bitrate = icnBitrate;
 	    wlan[0].mac.*.rateSelection.multicastFrameBitrate = icnBitrate;
 }
