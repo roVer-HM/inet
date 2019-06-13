@@ -52,7 +52,7 @@ network WirelessA
         }
         hostB: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=450,250.00");
+                @display("p=320.00,250.00");
         }
         hostE: ICNAdvancedSubscriberHost {
             parameters:
@@ -60,7 +60,7 @@ network WirelessA
         }
         hostC: ICNAdvancedSubscriberHost {
             parameters:
-                @display("p=500.00,300.00");
+                @display("p=80.00,900.00");
         }
         hostD: ICNPublisherHost {
             parameters:

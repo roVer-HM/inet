@@ -24,6 +24,10 @@ module ICNHostBase extends WirelessHost {
 	    ipv4.arp.typename = "GlobalArp";
 	    app[0].typename = "ICN";
 	    numLoInterfaces = 0;
-	    // 1mW is roughly 175m
-	    wlan[0].radio.transmitter.power = 1mW;
+	    wlan[0].radio.typename = "Ieee80211ScalarRadio";
+	    double icnBitrate @unit(bps) = default(54Mbps);
+	    // this is roughly 180m
+	    wlan[0].radio.transmitter.power = 0.43mW;
+	    wlan[0].bitrate = icnBitrate;
+	    wlan[0].mac.*.rateSelection.multicastFrameBitrate = icnBitrate;
 }
