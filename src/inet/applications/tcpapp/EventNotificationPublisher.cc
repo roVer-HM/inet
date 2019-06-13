@@ -16,6 +16,10 @@ namespace inet {
 
 Define_Module(EventNotificationPublisher);
 
+EventNotificationPublisher::~EventNotificationPublisher() {
+    cancelAndDelete(selfMessage);
+}
+
 void EventNotificationPublisher::initialize(int stage)
 {
     cSimpleModule::initialize(stage);

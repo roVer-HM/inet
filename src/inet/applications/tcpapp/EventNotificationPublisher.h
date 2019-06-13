@@ -17,6 +17,9 @@ namespace inet {
  */
 class INET_API EventNotificationPublisher : public cSimpleModule, public LifecycleUnsupported
 {
+public:
+    EventNotificationPublisher() = default;
+    ~EventNotificationPublisher();
   protected:
     TcpSocket socket;
 
