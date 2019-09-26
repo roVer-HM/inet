@@ -32,17 +32,25 @@ Register_Protocol_Dissector(&Protocol::ieee80211Phy, Ieee80211PhyProtocolDissect
 
 void Ieee80211PhyProtocolDissector::dissect(Packet *packet, const Protocol *protocol, ICallback& callback) const
 {
-    const auto& header = packet->popAtFront<inet::physicallayer::Ieee80211PhyHeader>();
     callback.startProtocolDataUnit(&Protocol::ieee80211Phy);
-    const auto& trailer = packet->peekAtBack();
-    // TODO: KLUDGE: padding length
-    auto ieee80211PhyPadding = dynamicPtrCast<const BitCountChunk>(trailer);
-    if (ieee80211PhyPadding != nullptr)
-        packet->setBackOffset(packet->getBackOffset() - ieee80211PhyPadding->getChunkLength());
+    auto originalBackOffset = packet->getBackOffset();
+    auto payloadEndOffset = packet->getFrontOffset();
+    const auto& header = packet->popAtFront<inet::physicallayer::Ieee80211PhyHeader>();
     callback.visitChunk(header, &Protocol::ieee80211Phy);
+    payloadEndOffset += header->getChunkLength() + B(header->getLengthField());
+    bool incorrect = (payloadEndOffset > originalBackOffset || header->getLengthField() < header->getChunkLength());
+    if (incorrect) {
+        callback.markIncorrect();
+        payloadEndOffset = originalBackOffset;
+    }
+    packet->setBackOffset(payloadEndOffset);
     callback.dissectPacket(packet, &Protocol::ieee80211Mac);
-    if (ieee80211PhyPadding != nullptr)
-        callback.visitChunk(ieee80211PhyPadding, nullptr);
+    packet->setBackOffset(originalBackOffset);
+    auto paddingLength = packet->getDataLength();
+    if (paddingLength > b(0)) {
+        const auto& padding = packet->popAtFront(paddingLength);
+        callback.visitChunk(padding, &Protocol::ieee80211Phy);
+    }
     callback.endProtocolDataUnit(&Protocol::ieee80211Phy);
 }
 

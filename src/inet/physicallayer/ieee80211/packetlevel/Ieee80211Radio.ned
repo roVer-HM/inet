@@ -29,10 +29,9 @@ import inet.physicallayer.base.packetlevel.FlatRadioBase;
 // used in IEEE 802.11 simulations. It also supports switching channels via
 // ~ConfigureRadioCommand, or with direct C++ function calls.
 //
-// See also ~Ieee80211ScalarRadio, and ~Ieee80211DimensionalRadio for more
-// details.
+// @see ~Ieee80211ScalarRadio, ~Ieee80211DimensionalRadio.
 //
-// TODO: check this Table 18-14—Receiver performance requirements
+//# TODO: check this Table 18-14—Receiver performance requirements
 module Ieee80211Radio extends FlatRadioBase
 {
     parameters:
@@ -42,7 +41,7 @@ module Ieee80211Radio extends FlatRadioBase
         int channelNumber = default(0);                                 // initial channel number within the band (TODO: this is offset by 1)
         transmitter.typename = default(signalAnalogRepresentation == "scalar" ? "Ieee80211ScalarTransmitter" : signalAnalogRepresentation == "dimensional" ? "Ieee80211DimensionalTransmitter" : "");
         receiver.typename = default(signalAnalogRepresentation == "scalar" ? "Ieee80211ScalarReceiver" : signalAnalogRepresentation == "dimensional" ? "Ieee80211DimensionalReceiver" : "");
-        carrierFrequency @unit(Hz) = default(2.412GHz);                 // the center frequency of the band is automatically set by the radio
+        centerFrequency @unit(Hz) = default(2.412GHz);                 // the center frequency of the band is automatically set by the radio
         bandwidth @unit(Hz) = default(nan MHz);
         transmitter.preambleDuration = default(nan s);
         transmitter.bitrate = default(11Mbps);

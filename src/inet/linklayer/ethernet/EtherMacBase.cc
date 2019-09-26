@@ -40,7 +40,6 @@ const double EtherMacBase::SPEED_OF_LIGHT_IN_CABLE = 200000000.0;
 const EtherMacBase::EtherDescr EtherMacBase::nullEtherDescr = {
     0.0,
     0.0,
-    B(0),
     0,
     B(0),
     B(0),
@@ -53,7 +52,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         ETHERNET_TXRATE,
         0.5 / ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         MIN_ETHERNET_FRAME_BYTES,
@@ -64,7 +62,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         FAST_ETHERNET_TXRATE,
         0.5 / FAST_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         MIN_ETHERNET_FRAME_BYTES,
@@ -75,7 +72,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         GIGABIT_ETHERNET_TXRATE,
         0.5 / GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         MAX_PACKETBURST,
         GIGABIT_MAX_BURST_BYTES,
         GIGABIT_MIN_FRAME_BYTES_WITH_EXT,
@@ -86,7 +82,16 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         FAST_GIGABIT_ETHERNET_TXRATE,
         0.5 / FAST_GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
+        0,
+        B(0),
+        B(-1),    // half-duplex is not supported
+        B(0),
+        0.0,
+        0.0
+    },
+    {
+        TWENTYFIVE_GIGABIT_ETHERNET_TXRATE,
+        0.5 / TWENTYFIVE_GIGABIT_ETHERNET_TXRATE,
         0,
         B(0),
         B(-1),    // half-duplex is not supported
@@ -97,7 +102,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         FOURTY_GIGABIT_ETHERNET_TXRATE,
         0.5 / FOURTY_GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         B(-1),    // half-duplex is not supported
@@ -108,7 +112,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         HUNDRED_GIGABIT_ETHERNET_TXRATE,
         0.5 / HUNDRED_GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         B(-1),    // half-duplex is not supported
@@ -119,7 +122,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         TWOHUNDRED_GIGABIT_ETHERNET_TXRATE,
         0.5 / TWOHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         B(-1),    // half-duplex is not supported
@@ -130,7 +132,6 @@ const EtherMacBase::EtherDescr EtherMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
     {
         FOURHUNDRED_GIGABIT_ETHERNET_TXRATE,
         0.5 / FOURHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        MIN_ETHERNET_FRAME_BYTES,
         0,
         B(0),
         B(-1),    // half-duplex is not supported
@@ -166,8 +167,6 @@ EtherMacBase::EtherMacBase()
 
 EtherMacBase::~EtherMacBase()
 {
-    delete curTxFrame;
-
     cancelAndDelete(endTxMsg);
     cancelAndDelete(endIFGMsg);
     cancelAndDelete(endPauseMsg);
@@ -175,12 +174,14 @@ EtherMacBase::~EtherMacBase()
 
 void EtherMacBase::initialize(int stage)
 {
-    MacBase::initialize(stage);
+    MacProtocolBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         physInGate = gate("phys$i");
         physOutGate = gate("phys$o");
+        lowerLayerInGateId = physInGate->getId();
+        lowerLayerOutGateId = physOutGate->getId();
         transmissionChannel = nullptr;
-        curTxFrame = nullptr;
+        currentTxFrame = nullptr;
 
         initializeFlags();
 
@@ -284,7 +285,7 @@ void EtherMacBase::handleStartOperation(LifecycleOperation *operation)
 
 void EtherMacBase::handleStopOperation(LifecycleOperation *operation)
 {
-    if (curTxFrame != nullptr || !txQueue->isEmpty()) {
+    if (currentTxFrame != nullptr || !txQueue->isEmpty()) {
         interfaceEntry->setState(InterfaceEntry::State::GOING_DOWN);
         delayActiveOperationFinish(par("stopOperationTimeout"));
     }
@@ -308,7 +309,7 @@ void EtherMacBase::handleCrashOperation(LifecycleOperation *operation)
 void EtherMacBase::processAtHandleMessageFinished()
 {
     if (operationalState == State::STOPPING_OPERATION) {
-        if (curTxFrame == nullptr && txQueue->isEmpty()) {
+        if (currentTxFrame == nullptr && txQueue->isEmpty()) {
             EV << "Ethernet Queue is empty, MAC stopped\n";
             connected = false;
             interfaceEntry->setCarrier(false);
@@ -323,7 +324,7 @@ void EtherMacBase::receiveSignal(cComponent *source, simsignal_t signalID, cObje
 {
     Enter_Method_Silent();
 
-    MacBase::receiveSignal(source, signalID, obj, details);
+    MacProtocolBase::receiveSignal(source, signalID, obj, details);
 
     if (signalID != POST_MODEL_CHANGE)
         return;
@@ -350,14 +351,12 @@ void EtherMacBase::processConnectDisconnect()
         cancelEvent(endIFGMsg);
         cancelEvent(endPauseMsg);
 
-        if (curTxFrame) {
-            EV_DETAIL << "Interface is not connected, dropping packet " << curTxFrame << endl;
+        if (currentTxFrame) {
+            EV_DETAIL << "Interface is not connected, dropping packet " << currentTxFrame << endl;
             numDroppedPkFromHLIfaceDown++;
             PacketDropDetails details;
             details.setReason(INTERFACE_DOWN);
-            emit(packetDroppedSignal, curTxFrame, &details);
-            delete curTxFrame;
-            curTxFrame = nullptr;
+            dropCurrentTxFrame(details);
             lastTxFinishTime = -1.0;    // so that it never equals to the current simtime, used for Burst mode detection.
         }
 
@@ -381,7 +380,6 @@ void EtherMacBase::processConnectDisconnect()
 void EtherMacBase::encapsulate(Packet *frame)
 {
     auto phyHeader = makeShared<EthernetPhyHeader>();
-    phyHeader->setSrcMacFullDuplex(duplexMode);
     frame->insertAtFront(phyHeader);
     frame->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetPhy);
 }
@@ -389,8 +387,6 @@ void EtherMacBase::encapsulate(Packet *frame)
 void EtherMacBase::decapsulate(Packet *packet)
 {
     auto phyHeader = packet->popAtFront<EthernetPhyHeader>();
-    if (phyHeader->getSrcMacFullDuplex() != duplexMode)
-        throw cRuntimeError("Ethernet misconfiguration: MACs on the same link must be all in full duplex mode, or all in half-duplex mode");
     ASSERT(packet->getDataLength() >= MIN_ETHERNET_FRAME_BYTES);
     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
 }
@@ -434,24 +430,6 @@ bool EtherMacBase::verifyCrcAndLength(Packet *packet)
         return (payloadLength <= packet->getDataLength() - (ethHeader->getChunkLength() + ethTrailer->getChunkLength()));
     }
     return true;
-}
-
-void EtherMacBase::flushQueue()
-{
-    // code would look slightly nicer with a pop() function that returns nullptr if empty
-    while (!txQueue->isEmpty()) {
-        Packet *msg = txQueue->popPacket();
-        PacketDropDetails details;
-        details.setReason(INTERFACE_DOWN);
-        emit(packetDroppedSignal, msg, &details);
-        delete msg;
-    }
-}
-
-void EtherMacBase::clearQueue()
-{
-    while (!txQueue->isEmpty())
-        delete txQueue->popPacket();
 }
 
 void EtherMacBase::refreshConnection()
@@ -585,13 +563,6 @@ void EtherMacBase::printParameters()
               << endl;
 }
 
-void EtherMacBase::getNextFrameFromQueue()
-{
-    ASSERT(nullptr == curTxFrame);
-    if (!txQueue->isEmpty())
-        curTxFrame = txQueue->popPacket();
-}
-
 void EtherMacBase::finish()
 {
     if (!disabled) {
@@ -610,7 +581,7 @@ void EtherMacBase::finish()
 
 void EtherMacBase::refreshDisplay() const
 {
-    MacBase::refreshDisplay();
+    MacProtocolBase::refreshDisplay();
 
     // icon coloring
     const char *color;

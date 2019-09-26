@@ -13,6 +13,7 @@
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/networklayer/contract/ipv4/Ipv4Address.h"
 #include "inet/networklayer/ipv4/IgmpMessage.h"
+#include "inet/networklayer/ipv4/Igmpv3.h"
 #include "inet/networklayer/ipv4/IIpv4RoutingTable.h"
 #include "inet/networklayer/ipv4/Ipv4InterfaceData.h"
 
@@ -26,6 +27,9 @@ class INET_API IGMPTester : public cSimpleModule, public IScriptable
     IInterfaceTable *ift;
     InterfaceEntry *interfaceEntry;
     map<Ipv4Address, Ipv4MulticastSourceList> socketState;
+
+    //crcMode
+    CrcMode crcMode = CRC_MODE_UNDEFINED;
 
   protected:
     typedef Ipv4InterfaceData::Ipv4AddressVector Ipv4AddressVector;
@@ -47,13 +51,6 @@ class INET_API IGMPTester : public cSimpleModule, public IScriptable
 
 Define_Module(IGMPTester);
 
-static ostream &operator<<(ostream &out, const Ipv4AddressVector addresses)
-{
-    for (int i = 0; i < (int)addresses.size(); i++)
-        out << (i>0?" ":"") << addresses[i];
-    return out;
-}
-
 static ostream &operator<<(ostream &out, const IgmpMessage* msg)
 {
     out << msg->getClassName() << "<";
@@ -67,13 +64,13 @@ static ostream &operator<<(ostream &out, const IgmpMessage* msg)
             if (auto v3Query = dynamic_cast<const Igmpv3Query*>(msg))
             {
                 out << ", sourceList=" << v3Query->getSourceList()
-                    << ", maxRespTime=" << v3Query->getMaxRespTime()
+                    << ", maxRespTime=" << SimTime(Igmpv3::decodeTime(v3Query->getMaxRespTimeCode()), (SimTimeUnit)-1)
                     << ", suppressRouterProc=" << (int)v3Query->getSuppressRouterProc()
                     << ", robustnessVariable=" << (int)v3Query->getRobustnessVariable()
-                    << ", queryIntervalCode=" << (int)v3Query->getQueryIntervalCode();
+                    << ", queryIntervalCode=" << SimTime(Igmpv3::decodeTime(v3Query->getQueryIntervalCode()), SIMTIME_S);
             }
             else if (auto v2Query = dynamic_cast<const Igmpv2Query*>(msg))
-                out << ", maxRespTime=" << v2Query->getMaxRespTime();
+                out << ", maxRespTime=" << SimTime(v2Query->getMaxRespTimeCode(), (SimTimeUnit)-1);
             break;
         }
         case IGMPV1_MEMBERSHIP_REPORT:
@@ -91,8 +88,8 @@ static ostream &operator<<(ostream &out, const IgmpMessage* msg)
             for (unsigned int i = 0; i < report->getGroupRecordArraySize(); i++)
             {
                 const GroupRecord &record = report->getGroupRecord(i);
-                out << (i>0?", ":"") << record.groupAddress << "=";
-                switch (record.recordType)
+                out << (i>0?", ":"") << record.getGroupAddress() << "=";
+                switch (record.getRecordType())
                 {
                     case MODE_IS_INCLUDE:        out << "IS_IN" ; break;
                     case MODE_IS_EXCLUDE:        out << "IS_EX" ; break;
@@ -101,8 +98,8 @@ static ostream &operator<<(ostream &out, const IgmpMessage* msg)
                     case ALLOW_NEW_SOURCES:      out << "ALLOW" ; break;
                     case BLOCK_OLD_SOURCE:       out << "BLOCK" ; break;
                 }
-                if (!record.sourceList.empty())
-                    out << " " << record.sourceList;
+                if (!record.getSourceList().empty())
+                    out << " " << record.getSourceList();
             }
             break;
         }
@@ -126,6 +123,8 @@ void IGMPTester::initialize(int stage)
         interfaceEntry->setMtu(par("mtu"));
         interfaceEntry->setMulticast(true);
         interfaceEntry->setBroadcast(true);
+        const char *crcModeString = par("crcMode");
+        crcMode = parseCrcMode(crcModeString, false);
     }
     else if (stage == INITSTAGE_NETWORK_ADDRESS_ASSIGNMENT) {
         interfaceEntry->getProtocolData<Ipv4InterfaceData>()->setIPAddress(Ipv4Address("192.168.1.1"));
@@ -228,9 +227,10 @@ void IGMPTester::processSendCommand(const cXMLElement &node)
         const auto& msg = makeShared<Igmpv3Query>();
         msg->setType(IGMP_MEMBERSHIP_QUERY);
         msg->setGroupAddress(group);
-        msg->setMaxRespTime(0.1 * maxRespCode);
+        msg->setMaxRespTimeCode(Igmpv3::codeTime(maxRespCode));
         msg->setSourceList(sources);
         msg->setChunkLength(B(12 + (4 * sources.size())));
+        Igmpv3::insertCrc(crcMode, msg, packet);
         packet->insertAtFront(msg);
         sendIGMP(packet, ie, group.isUnspecified() ? Ipv4Address::ALL_HOSTS_MCAST : group);
     }
@@ -259,19 +259,20 @@ void IGMPTester::processSendCommand(const cXMLElement &node)
             ASSERT(groupStr);
 
             GroupRecord &record = msg->getGroupRecordForUpdate(i);
-            record.groupAddress = Ipv4Address(groupStr);
-            parseIPv4AddressVector(sourcesStr, record.sourceList);
-            record.recordType = recordTypeStr == "IS_IN" ? MODE_IS_INCLUDE :
+            record.setGroupAddress(Ipv4Address(groupStr));
+            parseIPv4AddressVector(sourcesStr, record.getSourceListForUpdate());
+            record.setRecordType(recordTypeStr == "IS_IN" ? MODE_IS_INCLUDE :
                                 recordTypeStr == "IS_EX" ? MODE_IS_EXCLUDE :
                                 recordTypeStr == "TO_IN" ? CHANGE_TO_INCLUDE_MODE :
                                 recordTypeStr == "TO_EX" ? CHANGE_TO_EXCLUDE_MODE :
                                 recordTypeStr == "ALLOW" ? ALLOW_NEW_SOURCES :
-                                recordTypeStr == "BLOCK" ? BLOCK_OLD_SOURCE : 0;
-            ASSERT(record.groupAddress.isMulticast());
-            ASSERT(record.recordType);
-            byteLength += 8 + record.sourceList.size() * 4;    // 8 byte header + n * 4 byte (Ipv4Address)
+                                recordTypeStr == "BLOCK" ? BLOCK_OLD_SOURCE : 0);
+            ASSERT(record.getGroupAddress().isMulticast());
+            ASSERT(record.getRecordType());
+            byteLength += 8 + record.getSourceList().size() * 4;    // 8 byte header + n * 4 byte (Ipv4Address)
         }
         msg->setChunkLength(B(byteLength));
+        Igmpv3::insertCrc(crcMode, msg, packet);
         packet->insertAtFront(msg);
 
         sendIGMP(packet, ie, Ipv4Address::ALL_IGMPV3_ROUTERS_MCAST);

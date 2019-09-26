@@ -90,12 +90,7 @@ void Ipv6NeighbourDiscovery::initialize(int stage)
 
     if (stage == INITSTAGE_LOCAL) {
         const char *crcModeString = par("crcMode");
-        if (!strcmp(crcModeString, "declared"))
-            crcMode = CRC_DECLARED_CORRECT;
-        else if (!strcmp(crcModeString, "computed"))
-            crcMode = CRC_COMPUTED;
-        else
-            throw cRuntimeError("unknown CRC mode: '%s'", crcModeString);
+        crcMode = parseCrcMode(crcModeString, false);
     }
     else if (stage == INITSTAGE_NETWORK_LAYER) {
         cModule *node = findContainingNode(this);
@@ -1237,13 +1232,13 @@ void Ipv6NeighbourDiscovery::createAndSendRaPacket(const Ipv6Address& destAddr, 
         auto sla = new Ipv6NdSourceLinkLayerAddress();
         sla->setLinkLayerAddress(ie->getMacAddress());
         ra->getOptionsForUpdate().insertOption(sla);
-        ra->setChunkLength(ra->getChunkLength() + IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
+        ra->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
 
         // set MTU option
         auto mtu = new Ipv6NdMtu();
         mtu->setMtu(ie->getProtocolData<Ipv6InterfaceData>()->getAdvLinkMtu());
         ra->getOptionsForUpdate().insertOption(mtu);
-        ra->setChunkLength(ra->getChunkLength() + IPv6ND_MTU_OPTION_LENGTH);
+        ra->addChunkLength(IPv6ND_MTU_OPTION_LENGTH);
 
         //Add all Advertising Prefixes to the RA
         int numAdvPrefixes = ie->getProtocolData<Ipv6InterfaceData>()->getNumAdvPrefixes();
@@ -1291,7 +1286,7 @@ void Ipv6NeighbourDiscovery::createAndSendRaPacket(const Ipv6Address& destAddr, 
             prefixInfo->setPreferredLifetime(SIMTIME_DBL(advPrefix.advPreferredLifetime));
             //Now we pop the prefix info into the RA.
             ra->getOptionsForUpdate().insertOption(prefixInfo);
-            ra->setChunkLength(ra->getChunkLength() + IPv6ND_PREFIX_INFORMATION_OPTION_LENGTH);
+            ra->addChunkLength(IPv6ND_PREFIX_INFORMATION_OPTION_LENGTH);
         }
 
         auto packet = new Packet("RApacket");
@@ -1850,7 +1845,7 @@ void Ipv6NeighbourDiscovery::createAndSendNsPacket(const Ipv6Address& nsTargetAd
         auto sla = new Ipv6NdSourceLinkLayerAddress();
         sla->setLinkLayerAddress(myMacAddr);
         ns->getOptionsForUpdate().insertOption(sla);
-        ns->setChunkLength(ns->getChunkLength() + IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
+        ns->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
     }
     auto packet = new Packet("NSpacket");
     Icmpv6::insertCrc(crcMode, ns, packet);
@@ -2040,7 +2035,7 @@ void Ipv6NeighbourDiscovery::sendSolicitedNa(Packet *packet, const Ipv6Neighbour
     auto tla = new Ipv6NdTargetLinkLayerAddress();
     tla->setLinkLayerAddress(ie->getMacAddress());
     na->getOptionsForUpdate().insertOption(tla);
-    na->setChunkLength(na->getChunkLength() + IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
+    na->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
 
     /*Furthermore, if the node is a router, it MUST set the Router flag to one;
        otherwise it MUST set the flag to zero.*/
@@ -2137,7 +2132,7 @@ void Ipv6NeighbourDiscovery::sendUnsolicitedNa(InterfaceEntry *ie)
     auto sla = new Ipv6NdTargetLinkLayerAddress();
     sla->setLinkLayerAddress(ie->getMacAddress());
     na->getOptionsForUpdate().insertOption(sla);
-    na->setChunkLength(na->getChunkLength() + IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
+    na->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
 #endif /* WITH_xMIPv6 */
 
     // The Solicited flag MUST be set to zero, in order to avoid confusing
