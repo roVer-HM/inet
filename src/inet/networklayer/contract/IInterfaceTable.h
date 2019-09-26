@@ -115,6 +115,13 @@ class INET_API IInterfaceTable
      * to interface deletions/additions. Returns nullptr if there is no such
      * interface (This allows detecting stale IDs without raising an error.)
      */
+    virtual InterfaceEntry *findInterfaceById(int id) const = 0;
+
+    /**
+     * Returns an interface by its Id. Ids are guaranteed to be invariant
+     * to interface deletions/additions. Throws an error if there is no such
+     * interface.
+     */
     virtual InterfaceEntry *getInterfaceById(int id) const = 0;
 
     /**
@@ -147,9 +154,7 @@ class INET_API IInterfaceTable
 
     /**
      * Returns the first interface with the isLoopback flag set.
-     * (If there's no loopback, it returns nullptr -- but this
-     * should never happen because InterfaceTable itself registers a
-     * loopback interface on startup.)
+     * If there's no loopback, it returns nullptr.
      */
     virtual InterfaceEntry *getFirstLoopbackInterface() const = 0;
 

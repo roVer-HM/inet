@@ -94,16 +94,9 @@ void TcpLwip::initialize(int stage)
             throw cRuntimeError("Don't use obsolete receiveQueueClass = \"%s\" parameter", q);
 
         const char *crcModeString = par("crcMode");
-        if (!strcmp(crcModeString, "declared"))
-            crcMode = CRC_DECLARED_CORRECT;
-        else if (!strcmp(crcModeString, "computed"))
-            crcMode = CRC_COMPUTED;
-        else
-            throw cRuntimeError("Unknown crc mode: '%s'", crcModeString);
+        crcMode = parseCrcMode(crcModeString, false);
 
         WATCH_MAP(tcpAppConnMapM);
-
-        recordStatisticsM = par("recordStats");
 
         pLwipTcpLayerM = new LwipTcpLayer(*this);
         pLwipFastTimerM = new cMessage("lwip_fast_timer");
@@ -317,7 +310,16 @@ err_t TcpLwip::lwip_tcp_event(void *arg, LwipTcpLayer::tcp_pcb *pcb,
 err_t TcpLwip::tcp_event_accept(TcpLwipConnection& conn, LwipTcpLayer::tcp_pcb *pcb, err_t err)
 {
     int newConnId = getEnvir()->getUniqueNumber();
-    TcpLwipConnection *newConn = new TcpLwipConnection(conn, newConnId, pcb);
+
+    auto moduleType = cModuleType::get("inet.transportlayer.tcp_lwip.TcpLwipConnection");
+    char submoduleName[24];
+    sprintf(submoduleName, "conn-%d", newConnId);
+    auto newConn = check_and_cast<TcpLwipConnection *>(moduleType->create(submoduleName, this));
+    newConn->finalizeParameters();
+    newConn->buildInside();
+    newConn->initConnection(conn, newConnId, pcb);
+    newConn->callInitialize();
+
     // add into appConnMap
     tcpAppConnMapM[newConnId] = newConn;
 
@@ -416,7 +418,16 @@ void TcpLwip::handleAppMessage(cMessage *msgP)
 
     if (!conn) {
         // add into appConnMap
-        conn = new TcpLwipConnection(*this, connId);
+
+        auto moduleType = cModuleType::get("inet.transportlayer.tcp_lwip.TcpLwipConnection");
+        char submoduleName[24];
+        sprintf(submoduleName, "conn-%d", connId);
+        conn = check_and_cast<TcpLwipConnection *>(moduleType->create(submoduleName, this));
+        conn->finalizeParameters();
+        conn->buildInside();
+        conn->initConnection(*this, connId);
+        conn->callInitialize();
+
         tcpAppConnMapM[connId] = conn;
 
         EV_INFO << this << ": TCP connection created for " << msgP << "\n";
@@ -623,8 +634,8 @@ void TcpLwip::ip_output(LwipTcpLayer::tcp_pcb *pcb, L3Address const& srcP, L3Add
 
     IL3AddressType *addressType = destP.getAddressType();
 
-    packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
-    auto addresses = packet->addTagIfAbsent<L3AddressReq>();
+    packet->addTag<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
+    auto addresses = packet->addTag<L3AddressReq>();
     addresses->setSrcAddress(srcP);
     addresses->setDestAddress(destP);
     if (conn) {

@@ -43,8 +43,6 @@ using namespace inet::physicallayer;
 
 Define_Module(Ieee80211Mac);
 
-simsignal_t Ieee80211Mac::stateSignal = SIMSIGNAL_NULL;
-simsignal_t Ieee80211Mac::radioStateSignal = SIMSIGNAL_NULL;
 
 Ieee80211Mac::Ieee80211Mac()
 {
@@ -265,7 +263,7 @@ void Ieee80211Mac::encapsulate(Packet *packet)
     if (auto userPriorityReq = packet->findTag<UserPriorityReq>()) {
         // make it a QoS frame, and set TID
         header->setType(ST_DATA_WITH_QOS);
-        header->setChunkLength(header->getChunkLength() + QOSCONTROL_PART_LENGTH);
+        header->addChunkLength(QOSCONTROL_PART_LENGTH);
         header->setTid(userPriorityReq->getUserPriority());
     }
     packet->insertAtFront(header);

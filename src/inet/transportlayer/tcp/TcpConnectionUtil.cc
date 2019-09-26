@@ -37,6 +37,8 @@
 #include "inet/transportlayer/tcp/TcpSackRexmitQueue.h"
 #include "inet/transportlayer/tcp/TcpSendQueue.h"
 #include "inet/transportlayer/tcp_common/TcpHeader.h"
+#include "inet/networklayer/common/DscpTag_m.h"
+#include "inet/networklayer/common/HopLimitTag_m.h"
 
 namespace inet {
 namespace tcp {
@@ -205,7 +207,18 @@ void TcpConnection::printSegmentBrief(Packet *packet, const Ptr<const TcpHeader>
 
 TcpConnection *TcpConnection::cloneListeningConnection()
 {
-    TcpConnection *conn = new TcpConnection(tcpMain, socketId);
+//    TcpConnection *conn = new TcpConnection();
+//    conn->initConnection(tcpMain, socketId);
+    auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
+    int newSocketId = getEnvir()->getUniqueNumber();
+    char submoduleName[24];
+    sprintf(submoduleName, "conn-%d", newSocketId);
+    auto conn = check_and_cast<TcpConnection *>(moduleType->create(submoduleName, tcpMain));
+    conn->finalizeParameters();
+    conn->buildInside();
+    conn->initConnection(tcpMain, newSocketId);
+    conn->callInitialize();
+    conn->listeningSocketId = socketId;
 
     // following code to be kept consistent with initConnection()
     const char *sendQueueClass = sendQueue->getClassName();
@@ -225,7 +238,7 @@ TcpConnection *TcpConnection::cloneListeningConnection()
     conn->tcpAlgorithm->setConnection(conn);
 
     conn->state = conn->tcpAlgorithm->getStateVariables();
-    configureStateVariables();
+    conn->configureStateVariables();
     conn->tcpAlgorithm->initialize();
 
     // put it into LISTEN, with our localAddr/localPort
@@ -241,11 +254,10 @@ TcpConnection *TcpConnection::cloneListeningConnection()
 void TcpConnection::sendToIP(Packet *packet, const Ptr<TcpHeader>& tcpseg)
 {
     // record seq (only if we do send data) and ackno
-    if (sndNxtVector && packet->getByteLength() > B(tcpseg->getChunkLength()).get())
-        sndNxtVector->record(tcpseg->getSequenceNo());
+    if (packet->getByteLength() > B(tcpseg->getChunkLength()).get())
+        emit(sndNxtSignal, tcpseg->getSequenceNo());
 
-    if (sndAckVector)
-        sndAckVector->record(tcpseg->getAckNo());
+    emit(sndAckSignal, tcpseg->getAckNo());
 
     // final touches on the segment before sending
     tcpseg->setSrcPort(localPort);
@@ -262,29 +274,48 @@ void TcpConnection::sendToIP(Packet *packet, const Ptr<TcpHeader>& tcpseg)
 
     IL3AddressType *addressType = remoteAddr.getAddressType();
     packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
+
+    if (ttl != -1 && packet->findTag<HopLimitReq>() == nullptr)
+        packet->addTag<HopLimitReq>()->setHopLimit(ttl);
+
+    if (packet->findTag<DscpReq>() == nullptr)
+        packet->addTag<DscpReq>()->setDifferentiatedServicesCodePoint(typeOfService);
+
     auto addresses = packet->addTagIfAbsent<L3AddressReq>();
     addresses->setSrcAddress(localAddr);
     addresses->setDestAddress(remoteAddr);
+
     tcpseg->setCrc(0);
     tcpseg->setCrcMode(tcpMain->crcMode);
+
     insertTransportProtocolHeader(packet, Protocol::tcp, tcpseg);
+
     tcpMain->send(packet, "ipOut");
 }
 
-void TcpConnection::sendToIP(Packet *pkt, const Ptr<TcpHeader>& tcpseg, L3Address src, L3Address dest)
+void TcpConnection::sendToIP(Packet *packet, const Ptr<TcpHeader>& tcpseg, L3Address src, L3Address dest)
 {
     EV_STATICCONTEXT;
     EV_INFO << "Sending: ";
-    printSegmentBrief(pkt, tcpseg);
+    printSegmentBrief(packet, tcpseg);
 
     IL3AddressType *addressType = dest.getAddressType();
     ASSERT(tcpseg->getChunkLength() == tcpseg->getHeaderLength());
-    pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
-    auto addresses = pkt->addTagIfAbsent<L3AddressReq>();
+    packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
+
+    if (ttl != -1 && packet->findTag<HopLimitReq>() == nullptr)
+        packet->addTag<HopLimitReq>()->setHopLimit(ttl);
+
+    if (packet->findTag<DscpReq>() == nullptr)
+        packet->addTag<DscpReq>()->setDifferentiatedServicesCodePoint(typeOfService);
+
+    auto addresses = packet->addTagIfAbsent<L3AddressReq>();
     addresses->setSrcAddress(src);
     addresses->setDestAddress(dest);
-    insertTransportProtocolHeader(pkt, Protocol::tcp, tcpseg);
-    check_and_cast<Tcp *>(getSimulation()->getContextModule())->send(pkt, "ipOut");
+
+    insertTransportProtocolHeader(packet, Protocol::tcp, tcpseg);
+
+    tcpMain->send(packet, "ipOut");
 }
 
 void TcpConnection::signalConnectionTimeout()
@@ -298,7 +329,7 @@ void TcpConnection::sendIndicationToApp(int code, const int id)
     auto indication = new Indication(indicationName(code), code);
     TcpCommand *ind = new TcpCommand();
     ind->setUserId(id);
-    indication->addTagIfAbsent<SocketInd>()->setSocketId(socketId);
+    indication->addTag<SocketInd>()->setSocketId(socketId);
     indication->setControlInfo(ind);
     sendToApp(indication);
 }
@@ -314,7 +345,7 @@ void TcpConnection::sendAvailableIndicationToApp()
     ind->setLocalPort(localPort);
     ind->setRemotePort(remotePort);
 
-    indication->addTagIfAbsent<SocketInd>()->setSocketId(listeningSocketId);
+    indication->addTag<SocketInd>()->setSocketId(listeningSocketId);
     indication->setControlInfo(ind);
     sendToApp(indication);
 }
@@ -328,7 +359,7 @@ void TcpConnection::sendEstabIndicationToApp()
     ind->setRemoteAddr(remoteAddr);
     ind->setLocalPort(localPort);
     ind->setRemotePort(remotePort);
-    indication->addTagIfAbsent<SocketInd>()->setSocketId(socketId);
+    indication->addTag<SocketInd>()->setSocketId(socketId);
     indication->setControlInfo(ind);
     sendToApp(indication);
 }
@@ -344,13 +375,13 @@ void TcpConnection::sendAvailableDataToApp()
         if (tcpMain->useDataNotification) {
             auto indication = new Indication("Data Notification", TCP_I_DATA_NOTIFICATION); // TBD currently we never send TCP_I_URGENT_DATA
             TcpCommand *cmd = new TcpCommand();
-            indication->addTagIfAbsent<SocketInd>()->setSocketId(socketId);
+            indication->addTag<SocketInd>()->setSocketId(socketId);
             indication->setControlInfo(cmd);
             sendToApp(indication);
         } else {
             while (auto msg = receiveQueue->extractBytesUpTo(state->rcv_nxt)) {
                 msg->setKind(TCP_I_DATA);    // TBD currently we never send TCP_I_URGENT_DATA
-                msg->addTagIfAbsent<SocketInd>()->setSocketId(socketId);
+                msg->addTag<SocketInd>()->setSocketId(socketId);
                 sendToApp(msg);
             }
         }
@@ -803,8 +834,7 @@ bool TcpConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
     if (seqGreater(state->snd_nxt, state->snd_max))
         state->snd_max = state->snd_nxt;
 
-    if (unackedVector)
-        unackedVector->record(state->snd_max - state->snd_una);
+    emit(unackedSignal, state->snd_max - state->snd_una);
 
     // notify (once is enough)
     tcpAlgorithm->ackSent();
@@ -841,8 +871,7 @@ bool TcpConnection::sendProbe()
     // something we really sent)
     state->snd_max = state->snd_nxt;
 
-    if (unackedVector)
-        unackedVector->record(state->snd_max - state->snd_una);
+    emit(unackedSignal, state->snd_max - state->snd_una);
 
     // notify
     tcpAlgorithm->ackSent();
@@ -871,8 +900,7 @@ void TcpConnection::retransmitOneSegment(bool called_at_rto)
         tcpAlgorithm->segmentRetransmitted(state->snd_nxt, state->snd_nxt + 1);
         state->snd_max = ++state->snd_nxt;
 
-        if (unackedVector)
-            unackedVector->record(state->snd_max - state->snd_una);
+        emit(unackedSignal, state->snd_max - state->snd_una);
     }
     else {
         ASSERT(bytes != 0);
@@ -913,8 +941,7 @@ void TcpConnection::retransmitData()
         sendFin();
         state->snd_max = ++state->snd_nxt;
 
-        if (unackedVector)
-            unackedVector->record(state->snd_max - state->snd_una);
+        emit(unackedSignal, state->snd_max - state->snd_una);
         return;
     }
 
@@ -1306,8 +1333,7 @@ void TcpConnection::updateRcvQueueVars()
     state->usedRcvBuffer = state->maxRcvBuffer - state->freeRcvBuffer;
 
     // update receive queue related statistics
-    if (tcpRcvQueueBytesVector)
-        tcpRcvQueueBytesVector->record(state->usedRcvBuffer);
+    emit(tcpRcvQueueBytesSignal, state->usedRcvBuffer);
 
 //    tcpEV << "receiveQ: receiveQLength=" << receiveQueue->getQueueLength() << " maxRcvBuffer=" << state->maxRcvBuffer << " usedRcvBuffer=" << state->usedRcvBuffer << " freeRcvBuffer=" << state->freeRcvBuffer << "\n";
 }
@@ -1340,14 +1366,12 @@ unsigned short TcpConnection::updateRcvWnd()
     if (win > 0 && seqGE(state->rcv_nxt + win, state->rcv_adv)) {
         state->rcv_adv = state->rcv_nxt + win;
 
-        if (rcvAdvVector)
-            rcvAdvVector->record(state->rcv_adv);
+        emit(rcvAdvSignal, state->rcv_adv);
     }
 
     state->rcv_wnd = win;
 
-    if (rcvWndVector)
-        rcvWndVector->record(state->rcv_wnd);
+    emit(rcvWndSignal, state->rcv_wnd);
 
     // scale rcv_wnd:
     uint32 scaled_rcv_wnd = state->rcv_wnd;
@@ -1384,8 +1408,7 @@ void TcpConnection::updateWndInfo(const Ptr<const TcpHeader>& tcpseg, bool doAlw
         state->snd_wl1 = tcpseg->getSequenceNo();
         state->snd_wl2 = tcpseg->getAckNo();
 
-        if (sndWndVector)
-            sndWndVector->record(state->snd_wnd);
+        emit(sndWndSignal, state->snd_wnd);
     }
 }
 
@@ -1450,8 +1473,7 @@ void TcpConnection::sendOneNewSegment(bool fullSegmentsOnly, uint32 congestionWi
                     if (seqGreater(state->snd_nxt, state->snd_max))
                         state->snd_max = state->snd_nxt;
 
-                    if (unackedVector)
-                        unackedVector->record(state->snd_max - state->snd_una);
+                    emit(unackedSignal, state->snd_max - state->snd_una);
 
                     // reset snd_nxt if needed
                     if (state->afterRto)
