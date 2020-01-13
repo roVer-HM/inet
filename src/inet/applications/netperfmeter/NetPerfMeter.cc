@@ -99,6 +99,26 @@ NetPerfMeter::~NetPerfMeter()
         cancelAndDelete(elem);
         elem = nullptr;
     }
+    if (SocketUDP != nullptr) {
+        delete SocketUDP;
+        SocketUDP = nullptr;
+    }
+    if (SocketTCP != nullptr) {
+        delete SocketTCP;
+        SocketTCP = nullptr;
+    }
+    if (IncomingSocketTCP != nullptr) {
+        delete IncomingSocketTCP;
+        IncomingSocketTCP = nullptr;
+    }
+    if (SocketSCTP != nullptr) {
+        delete SocketSCTP;
+        SocketSCTP = nullptr;
+    }
+    if (IncomingSocketSCTP != nullptr) {
+        delete IncomingSocketSCTP;
+        IncomingSocketSCTP = nullptr;
+    }
 }
 
 
@@ -226,8 +246,7 @@ void NetPerfMeter::initialize(int stage)
         }
 
         // ====== Schedule Connect Timer =========================================
-        ConnectTimer = new cMessage("ConnectTimer");
-        ConnectTimer->setKind(TIMER_CONNECT);
+        ConnectTimer = new cMessage("ConnectTimer", TIMER_CONNECT);
         scheduleAt(ConnectTime, ConnectTimer);
     }
 }
@@ -318,8 +337,7 @@ void NetPerfMeter::handleTimer(cMessage* msg)
 
         assert(StopTimer == nullptr);
         if (StopTime > 0.0) {
-            StopTimer = new cMessage("StopTimer");
-            StopTimer->setKind(TIMER_STOP);
+            StopTimer = new cMessage("StopTimer", TIMER_STOP);
             scheduleAt(simTime() + StopTime, StopTimer);
         }
     }
@@ -409,8 +427,7 @@ void NetPerfMeter::handleMessage(cMessage* msg)
             Message *message = check_and_cast<Message *>(msg);
             int newSockId = message->getTag<SctpAvailableReq>()->getNewSocketId();
             EV_INFO << "new socket id = " << newSockId << endl;
-            Request *cmsg = new Request("SCTP_C_ACCEPT_SOCKET_ID");
-            cmsg->setKind(SCTP_C_ACCEPT_SOCKET_ID);
+            Request *cmsg = new Request("SCTP_C_ACCEPT_SOCKET_ID", SCTP_C_ACCEPT_SOCKET_ID);
             cmsg->addTag<SctpAvailableReq>()->setSocketId(newSockId);
             cmsg->addTag<DispatchProtocolReq>()->setProtocol(&inet::Protocol::sctp);
             cmsg->addTag<SocketReq>()->setSocketId(newSockId);
@@ -632,8 +649,7 @@ void NetPerfMeter::successfullyEstablishedConnection(cMessage*          msg,
     // ====== Schedule Start Timer to begin transmission =====================
     if (OnOffCycleCounter == 0) {
         assert(StartTimer == nullptr);
-        StartTimer = new cMessage("StartTimer");
-        StartTimer->setKind(TIMER_START);
+        StartTimer = new cMessage("StartTimer", TIMER_START);
         TransmissionStartTime = ConnectTime + StartTime;
         if (TransmissionStartTime < simTime()) {
             throw cRuntimeError("Connection establishment has been too late. Check startTime parameter!");
@@ -642,8 +658,7 @@ void NetPerfMeter::successfullyEstablishedConnection(cMessage*          msg,
 
         // ====== Schedule Reset Timer to reset statistics ====================
         assert(ResetTimer == nullptr);
-        ResetTimer = new cMessage("ResetTimer");
-        ResetTimer->setKind(TIMER_RESET);
+        ResetTimer = new cMessage("ResetTimer", TIMER_RESET);
         StatisticsResetTime = ConnectTime + ResetTime;
         scheduleAt(StatisticsResetTime, ResetTimer);
     }
@@ -670,8 +685,7 @@ void NetPerfMeter::startSending()
     // ------ On/Off handling ------------------------------------------------
     const simtime_t onTime = par("onTime");
     if (onTime.dbl() > 0.0) {
-        OffTimer = new cMessage("OffTimer");
-        OffTimer->setKind(TIMER_OFF);
+        OffTimer = new cMessage("OffTimer", TIMER_OFF);
         scheduleAt(simTime() + onTime, OffTimer);
     }
 }
@@ -690,8 +704,7 @@ void NetPerfMeter::stopSending()
     const simtime_t offDuration = par("offTime");
     if ((offDuration.dbl() > 0.0)
             && ((MaxOnOffCycles < 0) || (OnOffCycleCounter <= (unsigned int) MaxOnOffCycles))) {
-        OnTimer = new cMessage("OnTimer");
-        OnTimer->setKind(TIMER_ON);
+        OnTimer = new cMessage("OnTimer", TIMER_ON);
         scheduleAt(simTime() + offDuration, OnTimer);
     }
 }
@@ -1120,8 +1133,7 @@ void NetPerfMeter::sendDataOfNonSaturatedStreams(const unsigned long long bytesA
 
     // ====== Schedule next frame transmission ===============================
     assert(TransmitTimerVector[streamID] == nullptr);
-    TransmitTimerVector[streamID] = new NetPerfMeterTransmitTimer("TransmitTimer");
-    TransmitTimerVector[streamID]->setKind(TIMER_TRANSMIT);
+    TransmitTimerVector[streamID] = new NetPerfMeterTransmitTimer("TransmitTimer", TIMER_TRANSMIT);
     TransmitTimerVector[streamID]->setStreamID(streamID);
     const double nextFrameTime = 1.0 / frameRate;
     /*
@@ -1156,8 +1168,7 @@ void NetPerfMeter::sendDataOfTraceFile(const unsigned long long bytesAvailableIn
     if (TraceIndex < TraceVector.size()) {
         const double nextFrameTime = TraceVector[TraceIndex].InterFrameDelay;
         assert(TransmitTimerVector[0] == nullptr);
-        TransmitTimerVector[0] = new NetPerfMeterTransmitTimer("TransmitTimer");
-        TransmitTimerVector[0]->setKind(TIMER_TRANSMIT);
+        TransmitTimerVector[0] = new NetPerfMeterTransmitTimer("TransmitTimer", TIMER_TRANSMIT);
         TransmitTimerVector[0]->setStreamID(0);
 
         // std::cout << simTime() << ", " << getFullPath()
@@ -1198,12 +1209,11 @@ void NetPerfMeter::sendSCTPQueueRequest(const unsigned int queueSize)
     // When the queue is able accept more data again, it will be indicated by
     // SCTP_I_SENDQUEUE_ABATED!
 
-    Request* cmsg = new Request("QueueRequest");
+    Request* cmsg = new Request("QueueRequest", SCTP_C_QUEUE_BYTES_LIMIT);
     SctpInfoReq* queueInfo = cmsg->addTag<SctpInfoReq>();
     queueInfo->setText(queueSize);
     queueInfo->setSocketId(ConnectionID);
 
-    cmsg->setKind(SCTP_C_QUEUE_BYTES_LIMIT);
     if (IncomingSocketSCTP) {
         IncomingSocketSCTP->sendRequest(cmsg);
     }

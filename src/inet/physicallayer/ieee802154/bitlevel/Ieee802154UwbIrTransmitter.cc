@@ -159,8 +159,8 @@ Ptr<const IFunction<WpHz, Domain<simsec, Hz>>> Ieee802154UwbIrTransmitter::gener
     // data start time relative to signal->getReceptionStart();
     simtime_t dataStart = cfg.preambleLength; // = Tsync + Tsfd
     std::map<simsec, WpHz> data;
-    data[getLowerBoundary<simsec>()] = WpHz(0);
-    data[getUpperBoundary<simsec>()] = WpHz(0);
+    data[getLowerBound<simsec>()] = WpHz(0);
+    data[getUpperBound<simsec>()] = WpHz(0);
     simtime_t time = 0;
 
     generateSyncPreamble(data, time, startTime);
@@ -177,9 +177,9 @@ Ptr<const IFunction<WpHz, Domain<simsec, Hz>>> Ieee802154UwbIrTransmitter::gener
         generateBurst(data, time, startTime, burstPos, +1);
         symbolStart = symbolStart + cfg.data_symbol_duration;
     }
-    auto timeFunction = makeShared<OneDimensionalInterpolatedFunction<WpHz, simsec>>(data, &LinearInterpolator<simsec, WpHz>::singleton);
-    auto frequencyFunction = makeShared<OneDimensionalBoxcarFunction<double, Hz>>(GHz(3.1), GHz(10.6), 1);
-    return makeShared<OrthogonalCombinatorFunction<WpHz, simsec, Hz>>(timeFunction, frequencyFunction);
+    auto timeFunction = makeShared<Interpolated1DFunction<WpHz, simsec>>(data, &LinearInterpolator<simsec, WpHz>::singleton);
+    auto frequencyFunction = makeShared<Boxcar1DFunction<double, Hz>>(GHz(3.1), GHz(10.6), 1);
+    return makeShared<Combined2DFunction<WpHz, simsec, Hz>>(timeFunction, frequencyFunction);
 }
 
 const ITransmission *Ieee802154UwbIrTransmitter::createTransmission(const IRadio *transmitter, const Packet *packet, const simtime_t startTime) const

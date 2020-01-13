@@ -27,10 +27,10 @@ three main features, and boolean parameters for turning them on/off:
    animated disks (:par:`displaySignals` parameter)
 -  **Indication of signal departures and arrivals**: Icons are placed
    above nodes when a signal is departing from them or arriving at their
-   location (``displaySignalDepartures`` and ``displaySignalArrivals``
+   location (:par:`displaySignalDepartures` and :par:`displaySignalArrivals`
    parameters)
 -  **Displaying communication and interference ranges**: Ranges are
-   displayed as circles around nodes ``displayCommunicationRanges`` and
+   displayed as circles around nodes (:par:`displayCommunicationRanges` and
    :par:`displayInterferenceRanges` parameters)
 
 The features above will be described in more detail in the following
@@ -103,7 +103,7 @@ The following video illustrates the visualization of propagating
 signals:
 
 .. video:: media/propagation9.mp4
-   :width: 698
+   :width: 100%
 
 ``host1`` sends an ARP request packet to ``host2``, which sends an
 ARP reply. ``host1`` ACKs it, then sends the first UDP packet. This transmission
@@ -277,7 +277,7 @@ range circles would be if they were enabled:
 When the simulation is run, this happens:
 
 .. video:: media/MultipleNodes14.mp4
-   :width: 698
+   :width: 100%
 
    <!--internal video recording, animation speed none, playback speed 1.00-->
 
@@ -315,7 +315,7 @@ effectively.
 Here is what happens when the simulation is run:
 
 .. video:: media/interference.mp4
-   :width: 698
+   :width: 100%
 
 The two sources can't detect each other's transmissions, but they receive
 the ACKs and ping replies of the destination. Receiving these transmissions

@@ -1,4 +1,3 @@
-//
 // Copyright (C) 2016 OpenSim Ltd.
 //
 // This program is free software; you can redistribute it and/or
@@ -81,7 +80,9 @@ void Ieee80211Mac::initialize(int stage)
         rx = check_and_cast<IRx *>(getSubmodule("rx"));
         tx = check_and_cast<ITx *>(getSubmodule("tx"));
         dcf = check_and_cast<Dcf *>(getSubmodule("dcf"));
-        hcf = check_and_cast<Hcf *>(getSubmodule("hcf"));
+        hcf = check_and_cast_nullable<Hcf *>(getSubmodule("hcf"));
+        if (mib->qos && !hcf)
+            throw cRuntimeError("Missing hcf module, required for QoS");
     }
 }
 
@@ -112,7 +113,7 @@ const MacAddress& Ieee80211Mac::isInterfaceRegistered()
     if (!interfaceModule)
         throw cRuntimeError("NIC module not found in the host");
     std::string interfaceName = utils::stripnonalnum(interfaceModule->getFullName());
-    InterfaceEntry *e = ift->getInterfaceByName(interfaceName.c_str());
+    InterfaceEntry *e = ift->findInterfaceByName(interfaceName.c_str());
     if (e)
         return e->getMacAddress();
     return MacAddress::UNSPECIFIED_ADDRESS;
@@ -309,7 +310,7 @@ void Ieee80211Mac::decapsulate(Packet *packet)
     packet->popAtBack<Ieee80211MacTrailer>(B(4));
 }
 
-void Ieee80211Mac::receiveSignal(cComponent *source, simsignal_t signalID, long value, cObject *details)
+void Ieee80211Mac::receiveSignal(cComponent *source, simsignal_t signalID, intval_t value, cObject *details)
 {
     Enter_Method_Silent("receiveSignal");
     if (signalID == IRadio::receptionStateChangedSignal) {

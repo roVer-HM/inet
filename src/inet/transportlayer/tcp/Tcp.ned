@@ -210,15 +210,16 @@ simple Tcp like ITcp
         bool useDataNotification = default(false); // turn the notifications for arrived data on or off
         double stopOperationExtraTime @unit(s) = default(0s);    // extra time after lifecycle stop operation finished
         double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        bool ecnWillingness = default(false);	// true if willing to use ECN
         @display("i=block/wheelbarrow");
         @signal[tcpConnectionAdded];
         @signal[tcpConnectionRemoved];
         @signal[packetReceivedFromUpper](type=cPacket);
         @signal[packetReceivedFromLower](type=cPacket);
     gates:
-        input appIn @labels(TcpCommand/down);
+        input appIn @labels(TcpCommand/down) @messageKinds(inet::TcpCommandCode);
         input ipIn @labels(TcpHeader,Ipv4ControlInfo/up,Ipv6ControlInfo/up);
-        output appOut @labels(TcpCommand/up);
+        output appOut @labels(TcpCommand/up) @messageKinds(inet::TcpStatusInd);
         output ipOut @labels(TcpHeader,Ipv4ControlInfo/down,Ipv6ControlInfo/down);
 }
 

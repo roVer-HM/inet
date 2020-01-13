@@ -20,10 +20,8 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/routing/bgpv4/BgpRouter.h"
 #include "inet/routing/bgpv4/BgpSession.h"
-//#include "inet/routing/ospfv2/router/OspfRoutingTableEntry.h"
 
 namespace inet {
-
 namespace bgp {
 
 BgpRouter::BgpRouter(cSimpleModule *bgpModule, IInterfaceTable *ift, IIpv4RoutingTable *rt)
@@ -32,7 +30,7 @@ BgpRouter::BgpRouter(cSimpleModule *bgpModule, IInterfaceTable *ift, IIpv4Routin
     this->ift = ift;
     this->rt = rt;
 
-    ospfModule = getModuleFromPar<ospf::Ospf>(bgpModule->par("ospfRoutingModule"), bgpModule, false);
+    ospfModule = getModuleFromPar<ospfv2::Ospfv2>(bgpModule->par("ospfRoutingModule"), bgpModule, false);
 }
 
 BgpRouter::~BgpRouter(void)
@@ -273,18 +271,18 @@ void BgpRouter::setRedistributeOspf(std::string str)
     redistributeOspf = true;
     std::vector<std::string> tokens = cStringTokenizer(str.c_str()).asVector();
 
-    for(auto& OspfRouteType : tokens) {
-        std::transform(OspfRouteType.begin(), OspfRouteType.end(), OspfRouteType.begin(), ::tolower);
-        if(OspfRouteType == "o")
+    for(auto& Ospfv2RouteType : tokens) {
+        std::transform(Ospfv2RouteType.begin(), Ospfv2RouteType.end(), Ospfv2RouteType.begin(), ::tolower);
+        if(Ospfv2RouteType == "o")
             redistributeOspfType.intraArea = true;
-        else if(OspfRouteType == "ia")
+        else if(Ospfv2RouteType == "ia")
             redistributeOspfType.interArea = true;
-        else if(OspfRouteType == "e1")
+        else if(Ospfv2RouteType == "e1")
             redistributeOspfType.externalType1 = true;
-        else if(OspfRouteType == "e2")
+        else if(Ospfv2RouteType == "e2")
             redistributeOspfType.externalType2 = true;
         else
-            throw cRuntimeError("Unknown OSPF redistribute type '%s' in BGP router %s", OspfRouteType.c_str(), bgpModule->getOwner()->getFullName());
+            throw cRuntimeError("Unknown OSPF redistribute type '%s' in BGP router %s", Ospfv2RouteType.c_str(), bgpModule->getOwner()->getFullName());
     }
 }
 
@@ -427,16 +425,22 @@ void BgpRouter::socketFailure(TcpSocket *socket, int code)
     }
 }
 
-void BgpRouter::socketDataArrived(TcpSocket *socket, Packet *msg, bool urgent)
+void BgpRouter::socketDataArrived(TcpSocket *socket)
+{
+    auto queue = socket->getReceiveQueue();
+    while (queue->has<BgpHeader>()) {
+        auto header = queue->pop<BgpHeader>();
+        processChunks(*header.get());
+    }
+}
+
+void BgpRouter::socketDataArrived(TcpSocket *socket, Packet *packet, bool urgent)
 {
     _currSessionId = findIdFromSocketConnId(_BGPSessions, socket->getSocketId());
-    if (_currSessionId != static_cast<SessionId>(-1)) {
-        while (msg->getByteLength() > 0) {
-            const auto& chunk = msg->popAtFront<BgpHeader>();
-            processChunks(*(chunk.get()));
-        }
-    }
-    delete msg;
+    if (_currSessionId != static_cast<SessionId>(-1))
+        ReceiveQueueBasedCallback::socketDataArrived(socket, packet, urgent);
+    else
+        delete packet;
 }
 
 void BgpRouter::processChunks(const BgpHeader& ptrHdr)
@@ -646,7 +650,7 @@ unsigned char BgpRouter::decisionProcess(const BgpUpdateMessage& msg, BgpRouting
             InterfaceEntry *ie = entry->getInterface();
             if (!ie)
                 throw cRuntimeError("Model error: interface entry is nullptr");
-            ospf::Ipv4AddressRange OSPFnetAddr;
+            ospfv2::Ipv4AddressRange OSPFnetAddr;
             OSPFnetAddr.address = entry->getDestination();
             OSPFnetAddr.mask = entry->getNetmask();
             if(!ospfModule)
@@ -1020,17 +1024,17 @@ bool BgpRouter::isRouteExcluded(const Ipv4Route &rtEntry)
         if(!redistributeOspf)
             return true;
 
-        auto entry = static_cast<const ospf::OspfRoutingTableEntry *>(&rtEntry);
+        auto entry = static_cast<const ospfv2::Ospfv2RoutingTableEntry *>(&rtEntry);
         ASSERT(entry);
 
-        if(entry->getPathType() == ospf::OspfRoutingTableEntry::INTRAAREA) {
+        if(entry->getPathType() == ospfv2::Ospfv2RoutingTableEntry::INTRAAREA) {
             if(redistributeOspfType.intraArea)
                 return false;
             else
                 return true;
         }
 
-        if(entry->getPathType() == ospf::OspfRoutingTableEntry::INTERAREA) {
+        if(entry->getPathType() == ospfv2::Ospfv2RoutingTableEntry::INTERAREA) {
             if(redistributeOspfType.interArea)
                 return false;
             else
