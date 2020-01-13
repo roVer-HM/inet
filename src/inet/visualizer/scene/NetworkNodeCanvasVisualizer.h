@@ -33,19 +33,16 @@ class INET_API NetworkNodeCanvasVisualizer : public NetworkNodeVisualizerBase
     double zIndex = NaN;
     std::map<const cModule *, NetworkNodeCanvasVisualization *> networkNodeVisualizations;
 
-
   protected:
     virtual void initialize(int stage) override;
     virtual void refreshDisplay() const override;
-    virtual void setNetworkNodeVisualization(const cModule *networkNode, NetworkNodeCanvasVisualization *networkNodeVisualization);
+
     virtual NetworkNodeCanvasVisualization *createNetworkNodeVisualization(cModule *networkNode) const override;
     virtual void addNetworkNodeVisualization(NetworkNodeVisualization *networkNodeVisualization) override;
     virtual void removeNetworkNodeVisualization(NetworkNodeVisualization *networkNodeVisualization) override;
 
   public:
     virtual NetworkNodeCanvasVisualization *getNetworkNodeVisualization(const cModule *networkNode) const override;
-    virtual bool addNetworkNode(cModule *networkNode);
-    virtual void removeNetworkNode(const cModule *networkNode);
 };
 
 } // namespace visualizer
