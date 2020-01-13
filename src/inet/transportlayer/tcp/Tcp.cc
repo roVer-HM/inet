@@ -24,6 +24,7 @@
 #include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/lifecycle/NodeStatus.h"
 #include "inet/common/packet/Message.h"
+#include "inet/networklayer/common/EcnTag_m.h"
 #include "inet/networklayer/common/IpProtocolId_m.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
 
@@ -53,11 +54,6 @@ simsignal_t Tcp::tcpConnectionRemovedSignal = registerSignal("tcpConnectionRemov
 
 Tcp::~Tcp()
 {
-    while (!tcpAppConnMap.empty()) {
-        auto i = tcpAppConnMap.begin();
-        delete i->second;
-        tcpAppConnMap.erase(i);
-    }
 }
 
 void Tcp::initialize(int stage)
@@ -102,9 +98,7 @@ void Tcp::finish()
 
 void Tcp::handleSelfMessage(cMessage *msg)
 {
-    TcpConnection *conn = (TcpConnection *)msg->getContextPointer();
-    if (!conn->processTimer(msg))
-        removeConnection(conn);
+    throw cRuntimeError("model error: should schedule timers on connection");
 }
 
 void Tcp::handleUpperCommand(cMessage *msg)
@@ -124,6 +118,13 @@ void Tcp::handleUpperCommand(cMessage *msg)
 
     if (!conn->processAppCommand(msg))
         removeConnection(conn);
+}
+
+void Tcp::sendFromConn(cMessage *msg, const char *gatename, int gateindex)
+{
+    Enter_Method_Silent();
+    take(msg);
+    send(msg, gatename, gateindex);
 }
 
 void Tcp::handleUpperPacket(Packet *packet)
@@ -157,10 +158,23 @@ void Tcp::handleLowerPacket(Packet *packet)
         L3Address srcAddr, destAddr;
         srcAddr = packet->getTag<L3AddressInd>()->getSrcAddress();
         destAddr = packet->getTag<L3AddressInd>()->getDestAddress();
+        int ecn = 0;
+        if (auto ecnTag = packet->findTag<EcnInd>())
+            ecn = ecnTag->getExplicitCongestionNotification();
+        ASSERT(ecn != -1);
 
         // process segment
         TcpConnection *conn = findConnForSegment(tcpHeader, srcAddr, destAddr);
         if (conn) {
+            TcpStateVariables* state = conn->getState();
+            if (state && state->ect) {
+                // This may be true only in receiver side. According to RFC 3168, page 20:
+                // pure acknowledgement packets (e.g., packets that do not contain
+                // any accompanying data) MUST be sent with the not-ECT codepoint.
+                if (ecn == 3)
+                    state->gotCeIndication = true;
+            }
+
             bool ret = conn->processTCPSegment(packet, tcpHeader, srcAddr, destAddr);
             if (!ret)
                 removeConnection(conn);
@@ -182,11 +196,8 @@ TcpConnection *Tcp::createConnection(int socketId)
     auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
     char submoduleName[24];
     sprintf(submoduleName, "conn-%d", socketId);
-    auto module = check_and_cast<TcpConnection *>(moduleType->create(submoduleName, this));
-    module->finalizeParameters();
-    module->buildInside();
+    auto module = check_and_cast<TcpConnection *>(moduleType->createScheduleInit(submoduleName, this));
     module->initConnection(this, socketId);
-    module->callInitialize();
     return module;
 }
 
@@ -259,9 +270,7 @@ void Tcp::segmentArrivalWhileClosed(Packet *packet, const Ptr<const TcpHeader>& 
 {
     auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
     const char *submoduleName = "conn-temp";
-    auto module = check_and_cast<TcpConnection *>(moduleType->create(submoduleName, this));
-    module->finalizeParameters();
-    module->buildInside();
+    auto module = check_and_cast<TcpConnection *>(moduleType->createScheduleInit(submoduleName, this));
     module->initConnection(this, -1);
     module->segmentArrivalWhileClosed(packet, tcpseg, srcAddr, destAddr);
     module->deleteModule();
@@ -383,7 +392,7 @@ void Tcp::handleCrashOperation(LifecycleOperation *operation)
 void Tcp::reset()
 {
     for (auto & elem : tcpAppConnMap)
-        delete elem.second;
+        elem.second->deleteModule();
     tcpAppConnMap.clear();
     tcpConnMap.clear();
     usedEphemeralPorts.clear();

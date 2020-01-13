@@ -51,7 +51,6 @@ void CsmaCaMac::initialize(int stage)
     if (stage == INITSTAGE_LOCAL) {
         EV << "Initializing stage 0\n";
         fcsMode = parseFcsMode(par("fcsMode"));
-        maxQueueSize = par("maxQueueSize");
         useAck = par("useAck");
         bitrate = par("bitrate");
         headerLength = B(par("headerLength"));
@@ -369,7 +368,7 @@ void CsmaCaMac::handleWithFsm(cMessage *msg)
     getDisplayString().setTagArg("t", 0, fsm.getStateName());
 }
 
-void CsmaCaMac::receiveSignal(cComponent *source, simsignal_t signalID, long value, cObject *details)
+void CsmaCaMac::receiveSignal(cComponent *source, simsignal_t signalID, intval_t value, cObject *details)
 {
     Enter_Method_Silent();
     if (signalID == IRadio::receptionStateChangedSignal)

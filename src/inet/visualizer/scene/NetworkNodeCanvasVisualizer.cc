@@ -34,11 +34,27 @@ void NetworkNodeCanvasVisualizer::initialize(int stage)
         canvasProjection = CanvasProjection::getCanvasProjection(canvas);
         for (cModule::SubmoduleIterator it(visualizationSubjectModule); !it.end(); it++) {
             auto networkNode = *it;
-            if (isNetworkNode(networkNode) && nodeFilter.matches(networkNode)) {
-                auto visualization = createNetworkNodeVisualization(networkNode);
-                addNetworkNodeVisualization(visualization);
-            }
+            addNetworkNode(networkNode);
         }
+    }
+}
+
+bool NetworkNodeCanvasVisualizer::addNetworkNode(cModule *networkNode){
+    if (isNetworkNode(networkNode) && nodeFilter.matches(networkNode)) {
+        auto visualization = createNetworkNodeVisualization(networkNode);
+        visualization->setZIndex(zIndex);
+        setNetworkNodeVisualization(networkNode, visualization);
+        visualizationTargetModule->getCanvas()->addFigure(visualization);
+        return true;
+    }
+    return false;
+}
+
+void NetworkNodeCanvasVisualizer::removeNetworkNode(const cModule *networkNode){
+
+    NetworkNodeCanvasVisualization *vis = getNetworkNodeVisualization(networkNode);
+    if (vis){
+        networkNodeVisualizations.erase(networkNode);
     }
 }
 

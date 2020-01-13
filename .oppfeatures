@@ -81,7 +81,7 @@
         name="INET examples"
         description = "Examples for basic internet protocols (IPv4, TCP, UDP)"
         initiallyEnabled = "true"
-        requires = "IPv4 TCP_INET UDP Ethernet PPP Ieee80211"
+        requires = "IPv4 TCP_INET UDP Ethernet PPP"
         labels = "protocols examples"
         nedPackages = "
                        inet.examples.inet
@@ -436,6 +436,35 @@
         linkerFlags = ""
         />
     <feature
+        id="OSPFv3"
+        name="OSPFv3"
+        description = "OSPFv3 support"
+        initiallyEnabled = "true"
+        requires = "IPv4 IPv6"
+        labels = "routing"
+        nedPackages = "
+                       inet.routing.ospfv3
+                       inet.node.ospfv3
+                      "
+        extraSourceFolders = ""
+        compileFlags = "-DWITH_OSPFv3"
+        linkerFlags = ""
+        />
+    <feature
+        id="OSPFv3_examples"
+        name="OSPFv3 examples"
+        description = "Examples for OSPFv3"
+        initiallyEnabled = "true"
+        requires = "OSPFv3 UDP IPv4 IPv6 PPP Ethernet"
+        labels = "routing examples"
+        nedPackages = "
+                       inet.examples.ospfv3
+                      "
+        extraSourceFolders = ""
+        compileFlags = ""
+        linkerFlags = ""
+        />
+    <feature
         id="BGPv4"
         name="BGPv4"
         description = "BGP support"
@@ -689,7 +718,7 @@
         id="radio"
         name="Radio"
         description = "Radio support for wireless simulations"
-        requires = "power"
+        requires = ""
         labels = ""
         nedPackages = "
                        inet.physicallayer.analogmodel
@@ -834,7 +863,7 @@
     <feature
         id="VoIPStream"
         name="VoIPStream"
-        description = "Voice over IP tool. Required external libraries: libavcodec libavformat libavresample libavutil"
+        description = "Voice-over-IP application. Required external libraries: libavcodec-dev libavformat-dev libavresample-dev libavutil-dev"
         initiallyEnabled = "false"
         requires = "UDP"
         labels = ""
@@ -1168,6 +1197,18 @@
         requires = "visualization physicalenvironment Ieee80211 IPv4 GPSR"
         labels = "showcase routing"
         nedPackages = "inet.showcases.routing"
+        extraSourceFolders = ""
+        compileFlags = ""
+        linkerFlags = ""
+        />
+    <feature
+        id="emulation_showcases"
+        name="Emulation showcases"
+        description = "Showcases that demonstrate communication with external systems/components."
+        initiallyEnabled = "false"
+        requires = "VoIPStream Ethernet Ieee80211 ExternalInterface"
+        labels = "showcase emulation"
+        nedPackages = "inet.showcases.emulation"
         extraSourceFolders = ""
         compileFlags = ""
         linkerFlags = ""

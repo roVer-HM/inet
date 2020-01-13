@@ -12,7 +12,7 @@
 
 package inet.linklayer.lmac;
 
-import inet.common.queueing.contract.IPacketQueue;
+import inet.queueing.contract.IPacketQueue;
 import inet.linklayer.base.MacProtocolBase;
 import inet.linklayer.contract.IMacProtocol;
 
@@ -31,9 +31,8 @@ module LMac extends MacProtocolBase like IMacProtocol
         // how long is a slot?
         double slotDuration @unit(s) = default(100ms);
         int headerLength @unit(b) = default(10b);
+        int ctrlFrameLength @unit(b) = default(headerLength);
         int mtu @unit(B) = default(0B);
-        // length of MAC header
-        int queueLength = default(10);
         // default channel
         double defaultChannel = default(0);
         // bit rate
@@ -48,12 +47,12 @@ module LMac extends MacProtocolBase like IMacProtocol
         @class(LMac);
         @statistic[packetDropIncorrectlyReceived](title="packet drop: incorrectly received"; source=packetDropReasonIsIncorrectlyReceived(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
         @statistic[packetDropNotAddressedToUs](title="packet drop: not addressed to us"; source=packetDropReasonIsNotAddressedToUs(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
+        @selfMessageKinds(inet::LMacType);
     submodules:
         queue: <default("DropTailQueue")> like IPacketQueue {
             parameters:
-                frameCapacity = default(queueLength);
+                packetCapacity = default(10);
                 @display("p=100,100;q=l2queue");
         }
-    connections allowunconnected:
 }
 

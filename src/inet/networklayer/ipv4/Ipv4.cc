@@ -40,6 +40,7 @@
 #include "inet/networklayer/common/L3Tools.h"
 #include "inet/networklayer/common/MulticastTag_m.h"
 #include "inet/networklayer/common/NextHopAddressTag_m.h"
+#include "inet/networklayer/common/TosTag_m.h"
 #include "inet/networklayer/contract/IArp.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/networklayer/contract/ipv4/Ipv4SocketCommand_m.h"
@@ -443,7 +444,7 @@ void Ipv4::datagramLocalOut(Packet *packet)
 
         // loop back a copy
         if (multicastLoop && (!destIE || !destIE->isLoopback())) {
-            const InterfaceEntry *loopbackIF = ift->getFirstLoopbackInterface();
+            const InterfaceEntry *loopbackIF = ift->findFirstLoopbackInterface();
             if (loopbackIF) {
                 auto packetCopy = packet->dup();
                 packetCopy->addTagIfAbsent<InterfaceReq>()->setInterfaceId(loopbackIF->getInterfaceId());
@@ -477,7 +478,7 @@ void Ipv4::datagramLocalOut(Packet *packet)
                 packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(-1);
             }
             if (!destIE) {
-                destIE = ift->getFirstLoopbackInterface();
+                destIE = ift->findFirstLoopbackInterface();
                 packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(destIE ? destIE->getInterfaceId() : -1);
             }
             ASSERT(destIE);
@@ -519,7 +520,7 @@ const InterfaceEntry *Ipv4::determineOutgoingInterfaceForMulticastDatagram(const
             EV_DETAIL << "multicast packet routed by source address via output interface " << ie->getInterfaceName() << "\n";
     }
     if (!ie) {
-        ie = ift->getFirstMulticastInterface();
+        ie = ift->findFirstMulticastInterface();
         if (ie)
             EV_DETAIL << "multicast packet routed via the first multicast interface " << ie->getInterfaceName() << "\n";
     }
@@ -600,9 +601,16 @@ void Ipv4::routeLocalBroadcastPacket(Packet *packet)
         fragmentPostRouting(packet);
     }
     else if (limitedBroadcast) {
-        // forward to each interface including loopback
+        auto destAddr = packet->peekAtFront<Ipv4Header>()->getDestAddress();
+        // forward to each matching interfaces including loopback
         for (int i = 0; i < ift->getNumInterfaces(); i++) {
             const InterfaceEntry *ie = ift->getInterface(i);
+            if (!destAddr.isLimitedBroadcastAddress()) {
+                Ipv4Address interfaceAddr = ie->getProtocolData<Ipv4InterfaceData>()->getIPAddress();
+                Ipv4Address broadcastAddr = interfaceAddr.makeBroadcastAddress(ie->getProtocolData<Ipv4InterfaceData>()->getNetmask());
+                if (destAddr != broadcastAddr)
+                    continue;
+            }
             auto packetCopy = packet->dup();
             packetCopy->addTagIfAbsent<InterfaceReq>()->setInterfaceId(ie->getInterfaceId());
             packetCopy->addTagIfAbsent<NextHopAddressReq>()->setNextHopAddress(Ipv4Address::ALLONES_ADDRESS);
@@ -788,8 +796,9 @@ void Ipv4::decapsulate(Packet *packet)
     const auto& ipv4Header = packet->popAtFront<Ipv4Header>();
 
     // create and fill in control info
-    packet->addTagIfAbsent<DscpInd>()->setDifferentiatedServicesCodePoint(ipv4Header->getDiffServCodePoint());
-    packet->addTagIfAbsent<EcnInd>()->setExplicitCongestionNotification(ipv4Header->getExplicitCongestionNotification());
+    packet->addTagIfAbsent<DscpInd>()->setDifferentiatedServicesCodePoint(ipv4Header->getDscp());
+    packet->addTagIfAbsent<EcnInd>()->setExplicitCongestionNotification(ipv4Header->getEcn());
+    packet->addTagIfAbsent<TosInd>()->setTos(ipv4Header->getTypeOfService());
 
     // original Ipv4 datagram might be needed in upper layers to send back ICMP error message
 
@@ -990,12 +999,20 @@ void Ipv4::encapsulate(Packet *transportPacket)
     }
 
     // set other fields
+    if (TosReq *tosReq = transportPacket->removeTagIfPresent<TosReq>()) {
+        ipv4Header->setTypeOfService(tosReq->getTos());
+        delete tosReq;
+        if (transportPacket->findTag<DscpReq>())
+            throw cRuntimeError("TosReq and DscpReq found together");
+        if (transportPacket->findTag<EcnReq>())
+            throw cRuntimeError("TosReq and EcnReq found together");
+    }
     if (DscpReq *dscpReq = transportPacket->removeTagIfPresent<DscpReq>()) {
-        ipv4Header->setDiffServCodePoint(dscpReq->getDifferentiatedServicesCodePoint());
+        ipv4Header->setDscp(dscpReq->getDifferentiatedServicesCodePoint());
         delete dscpReq;
     }
     if (EcnReq *ecnReq = transportPacket->removeTagIfPresent<EcnReq>()) {
-        ipv4Header->setExplicitCongestionNotification(ecnReq->getExplicitCongestionNotification());
+        ipv4Header->setEcn(ecnReq->getExplicitCongestionNotification());
         delete ecnReq;
     }
 

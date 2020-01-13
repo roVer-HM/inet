@@ -68,8 +68,7 @@ void PacketDrillApp::initialize(int stage)
         eventCounter = 0;
         numEvents = 0;
         localVTag = 0;
-        eventTimer = new cMessage("event timer");
-        eventTimer->setKind(MSGKIND_EVENT);
+        eventTimer = new cMessage("event timer", MSGKIND_EVENT);
         simStartTime = simTime();
         simRelTime = simTime();
     } else if (stage == INITSTAGE_APPLICATION_LAYER) {
@@ -87,7 +86,7 @@ void PacketDrillApp::initialize(int stage)
         const char *interface = par("interface");
         //const char *interfaceTableModule = par("interfaceTableModule");
         IInterfaceTable *interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
-        InterfaceEntry *interfaceEntry = interfaceTable->getInterfaceByName(interface);
+        InterfaceEntry *interfaceEntry = interfaceTable->findInterfaceByName(interface);
         if (interfaceEntry == nullptr)
             throw cRuntimeError("TUN interface not found: %s", interface);
         auto *idat = interfaceEntry->getProtocolData<Ipv4InterfaceData>();
@@ -97,8 +96,7 @@ void PacketDrillApp::initialize(int stage)
         tunInterfaceId = interfaceEntry->getInterfaceId();
         tunSocketId = tunSocket.getSocketId();
 
-        cMessage* timeMsg = new cMessage("PacketDrillAppTimer");
-        timeMsg->setKind(MSGKIND_START);
+        cMessage* timeMsg = new cMessage("PacketDrillAppTimer", MSGKIND_START);
         scheduleAt(par("startTime"), timeMsg);
     }
 }
@@ -657,7 +655,7 @@ void PacketDrillApp::runSystemCallEvent(PacketDrillEvent* event, struct syscall_
     char *error = NULL;
     const char *name = syscall->name;
     cQueue *args = new cQueue("systemCallEventQueue");
-    int result = 0;
+    int result = STATUS_OK;
 
     // Evaluate script symbolic expressions to get live numeric args for system calls.
 
@@ -671,35 +669,35 @@ void PacketDrillApp::runSystemCallEvent(PacketDrillEvent* event, struct syscall_
     }
 
     if (!strcmp(name, "socket")) {
-        syscallSocket(syscall, args, &error);
+        result = syscallSocket(syscall, args, &error);
     } else if (!strcmp(name, "bind")) {
-        syscallBind(syscall, args, &error);
+        result = syscallBind(syscall, args, &error);
     } else if (!strcmp(name, "listen")) {
-        syscallListen(syscall, args, &error);
+        result = syscallListen(syscall, args, &error);
     } else if (!strcmp(name, "write") || !strcmp(name, "send")) {
-        syscallWrite(syscall, args, &error);
+        result = syscallWrite(syscall, args, &error);
     } else if (!strcmp(name, "read")) {
-        syscallRead(event, syscall, args, &error);
+        result = syscallRead(event, syscall, args, &error);
     } else if (!strcmp(name, "sendto")) {
-        syscallSendTo(syscall, args, &error);
+        result = syscallSendTo(syscall, args, &error);
     } else if (!strcmp(name, "recvfrom")) {
-        syscallRecvFrom(event, syscall, args, &error);
+        result = syscallRecvFrom(event, syscall, args, &error);
     } else if (!strcmp(name, "close")) {
-        syscallClose(syscall, args, &error);
+        result = syscallClose(syscall, args, &error);
     } else if (!strcmp(name, "shutdown")) {
-        syscallShutdown(syscall, args, &error);
+        result = syscallShutdown(syscall, args, &error);
     } else if (!strcmp(name, "connect")) {
-        syscallConnect(syscall, args, &error);
+        result = syscallConnect(syscall, args, &error);
     } else if (!strcmp(name, "accept")) {
-        syscallAccept(syscall, args, &error);
+        result = syscallAccept(syscall, args, &error);
     } else if (!strcmp(name, "setsockopt")) {
-        syscallSetsockopt(syscall, args, &error);
+        result = syscallSetsockopt(syscall, args, &error);
     } else if (!strcmp(name, "getsockopt")) {
-        syscallGetsockopt(syscall, args, &error);
+        result = syscallGetsockopt(syscall, args, &error);
     } else if (!strcmp(name, "sctp_sendmsg")) {
-        syscallSctpSendmsg(syscall, args, &error);
+        result = syscallSctpSendmsg(syscall, args, &error);
     } else if (!strcmp(name, "sctp_send")) {
-        syscallSctpSend(syscall, args, &error);
+        result = syscallSctpSend(syscall, args, &error);
     } else {
         EV_INFO << "System call %s not known (yet)." << name;
     }
@@ -884,7 +882,7 @@ int PacketDrillApp::syscallWrite(struct syscall_spec *syscall, cQueue *args, cha
             break;
         }
         case IP_PROT_SCTP: {
-            Packet* cmsg = new Packet("AppData");
+            Packet* cmsg = new Packet("AppData", SCTP_C_SEND_ORDERED);
             auto applicationData = makeShared<BytesChunk>();
             uint32 sendBytes = syscall->result->getNum();
             std::vector<uint8_t> vec;
@@ -894,7 +892,6 @@ int PacketDrillApp::syscallWrite(struct syscall_spec *syscall, cQueue *args, cha
             applicationData->setBytes(vec);
             applicationData->addTag<CreationTimeTag>()->setCreationTime(simTime());
 
-            cmsg->setKind(SCTP_C_SEND_ORDERED);
             cmsg->insertAtBack(applicationData);
             auto sendCommand = cmsg->addTag<SctpSendReq>();
             sendCommand->setLast(true);
@@ -1023,7 +1020,7 @@ int PacketDrillApp::syscallSetsockopt(struct syscall_spec *syscall, cQueue *args
         }
         case EXPR_SCTP_RESET_STREAMS: {
             struct sctp_reset_streams_expr *rs = exp->getResetStreams();
-            Message *cmsg = new Message("SCTP_C_STREAM_RESET");
+            Message *cmsg = new Message("SCTP_C_STREAM_RESET", SCTP_C_STREAM_RESET);
             SctpResetReq *rinfo = cmsg->addTag<SctpResetReq>();
             rinfo->setSocketId(-1);
             rinfo->setFd(rs->srs_assoc_id->getNum());
@@ -1038,7 +1035,6 @@ int PacketDrillApp::syscallSetsockopt(struct syscall_spec *syscall, cQueue *args
                 }
                 qu->clear();
             }
-            cmsg->setKind(SCTP_C_STREAM_RESET);
             if (rs->srs_flags->getNum() == SCTP_STREAM_RESET_OUTGOING) {
                 rinfo->setRequestType(RESET_OUTGOING);
             } else if (rs->srs_flags->getNum() == SCTP_STREAM_RESET_INCOMING) {
@@ -1056,7 +1052,7 @@ int PacketDrillApp::syscallSetsockopt(struct syscall_spec *syscall, cQueue *args
         }
         case EXPR_SCTP_ADD_STREAMS: {
             struct sctp_add_streams_expr *as = exp->getAddStreams();
-            Message *cmsg = new Message("SCTP_C_STREAM_RESET");
+            Message *cmsg = new Message("SCTP_C_ADD_STREAMS", SCTP_C_ADD_STREAMS);
             SctpResetReq *rinfo = cmsg->addTag<SctpResetReq>();
             rinfo->setSocketId(-1);
             rinfo->setFd(as->sas_assoc_id->getNum());
@@ -1072,7 +1068,6 @@ int PacketDrillApp::syscallSetsockopt(struct syscall_spec *syscall, cQueue *args
                 rinfo->setRequestType(ADD_OUTGOING);
                 rinfo->setOutstreams(as->sas_outstrms->getNum());
             }
-            cmsg->setKind(SCTP_C_ADD_STREAMS);
             sctpSocket.sendNotification(cmsg);
             delete (as->sas_assoc_id);
             delete (as->sas_instrms);
@@ -1127,13 +1122,12 @@ int PacketDrillApp::syscallSetsockopt(struct syscall_spec *syscall, cQueue *args
                     sctpSocket.setNagle(value? 0 : 1);
                     break;
                 case SCTP_RESET_ASSOC: {
-                    Message *cmsg = new Message("SCTP_C_STREAM_RESET");
+                    Message *cmsg = new Message("SCTP_C_STREAM_RESET", SCTP_C_RESET_ASSOC);
                     SctpResetReq *rinfo = cmsg->addTag<SctpResetReq>();
                     rinfo->setSocketId(-1);
                     rinfo->setFd(value);
                     rinfo->setRemoteAddr(sctpSocket.getRemoteAddr());
                     rinfo->setRequestType(SSN_TSN);
-                    cmsg->setKind(SCTP_C_RESET_ASSOC);
                     sctpSocket.sendNotification(cmsg);
                     break;
                 }

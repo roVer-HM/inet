@@ -218,8 +218,8 @@ void EtherMac::handleUpperPacket(Packet *packet)
     }
 
     if (packet->getDataLength() > MAX_ETHERNET_FRAME_BYTES) {
-        throw cRuntimeError("Packet from higher layer (%d bytes) exceeds maximum Ethernet frame size (%d)",
-                (int)(packet->getByteLength()), MAX_ETHERNET_FRAME_BYTES);
+        throw cRuntimeError("Packet length from higher layer (%s) exceeds maximum Ethernet frame size (%s)",
+                packet->getDataLength().str().c_str(), MAX_ETHERNET_FRAME_BYTES.str().c_str());
     }
 
     if (!connected || disabled) {
@@ -736,9 +736,9 @@ void EtherMac::handleRetransmission()
         return;
     }
 
-    EV_DETAIL << "Executing backoff procedure\n";
     int backoffRange = (backoffs >= BACKOFF_RANGE_LIMIT) ? 1024 : (1 << backoffs);
     int slotNumber = intuniform(0, backoffRange - 1);
+    EV_DETAIL << "Executing backoff procedure (slotNumber=" << slotNumber << ", backoffRange=[0," << backoffRange -1 << "]" << endl;
 
     scheduleAt(simTime() + slotNumber * curEtherDescr->slotTime, endBackoffMsg);
     changeTransmissionState(BACKOFF_STATE);

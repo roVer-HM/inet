@@ -17,10 +17,10 @@
 
 #include "inet/common/Simsignals.h"
 #include "inet/common/packet/Packet.h"
+#include "inet/linklayer/common/VlanTag_m.h"
 #include "inet/linklayer/ethernet/EtherEncap.h"
 #include "inet/linklayer/ethernet/EtherFrame_m.h"
 #include "inet/linklayer/ieee8021q/Ieee8021qEncap.h"
-#include "inet/linklayer/vlan/VlanTag_m.h"
 
 namespace inet {
 
@@ -95,6 +95,7 @@ void Ieee8021qEncap::processPacket(Packet *packet, std::vector<int>& vlanIdFilte
     auto oldVlanId = vlanTag != nullptr ? vlanTag->getVid() : -1;
     auto vlanReq = packet->removeTagIfPresent<VlanReq>();
     auto newVlanId = vlanReq != nullptr ? vlanReq->getVlanId() : oldVlanId;
+    delete vlanReq;
     bool acceptPacket = vlanIdFilter.empty() || std::find(vlanIdFilter.begin(), vlanIdFilter.end(), newVlanId) != vlanIdFilter.end();
     if (acceptPacket) {
         auto it = vlanIdMap.find(newVlanId);
@@ -105,7 +106,7 @@ void Ieee8021qEncap::processPacket(Packet *packet, std::vector<int>& vlanIdFilte
             if (oldVlanId == -1 && newVlanId != -1)
                 addVlanTag(ethernetMacHeader)->setVid(newVlanId);
             else if (oldVlanId != -1 && newVlanId == -1)
-                removeVlanTag(ethernetMacHeader);
+                delete removeVlanTag(ethernetMacHeader);
             else
                 vlanTag->setVid(newVlanId);
             packet->insertAtFront(ethernetMacHeader);
