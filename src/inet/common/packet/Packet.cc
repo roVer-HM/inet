@@ -323,6 +323,17 @@ std::string Packet::str() const
     return out.str();
 }
 
+std::string Packet::tagStr() const {
+    int numTags = tags.getNumTags();
+    std::stringstream out;
+    out << "TagSet:{";
+    for(int i=0; i < numTags - 1; i++){
+        out <<  tags.getTag(i)->getClassName() << ", ";
+    }
+    out << tags.getTag(numTags-1)->getClassName() << "}";
+    return out.str();
+}
+
 // TODO: move?
 TagSet& getTags(cMessage *msg)
 {

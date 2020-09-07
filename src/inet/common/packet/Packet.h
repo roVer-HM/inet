@@ -649,6 +649,8 @@ class INET_API Packet : public cPacket
      * Returns a human readable string representation.
      */
     virtual std::string str() const override;
+
+    virtual std::string tagStr() const;
 };
 
 INET_API TagSet& getTags(cMessage *msg);
