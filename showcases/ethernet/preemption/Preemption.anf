@@ -3,8 +3,8 @@
     <inputs>
         <input pattern="/inet/showcases/ethernet/preemption/results/Preemption-*.vec"/>
         <input pattern="/inet/showcases/ethernet/preemption/results/Preemption-*.sca"/>
-        <input pattern="results/NoPreemption-#0.sca"/>
-        <input pattern="results/NoPreemption-#0.vec"/>
+        <input pattern="results/Default-#0.sca"/>
+        <input pattern="results/Default-#0.vec"/>
         <input pattern="results/DisabledPreemption-#0.sca"/>
         <input pattern="results/DisabledPreemption-#0.vec"/>
         <input pattern="results/PriorityQueue-#0.sca"/>
@@ -1206,7 +1206,7 @@ def plot_vectors_(df, props):
         if re.search("\'Preemption", str(t)):
             print("PREEMPTION FOUND")
             style['linestyle'] = 'solid'
-        if re.search("\'NoPreemption", str(t)):
+        if re.search("\'Default", str(t)):
             print("NOPREEMPTION FOUND")
             style['linestyle'] = 'dotted'
             #style['linewidth'] = '2'
@@ -1807,7 +1807,7 @@ plt.savefig('delay.png', dpi=150, transparent=True)
             <property name="xaxis_min" value="0"/>
             <property name="matplotlibrc.axes.facecolor" value=""/>
             <property name="linewidth" value="1.0"/>
-            <property name="filter" value="name =~ endToEndDelay:vector AND ((runattr:experiment =~ Preemption OR runattr:experiment =~ NoPreemption OR runattr:experiment =~ PriorityQueue))"/>
+            <property name="filter" value="name =~ endToEndDelay:vector AND ((runattr:experiment =~ Preemption OR runattr:experiment =~ Default OR runattr:experiment =~ PriorityQueue))"/>
             <property name="vector_start_time" value=""/>
             <property name="linestyle" value="solid"/>
             <property name="markersize" value="1"/>
