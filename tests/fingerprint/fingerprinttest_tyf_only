@@ -1,0 +1,14 @@
+#!/bin/bash
+INET_OMNETPP_OPTIONS="-n $INET_NED_PATH:$INET_ROOT/tests/networks --image-path=$INET_ROOT/images"
+CMDENV_FAKE_GUI="--cmdenv-fake-gui=true"                                                # default false
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-before-event-probability=0.1"       # default 1
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-after-event-probability=0.1"        # default 1
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-on-hold-probability=0.1"            # default 0.5
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-on-hold-numsteps=3"                 # default 3
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-on-simtime-probability=0.1"         # default 0.1
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI --cmdenv-fake-gui-on-simtime-numsteps=3"              # default 3
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI '--**.fadeOutMode=\"animationTime\"'"
+CMDENV_FAKE_GUI="$CMDENV_FAKE_GUI '--**.signalAnimationTimeMode=\"animationTime\"'"
+
+$INET_ROOT/bin/inet_fingerprinttest --directory $INET_ROOT -e inet "$@"  -f 'tyf' -a "$CMDENV_FAKE_GUI"
+#  --cmdenv-fake-gui-hold-numsteps-max=0 --cmdenv-fake-gui-simtime-numsteps-max=0
