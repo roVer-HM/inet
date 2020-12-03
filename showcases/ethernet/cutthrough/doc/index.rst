@@ -86,10 +86,26 @@ The cuttrough interface in the switches support packet streaming by default; the
 Results
 -------
 
-- qtenv
-- seqchart
-- chart
+.. - qtenv
+   - seqchart
+   - chart
+
+Here is a video of the cut-trough behavior in Qtenv:
 
 .. video:: media/cuttrough.mp4
    :width: 100%
    :align: center
+
+The ARP request is broadcast, so it is not utilizing cut-through.
+
+The following sequence chart excerpt shows a packet sent from host1 to host2 via the switches:
+
+.. figure:: media/seqchart.png
+   :align: center
+   :width: 100%
+
+We compared the end-to-end delay of the UDP packets in the case of store-and-forward swtiching vs cut-through switching:
+
+.. figure:: media/delay.png
+   :align: center
+   :width: 100%
