@@ -13,7 +13,9 @@ so
 
 Cut-through switching can reduce switching delay of ethernet frames by immediatelly forwarding an ethernet frame after the header is received and the next-hop address is available (as opposed to store-and-forward switching, in which the whole frame is received and then forwarded).
 
-This showcase demonstrates cut-through switching, and compares its delay with store-and-forward switching.
+.. This showcase demonstrates cut-through switching, and compares its delay with store-and-forward switching.
+
+This showcase demonstrates cut-through switching, and compares it to store-and-forward switching in terms of delay.
 
 .. The new composable/layered Ethernet model supports cut-through switching.
 
