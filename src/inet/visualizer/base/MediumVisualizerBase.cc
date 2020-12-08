@@ -60,6 +60,17 @@ void MediumVisualizerBase::initialize(int stage)
         packetFilter.setPattern(par("packetFilter"), par("packetDataFilter"));
         displaySignals = par("displaySignals");
         signalColorSet.parseColors(par("signalColor"));
+        {
+            const char *s = par("signalAnimationTimeMode");
+            if (!strcmp(s, "simulationTime"))
+                signalAnimationTimeMode = AnimationPosition::SIMULATION_TIME;
+            else if (!strcmp(s, "animationTime"))
+                signalAnimationTimeMode = AnimationPosition::ANIMATION_TIME;
+            else if (!strcmp(s, "realTime"))
+                signalAnimationTimeMode = AnimationPosition::REAL_TIME;
+            else
+                throw cRuntimeError("Unknown signalAnimationTimeMode: %s", s);
+        }
         signalPropagationAnimationSpeed = par("signalPropagationAnimationSpeed");
         signalPropagationAnimationTime = par("signalPropagationAnimationTime");
         signalPropagationAdditionalTime = par("signalPropagationAdditionalTime");

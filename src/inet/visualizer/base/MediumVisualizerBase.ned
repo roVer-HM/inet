@@ -40,6 +40,7 @@ simple MediumVisualizerBase extends VisualizerBase
         string packetDataFilter = default("*"); // which packets are considered based on the data they contain, matches all packets by default
 
         bool displaySignals = default(false); // display signals propagating through the medium, disabled by default
+        string signalAnimationTimeMode @enum("realTime", "animationTime", "simulationTime") = default("realTime"); // TODO
         string signalColor @enum("light", "dark") = default("dark"); // signal color is a list of colors, a set of dark colors by default
         double signalPropagationAnimationSpeed = default(nan); // animation speed while the very beginning or end of a signal is propagating on the medium, value must be in the range (0, +inf) or NaN, the latter means automatic setting
         double signalPropagationAnimationTime @unit(s) = default(1s); // signal propagation animation duration when signalPropagationAnimationSpeed is unspecified
