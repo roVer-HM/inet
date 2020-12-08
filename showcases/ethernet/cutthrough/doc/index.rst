@@ -4,12 +4,12 @@ Ethernet Cut-Through Switching
 Goals
 -----
 
-so
+.. so
 
-- cut-through switching can reduce latency of ethernet frames
-- works best when the frame goes through a lot of switches
-- cut-through switching (start forwarding the frame on another interface as soon as the header is received, and the next-hop address is available, as opposed to receive the whole packet and forward after that)
-- the new composable/layered ethernet model supports packet streams and cutthrough switching
+  - cut-through switching can reduce latency of ethernet frames
+  - works best when the frame goes through a lot of switches
+  - cut-through switching (start forwarding the frame on another interface as soon as the header is received, and the next-hop address is available, as opposed to receive the whole packet and forward after that)
+  - the new composable/layered ethernet model supports packet streams and cutthrough switching
 
 Cut-through switching can reduce switching delay of ethernet frames by immediatelly forwarding an ethernet frame after the header is received and the next-hop address is available (as opposed to store-and-forward switching, in which the whole frame is received and then forwarded).
 
@@ -27,10 +27,16 @@ The Model
    - it requires packet streams (also enables preemption)
    - need LayeredEthernetInterface, and CuttroughEthernetInterface in switches
 
-Cut-through switching reduces switching delay, but skips the FCS check, as the FCS is at the end of the Ethernet frame, the FCS check is performed in at destination host.
+.. **TODO** works best when the frame goes through a lot of switches
+
+Cut-through switching reduces switching delay, but skips the FCS check, as the FCS is at the end of the Ethernet frame; the FCS check is performed in at destination host. The delay reduction is more substantial if the packet goes through multiple switches (as one packet duration of time can be saved at each switch).
 
 Cut-through switching makes use of packet streams in INET's Ethernet model.
-Packet streaming is required for cut-through switching, because the frame needs to be represented as a stream (as opposed to as a packet) in order for the switch to be able to start forwarding it before the whole packet is received.
+Packet streaming is required because the frame needs to be represented as a stream (as opposed to as a packet) in order for the switch to be able to start forwarding it before the whole packet is received.
+
+.. **TODO** store-and-forward is the default
+
+.. note:: The default is store-and-forward behavior in hosts such as :ned:`StandardHost`.
 
 The example simulation contains two :ned:`StandardHost`'s connected by two :ned:`EthernetSwitch`'es (all connections are 1 Gbps):
 
@@ -40,7 +46,7 @@ The example simulation contains two :ned:`StandardHost`'s connected by two :ned:
 
 .. **TODO** 1Gbps connection
 
-There are two configurations in omnetpp.ini. In both of them, host1 sends UDP packets to host2.
+.. There are two configurations in omnetpp.ini. In both of them, host1 sends UDP packets to host2.
 
 In the simulation, host1 sends 1000-Byte UDP packets to host2, around every 100ms. There are two configurations in omnetpp.ini, ``NoCuttrough`` and ``Cuttrough`` (only differring in the use of cuttrough switching).
 
@@ -55,9 +61,10 @@ In the ``General`` configuration, the following lines configure the hosts and sw
    :end-at: LayeredEthernetInterface
    :language: ini
 
-The encapsulation type :ned:`OmittedEthernetEncapsulation` is there for backward compatibility purposes
+The encapsulation type :ned:`OmittedEthernetEncapsulation` is there for backward compatibility purposes;
+it's a dummy encapsulation module required by the new layered ethernet model so that it is a drop-in replacement for the old one).
 
-dummy encapsulation/decapsulation module required by the new modular/layered ethernet model (its needed so that the new model is a drop-in replacement for the old one)
+.. **TODO** dummy encapsulation/decapsulation module required by the new modular/layered ethernet model (its needed so that the new model is a drop-in replacement for the old one)
 
 Also, the link speed is specified:
 
@@ -66,7 +73,7 @@ Also, the link speed is specified:
    :end-at: bitrate
    :language: ini
 
-To prevent packets from accumulating in the queue of the sender host (and thus increasing end-to-end delay), the queue is limited to one packet, and configured to drop packets from the end of the queue:
+To prevent packets from accumulating in the queue of the sender host (and thus increasing the measured end-to-end delay), the queue is limited to one packet, and configured to drop packets from the end of the queue:
 
 .. literalinclude:: ../omnetpp.ini
    :start-at: packetCapacity
@@ -98,7 +105,7 @@ Here is a video of the cut-trough behavior in Qtenv:
    :width: 100%
    :align: center
 
-The ARP request is broadcast, so it is not utilizing cut-through.
+.. note:: The ARP request is broadcast, so it is not utilizing cut-through.
 
 The following sequence chart excerpt shows a packet sent from host1 to host2 via the switches:
 
