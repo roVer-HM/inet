@@ -75,7 +75,7 @@ class INET_API MobilityVisualizerBase : public VisualizerBase, public cListener
     int trailLength = -1;
     //@}
 
-    std::map<const IMobility *, MobilityVisualization *> mobilityVisualizations;
+    std::map<const IMobility *, MobilityVisualization *, CmpIMobilityPtrById> mobilityVisualizations;
 
   protected:
     virtual void initialize(int stage) override;

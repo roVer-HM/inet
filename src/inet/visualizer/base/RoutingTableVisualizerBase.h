@@ -101,7 +101,7 @@ class INET_API RoutingTableVisualizerBase : public VisualizerBase, public cListe
         }
     };
 
-    std::map<std::tuple<const Ipv4Route *, int, int>, const RouteVisualization *> routeVisualizations;
+    std::map<Ipv4RouteIJ, const RouteVisualization *, CmpIpv4RouteIJ> routeVisualizations;
 
   protected:
     virtual void initialize(int stage) override;
