@@ -52,6 +52,8 @@ class INET_API IMobility
   public:
     virtual ~IMobility() {}
 
+    virtual int getId() const = 0;
+
     /**
      * Returns the maximum possible speed at any future time.
      */
@@ -97,6 +99,14 @@ class INET_API IMobility
      */
     virtual const Coord& getConstraintAreaMin() const = 0;
 };
+
+class INET_API CmpIMobilityPtrById {
+  public:
+    bool operator()(const IMobility *a, const IMobility *b) const {
+        return a == nullptr ? b != nullptr : b != nullptr && a->getId() < b->getId();
+    }
+};
+
 
 } // namespace inet
 
