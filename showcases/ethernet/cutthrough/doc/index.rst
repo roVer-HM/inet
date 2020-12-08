@@ -11,7 +11,9 @@ Goals
   - cut-through switching (start forwarding the frame on another interface as soon as the header is received, and the next-hop address is available, as opposed to receive the whole packet and forward after that)
   - the new composable/layered ethernet model supports packet streams and cutthrough switching
 
-Cut-through switching can reduce switching delay of ethernet frames by immediatelly forwarding an ethernet frame after the header is received and the next-hop address is available (as opposed to store-and-forward switching, in which the whole frame is received and then forwarded).
+Cut-through switching can reduce switching delay of ethernet frames by immediatelly forwarding an ethernet frame after the header is received and the switch knows which outgoing interface to send the frame on (as opposed to store-and-forward switching, in which the whole frame is received and then forwarded).
+
+.. **TODO** which outgoing interface to use/to send the frame on
 
 .. This showcase demonstrates cut-through switching, and compares its delay with store-and-forward switching.
 
@@ -29,16 +31,16 @@ The Model
 
 .. **TODO** works best when the frame goes through a lot of switches
 
-Cut-through switching reduces switching delay, but skips the FCS check, as the FCS is at the end of the Ethernet frame; the FCS check is performed in at destination host. The delay reduction is more substantial if the packet goes through multiple switches (as one packet duration of time can be saved at each switch).
+Cut-through switching reduces switching delay, but skips the FCS check, as the FCS is at the end of the Ethernet frame; the FCS check is performed in at destination host. The delay reduction is more substantial if the packet goes through multiple switches (as one packet transmission duration can be saved at each switch).
 
-Cut-through switching makes use of packet streams in INET's Ethernet model.
-Packet streaming is required because the frame needs to be represented as a stream (as opposed to as a packet) in order for the switch to be able to start forwarding it before the whole packet is received.
+Cut-through switching makes use of intra-node  packet streaming in INET's modular Ethernet model.
+Packet streaming is required because the frame needs to be processed as a stream (as opposed to as a whole packet) in order for the switch to be able to start forwarding it before the whole packet is received.
 
 .. **TODO** store-and-forward is the default
 
 .. note:: The default is store-and-forward behavior in hosts such as :ned:`StandardHost`.
 
-The example simulation contains two :ned:`StandardHost`'s connected by two :ned:`EthernetSwitch`'es (all connections are 1 Gbps):
+The example simulation contains two :ned:`StandardHost` nodes connected by two :ned:`EthernetSwitch`' nodes (all connections are 1 Gbps):
 
 .. figure:: media/Network.png
    :align: center
@@ -48,13 +50,19 @@ The example simulation contains two :ned:`StandardHost`'s connected by two :ned:
 
 .. There are two configurations in omnetpp.ini. In both of them, host1 sends UDP packets to host2.
 
-In the simulation, host1 sends 1000-Byte UDP packets to host2, around every 100ms. There are two configurations in omnetpp.ini, ``NoCuttrough`` and ``Cuttrough`` (only differring in the use of cuttrough switching).
+In the simulation, host1 sends 1000-Byte UDP packets to host2, with a mean arrival time of 100ms, and X ms jitter. There are two configurations in omnetpp.ini, ``NoCuttrough`` and ``Cuttrough`` (only differring in the use of cuttrough switching).
+
+**TODO** NoCuttrough -> StoreAndForward; - in config name (try)
 
 .. In the ``General`` configuration,
 
 .. Here is the part from the ``General`` configuration concerning Ethernet:
 
-In the ``General`` configuration, the following lines configure the hosts and switches to use the new ethernet model:
+In the ``General`` configuration, the following lines configure the hosts and switches to use the modular ethernet model:
+
+**TODO** typename = DropTailQueue
+
+**TODO** ini-be -> NoCuttrough -> #default behavior, no configuration required
 
 .. literalinclude:: ../omnetpp.ini
    :start-at: *.*.encap.typename
@@ -99,7 +107,9 @@ Results
    - seqchart
    - chart
 
-Here is a video of the cut-trough behavior in Qtenv:
+Here is a video of the cut-through behavior in Qtenv:
+
+**TODO** store and forward video; disable arp
 
 .. video:: media/cuttrough.mp4
    :width: 100%
@@ -108,6 +118,12 @@ Here is a video of the cut-trough behavior in Qtenv:
 .. note:: The ARP request is broadcast, so it is not utilizing cut-through.
 
 The following sequence chart excerpt shows a packet sent from host1 to host2 via the switches:
+
+**TODO** linear time
+
+**TODO** seq chart store and forward
+
+**TODO** azert vannak kiugrok mert 1 csomag tud varakozni a queue-ban; vagy change the rate (ritkabban)
 
 .. figure:: media/seqchart.png
    :align: center
@@ -118,3 +134,10 @@ We compared the end-to-end delay of the UDP packets in the case of store-and-for
 .. figure:: media/delay.png
    :align: center
    :width: 100%
+
+**TODO** szamolgatas; n*transmission duration + 3 propagation time; 1 transmission + 3 propagation + 2 cuttrough (header reception)(cuttrough delay)
+
+1054B; 8.432us; 25.296+propagation time
+
+(1000 + 8 + 20 + 18 + 8) * 8 / 1E+9 * 3 / 1E-6
+(1000 + 8 + 20 + 18 + 8) * 8 / 1E+9 / 1E-6 + 22 / 1E+9 / 1E-6 * 2

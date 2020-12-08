@@ -555,9 +555,9 @@ plt.savefig('delay.png', dpi=150, transparent=True)]]>
             <property name="linecolor" value=""/>
             <property name="matplotlibrc.figure.facecolor" value=""/>
             <property name="legend_labels" value="result titles"/>
-            <property name="yaxis_title" value="Delay [ms]"/>
-            <property name="title" value="Mean end-to-end delay"/>
-            <property name="vector_operations" value="apply:divide_by, a=0.001 # Divides every value in each vector by a constant&#10;apply:mean"/>
+            <property name="yaxis_title" value="Delay [us]"/>
+            <property name="title" value="End-to-end delay"/>
+            <property name="vector_operations" value="apply:divide_by, a=0.000001 # Divides every value in each vector by a constant"/>
             <property name="cycle_seed" value="0"/>
             <property name="yaxis_log" value="false"/>
             <property name="image_export_height" value="4"/>
