@@ -154,6 +154,14 @@ class INET_API ITransmission : public IPrintableObject
     virtual const ITransmissionAnalogModel *getAnalogModel() const = 0;
 };
 
+class INET_API CmpITransmissionPtrById {
+  public:
+    bool operator()(const physicallayer::ITransmission *a, const physicallayer::ITransmission *b) const {
+        return a == nullptr ? b != nullptr : b != nullptr && a->getId() < b->getId();
+    }
+};
+
+
 } // namespace physicallayer
 } // namespace inet
 

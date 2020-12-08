@@ -298,6 +298,14 @@ class INET_API IRadio : public IPhysicalLayer, public IPrintableObject
     static const char *getRadioTransmissionStateName(TransmissionState transmissionState);
 };
 
+class INET_API CmpIRadioPtrById {
+  public:
+    bool operator()(const IRadio *a, const IRadio *b) const {
+        return a == nullptr ? b != nullptr : b != nullptr && a->getId() < b->getId();
+    }
+};
+
+
 } // namespace physicallayer
 } // namespace inet
 

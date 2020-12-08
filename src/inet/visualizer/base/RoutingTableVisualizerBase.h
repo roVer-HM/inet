@@ -76,6 +76,31 @@ class INET_API RoutingTableVisualizerBase : public VisualizerBase, public cListe
 
     LineManager *lineManager = nullptr;
 
+    typedef std::tuple<const Ipv4Route *, int, int> Ipv4RouteIJ;
+
+    class CmpIpv4RouteIJ {
+      public:
+        bool operator()(const Ipv4RouteIJ& a, const Ipv4RouteIJ& b) const {
+            if (std::get<0>(b) == nullptr)
+                return false;
+            if (std::get<0>(a) == nullptr)
+                return true;
+            if (std::get<0>(a)->getRoutingTable()->getRouterId() < std::get<0>(a)->getRoutingTable()->getRouterId())
+                return true;
+            if (std::get<0>(a)->getRoutingTable()->getRouterId() > std::get<0>(a)->getRoutingTable()->getRouterId())
+                return false;
+            if (std::get<0>(a)->str() < std::get<0>(a)->str())
+                return true;
+            if (std::get<0>(a)->str() > std::get<0>(a)->str())
+                return false;
+            if (std::get<1>(a) < std::get<1>(b))
+                return true;
+            if (std::get<1>(a) > std::get<1>(b))
+                return false;
+            return std::get<2>(a) < std::get<2>(b);
+        }
+    };
+
     std::map<std::tuple<const Ipv4Route *, int, int>, const RouteVisualization *> routeVisualizations;
 
   protected:
