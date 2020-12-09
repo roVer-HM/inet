@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <analysis version="2">
     <inputs>
-        <input pattern="/inet/showcases/ethernet/cutthrough/results/*Cuttrough-*.vec"/>
-        <input pattern="/inet/showcases/ethernet/cutthrough/results/*Cuttrough-*.sca"/>
+        <input pattern="/inet/showcases/ethernet/cutthrough/results/*Cutthrough-*.vec"/>
+        <input pattern="/inet/showcases/ethernet/cutthrough/results/*Cutthrough-*.sca"/>
+        <input pattern="results/StoreAndForward-#0.sca"/>
+        <input pattern="results/StoreAndForward-#0.vec"/>
     </inputs>
     <charts>
         <chart icon="icons/full/obj/linechart.png" id="8" name="Mean end-to-end delay" template="linechart_mpl" type="MATPLOTLIB">
