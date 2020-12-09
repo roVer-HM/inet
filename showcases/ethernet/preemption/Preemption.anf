@@ -1272,7 +1272,35 @@ for i in labels:
     print("newlabel:\n", newlabel)
     newlabels.append(newlabel)
     
-plt.legend(handles, newlabels, markerscale=10)
+#plt.legend(handles, newlabels, markerscale=10)
+
+orderedhandles = [None] * 6
+orderedlabels = [None] * 6
+
+for i in range(0,6):
+    print(i, ": ", handles[i], newlabels[i])
+    if newlabels[i] == "BG, Default":
+        orderedlabels[0] = newlabels[i]
+        orderedhandles[0] = handles[i]
+    if newlabels[i] == "TS, Default":
+        orderedlabels[1] = newlabels[i]
+        orderedhandles[1] = handles[i]
+    if newlabels[i] == "BG, PriorityQueue":
+        orderedlabels[2] = newlabels[i]
+        orderedhandles[2] = handles[i]
+    if newlabels[i] == "TS, PriorityQueue":
+        orderedlabels[3] = newlabels[i]
+        orderedhandles[3] = handles[i]
+    if newlabels[i] == "BG, Preemption":
+        orderedlabels[4] = newlabels[i]
+        orderedhandles[4] = handles[i]
+    if newlabels[i] == "TS, Preemption":
+        orderedlabels[5] = newlabels[i]
+        orderedhandles[5] = handles[i]
+
+print(orderedlabels, orderedhandles)
+
+plt.legend(orderedhandles, orderedlabels, markerscale=10)
 
 plt.title("Mean end-to-end delay")
 
