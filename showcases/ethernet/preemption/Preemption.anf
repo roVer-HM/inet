@@ -1188,6 +1188,7 @@ utils.export_data_if_needed(df, props)
 from omnetpp.scave import results, chart, utils, plot, vectorops as ops
 import matplotlib.pyplot as plt
 import re
+from matplotlib.lines import Line2D
 
 def plot_vectors_(df, props):
     print("XXXX")
@@ -1300,7 +1301,28 @@ for i in range(0,6):
 
 print(orderedlabels, orderedhandles)
 
-plt.legend(orderedhandles, orderedlabels, markerscale=10)
+alternate_handles = [Line2D([0], [0], color='black', lw=1, linestyle=':', label='Line'),
+                     Line2D([0], [0], color='black', lw=1, linestyle='--', label='Line'),
+                     Line2D([0], [0], color='black', lw=1, linestyle='-', label='Line'),
+                     Line2D([0], [0], color='r', lw=4, linestyle='', marker='s', markersize=1, label='Line'),
+                     Line2D([0], [0], color='b', lw=4, linestyle='', marker='s', markersize=1, label='Line')]
+
+alternate_labels = ['Default', 'PriorityQueue', 'Preemption', 'Background', 'Time-sensitive']
+
+print(alternate_handles)
+
+alternate = True
+
+if alternate:
+    handle = alternate_handles
+    label = alternate_labels
+    columns = 2
+else:
+    handle = orderedhandles
+    label = orderedlabels
+    columns = 1
+
+plt.legend(handle, label, markerscale=4, ncol=columns)
 
 plt.title("Mean end-to-end delay")
 
