@@ -29,42 +29,14 @@ The example simulation contains two :ned:`StandardHost` nodes connected by two :
 
 In the simulation, host1 sends 1000-Byte UDP packets to host2, with a mean arrival time of 100ms, and X ms jitter. There are two configurations in omnetpp.ini, ``StoreAndForward`` and ``Cutthrough`` (only differing in the use of cut-through switching).
 
-.. **TODO** NoCuttrough -> StoreAndForward; - in config name (try)
-
-.. In the ``General`` configuration,
-
-.. Here is the part from the ``General`` configuration concerning Ethernet:
-
-In the ``General`` configuration, the following lines configure the hosts and switches to use the modular Ethernet model:
-
-.. **TODO** typename = DropTailQueue
-
-.. **TODO** ini-be -> NoCuttrough -> #default behavior, no configuration required
-
-.. literalinclude:: ../omnetpp.ini
-   :start-at: *.*.encap.typename
-   :end-at: LayeredEthernetInterface
-   :language: ini
-
 The encapsulation type :ned:`OmittedEthernetEncapsulation` is there for backward compatibility purposes;
 it's a dummy encapsulation module required by the new layered Ethernet model so that it is a drop-in replacement for the old one).
-
-.. **TODO** dummy encapsulation/decapsulation module required by the new modular/layered ethernet model (its needed so that the new model is a drop-in replacement for the old one)
 
 Also, the link speed is specified:
 
 .. literalinclude:: ../omnetpp.ini
    :start-at: bitrate
    :end-at: bitrate
-   :language: ini
-
-.. To prevent packets from accumulating in the queue of the sender host (and thus increasing the measured end-to-end delay), the queue is limited to one packet.
-
-.. , and configured to drop packets from the end of the queue:
-
-.. .. literalinclude:: ../omnetpp.ini
-   :start-at: packetCapacity
-   :end-at: dropperClass
    :language: ini
 
 Here are the two configurations:
@@ -74,25 +46,12 @@ Here are the two configurations:
    :end-at: phyLayer
    :language: ini
 
-.. - the cuttroughinterface is needed for the cuttrough
-   - the streamingphylayer is needed also for that cuttrough (it needs to support packet streaming)(the cuttroughinterface does that by default)
-
 The cut-through interface in the switches support packet streaming by default; the :ned:`EthernetStreamingPhyLayer` in the hosts support packet streaming as well.
 
 Results
 -------
 
-.. - qtenv
-   - seqchart
-   - chart
-
-.. Here is a video of the cut-through behavior in Qtenv:
-
-.. Here is a video of the store-and-forward behavior in Qtenv:
-
 The following videos store-and-forward and cut-through behavior in Qtenv, respectively:
-
-.. **TODO** store and forward video; disable arp
 
 .. video:: media/storeandforward.mp4
    :width: 100%
@@ -102,15 +61,7 @@ The following videos store-and-forward and cut-through behavior in Qtenv, respec
    :width: 100%
    :align: center
 
-.. .. note:: The ARP request is broadcast, so it is not utilizing cut-through.
-
 The following sequence chart excerpt shows a packet sent from host1 to host2 via the switches, for store-and-forward and cut-through, respectively (the timeline is linear):
-
-.. **TODO** linear time
-
-.. **TODO** seq chart store and forward
-
-.. **TODO** azert vannak kiugrok mert 1 csomag tud varakozni a queue-ban; vagy change the rate (ritkabban)
 
 .. image:: media/storeandforwardseq2.png
    :align: center
@@ -125,8 +76,6 @@ We compared the end-to-end delay of the UDP packets in the case of store-and-for
 .. image:: media/delay.png
    :align: center
    :width: 100%
-
-.. **TODO** szamolgatas; n*transmission duration + 3 propagation time; 1 transmission + 3 propagation + 2 cuttrough (header reception)(cuttrough delay)
 
 We can verify that result analytically. In case of store-and-forward, the end-to-end duration is ``3 * (transmission time + propagation time)``, around 25.296 ms. In the case of cut-through, the duration is ``1 * transmission time + 3 propagation time + 2 * cut-through delay``, around 8.432 ms.
 
