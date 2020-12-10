@@ -84,11 +84,11 @@ Also, the link speed is specified:
    :end-at: bitrate
    :language: ini
 
-To prevent packets from accumulating in the queue of the sender host (and thus increasing the measured end-to-end delay), the queue is limited to one packet.
+.. To prevent packets from accumulating in the queue of the sender host (and thus increasing the measured end-to-end delay), the queue is limited to one packet.
 
 .. , and configured to drop packets from the end of the queue:
 
-.. literalinclude:: ../omnetpp.ini
+.. .. literalinclude:: ../omnetpp.ini
    :start-at: packetCapacity
    :end-at: dropperClass
    :language: ini
