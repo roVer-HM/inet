@@ -1,3 +1,12 @@
 #!/bin/bash
 INET_OMNETPP_OPTIONS="-n $INET_NED_PATH:$INET_ROOT/tests/networks --image-path=$INET_ROOT/images"
-$INET_ROOT/bin/inet_fingerprinttest --directory $INET_ROOT "$@"
+
+export FpExtraArgs=$(cat <<END
+{
+    "~tND": "-a '--**.crcMode=\"computed\" --**.fcsMode=\"computed\"'",
+    "tyf": "-a '--cmdenv-fake-gui=true --cmdenv-fake-gui-before-event-probability=0.1 --cmdenv-fake-gui-after-event-probability=0.1 --cmdenv-fake-gui-on-hold-probability=0.1 --cmdenv-fake-gui-on-hold-numsteps=3 --cmdenv-fake-gui-on-simtime-probability=0.1 --cmdenv-fake-gui-on-simtime-numsteps=3 --**.fadeOutMode=\"animationTime\" --**.signalAnimationTimeMode=\"animationTime\"'"
+}
+END
+)
+
+echo $INET_ROOT/bin/inet_fingerprinttest --directory $INET_ROOT --fpExtraArgs $(printf '%q' $FpExtraArgs) "$@"
