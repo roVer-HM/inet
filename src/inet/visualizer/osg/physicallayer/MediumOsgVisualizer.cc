@@ -480,7 +480,7 @@ void MediumOsgVisualizer::handleSignalArrivalStarted(const IReception *reception
         setAnimationSpeed();
     if (displaySignalArrivals) {
         auto group = static_cast<osg::Group *>(getRadioOsgNode(reception->getReceiver()));
-        auto node = static_cast<osg::Node *>(group->getChild(1));
+        auto node = static_cast<osg::Node *>(group->getChild(1));       // TODO with fake-gui, only getChild(0) is available
         node->setNodeMask(1);
     }
 }
