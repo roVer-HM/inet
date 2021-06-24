@@ -138,6 +138,7 @@ class INET_API OpenStreetMap
     const std::vector<const Way *>& getWays() const { return ways; }
     const std::vector<const Relation *>& getRelations() const { return relations; }
     static OpenStreetMap from(cXMLElement *mapRoot);
+    static bool isValid(cXMLElement *element);
 };
 
 } // namespace osm

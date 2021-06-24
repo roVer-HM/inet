@@ -107,6 +107,15 @@ void OpenStreetMap::parseTags(cXMLElement *parent, Tags& tags)
     }
 }
 
+bool OpenStreetMap::isValid(cXMLElement *element){
+    if (auto action=element->getAttribute("action")){
+        if (std::strcmp(action, "delete") == 0){
+            return false;
+        }
+    }
+    return true;
+}
+
 OpenStreetMap OpenStreetMap::from(cXMLElement *mapRoot)
 {
     OpenStreetMap map;
@@ -124,8 +133,10 @@ OpenStreetMap OpenStreetMap::from(cXMLElement *mapRoot)
         bounds.maxlat = parseDouble(boundsElement->getAttribute("maxlat"));
         bounds.maxlon = parseDouble(boundsElement->getAttribute("maxlon"));
     }
-
     for (cXMLElement *nodeElem : mapRoot->getChildrenByTagName("node")) {
+        if (!isValid(nodeElem)){
+            continue;
+        }
         Node *node = new Node();
         node->id = parseId(nodeElem->getAttribute("id"));
         node->lat = parseDouble(nodeElem->getAttribute("lat"));
@@ -136,6 +147,9 @@ OpenStreetMap OpenStreetMap::from(cXMLElement *mapRoot)
     }
 
     for (cXMLElement *wayElem : mapRoot->getChildrenByTagName("way")) {
+        if (!isValid(wayElem)){
+            continue;
+        }
         Way *way = new Way();
         way->id = parseId(wayElem->getAttribute("id"));
         for (cXMLElement *nodeElem : wayElem->getChildrenByTagName("nd")) {
