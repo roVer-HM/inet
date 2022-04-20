@@ -6,7 +6,7 @@
 
 
 #include "inet/common/packet/Packet.h"
-
+#include "inet/common/packet/tag/SharingTagSet.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/packet/Message.h"
 #include "inet/common/packet/chunk/SequenceChunk.h"
@@ -350,7 +350,7 @@ std::string Packet::tagStr() const {
 }
 
 // TODO: move?
-TagSet& getTags(cMessage *msg)
+SharingTagSet& getTags(cMessage *msg)
 {
     if (msg->isPacket())
         return check_and_cast<Packet *>(msg)->getTags();
