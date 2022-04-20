@@ -338,5 +338,25 @@ std::string Packet::str() const
     return stream.str();
 }
 
+std::string Packet::tagStr() const {
+    int numTags = tags.getNumTags();
+    std::stringstream out;
+    out << "TagSet:{";
+    for(int i=0; i < numTags - 1; i++){
+        out <<  tags.getTag(i)->getClassName() << ", ";
+    }
+    out << tags.getTag(numTags-1)->getClassName() << "}";
+    return out.str();
+}
+
+// TODO: move?
+TagSet& getTags(cMessage *msg)
+{
+    if (msg->isPacket())
+        return check_and_cast<Packet *>(msg)->getTags();
+    else
+        return check_and_cast<Message *>(msg)->getTags();
+}
+
 } // namespace
 

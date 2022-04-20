@@ -1473,6 +1473,7 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
      * Returns a human readable string representation.
      */
     virtual std::string str() const override;
+    virtual std::string tagStr() const;
     //@}
 };
 
