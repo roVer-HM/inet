@@ -15,10 +15,11 @@ of the Babel routing protocol (Babel daemon). We'll simulate mobility and wirele
 connectivity in a mobile ad hoc network, but the routes will be managed by multiple
 instances of the Babel daemon.
 
-Note that the emulation example only runs on Linux.
+Note that the emulation example only runs on Linux. For an introduction to emulation
+in INET, read the :doc:`Emulation section </users-guide/ch-emulation>` in the User's Guide.
 
 | INET version: ``4.1``
-| Source files location: `inet/showcases/emulation/babel <https://github.com/inet-framework/inet-showcases/tree/master/emulation/babel>`__
+| Source files location: `inet/showcases/emulation/babel <https://github.com/inet-framework/inet/tree/master/showcases/emulation/babel>`__
 
 The Model
 ---------
@@ -60,7 +61,7 @@ The Babel daemons will update the routes as connectivity changes between the thr
 The network is shown on the following image; the communication ranges are indicated with
 blue circles, and the green movement trail circles show the path of the nodes.
 
-.. figure:: media/network4.png
+.. image:: media/network4.png
    :align: center
    :width: 80%
 

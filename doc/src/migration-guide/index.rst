@@ -2,6 +2,7 @@
 
 Migrating Code from INET 3.x
 ============================
+Release: |release|
 
 .. _mg:sec:migrationguide:architecture:
 
@@ -30,7 +31,7 @@ and commands to the intended receiver module based on various tags:
 - :cpp:`DispatchProtocolReq` specifies the receiver protocol
 
 The :ned:`MessageDispatcher` is also used inside network layer compound modules such
-as the :ned:`IPv4NetworkLayer`. This usage is not accidental, it solves dispatching
+as the :ned:`Ipv4NetworkLayer`. This usage is not accidental, it solves dispatching
 ARP, ICMP and IPv4 packets to the appropriate protocol modules.
 
 .. _mg:sec:migrationguide:extendingprotocols:
@@ -62,7 +63,7 @@ Modules must register supported protocols with the :ned:`MessageDispatcher` to o
 properly. This is done by calling ``inet::registerProtocol(...)`` for each supported
 protocol on each gate in ``initialize()``. Interfaces (usually MAC protocols modules)
 must also register with calling ``inet::registerInterface(...)`` for the corresponding
-:cpp:`InterfaceEntry` and gate in ``initialize()``. On the other hand, sockets are learned
+:cpp:`NetworkInterface` and gate in ``initialize()``. On the other hand, sockets are learned
 by the :ned:`MessageDispatcher` automatically on the fly.
 
 .. _mg:sec:migrationguide:attachingtags:

@@ -12,7 +12,7 @@ MAC protocols with three example simulations of a wireless sensor
 network. In Part 2, we compare the three protocols using statistics.
 
 | INET version: ``4.0``
-| Source files location: `inet/showcases/wireless/sensornetwork <https://github.com/inet-framework/inet-showcases/tree/master/wireless/sensornetwork>`__
+| Source files location: `inet/showcases/wireless/sensornetwork <https://github.com/inet-framework/inet/tree/master/showcases/wireless/sensornetwork>`__
 
 Part 1: Demonstrating the MAC protocols
 ---------------------------------------
@@ -593,7 +593,8 @@ consumption per packet. The conclusion is that in this scenario, with
 the selected parameter values, :ned:`XMac` turned out to be the most energy
 efficient MAC protocol, although :ned:`LMac` carried a bit more traffic.
 
-Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`SensorNetworkShowcase.ned <../SensorNetworkShowcase.ned>`, :download:`config.xml <../config.xml>`
+| Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`SensorNetworkShowcase.ned <../SensorNetworkShowcase.ned>`, :download:`config.xml <../config.xml>`
+| Extra configurations: :download:`extras.ini <../extras.ini>`, :download:`ExtrasSensorNetworkShowcase.ned <../ExtrasSensorNetworkShowcase.ned>` 
 
 Further information
 -------------------

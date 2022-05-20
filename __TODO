@@ -1,8 +1,131 @@
- - checkPopPacketSupport and checkPushPacketSupport doesn't work with optionally connected modules (they are not checked) and most of the modules are optionally connected
- - timing API, generic TimeTag or multiple tags containing queueing time, processing time, propagation time, transmission time for the packet data per bit
+INET 4.4 release TODO items:
+
+1. Documentation
+
+2. Implementation
+
+3. Review
+
+ - Review new examples.
+ - Review all added components.
+ - Review folder names and module names.
+
+4. Release
+
+ - Fix important bugs from github.
+ - Merge important pull requests from github.
+ - Merge other outstanding branches from git.
+ - Complete WHATSNEW and ChangeLog.
+
+5. Testing
+
+ - Make all fingerprint, module, unit, packet, drill, queueing, protocol, and leak tests PASS.
+
+===============================================================================
+
+- hardware in the loop simulation using layered ethernet model and TSN
+- rename *Layered* modules to *Compound* or *Modular*? discuss!
+
+Clean up PCAP recording:
+ - can happen at and is provided by network interfaces
+ - doesn't have to be supported by specific MAC/PHY/etc. layer modules
+ - can be done at lower layer and/or upper layer gates of network interfaces
+ - can record inbound and/or outbound packets
+ - can record each packet start and/or packet end and/or packet progress
+ - can be used to aggregate packets for network interface/network node/network level
+ - is configured by default to record the packet end for both inbound and outbound packets at the lower layer gates of network interfaces
+
+- PacketTransmitter without transmission channel should stop in initialize? otherwise duration parameters will not work
+
+- eliminate all typename != "" from NED files using default interface ommitted typenames
+- reduce redundancy among applications, e.g. add base application with parameterizable IO submodule, perhaps even create an IO base module which uses the ISocket interface
+- replace findPathStartGate/findPathEndGate with findConnectedModule/findConnectedGate and wrap the type specific reference to the module/gate into a template class?
+
+- add examples/documentation for matching PCP value and destination MAC address for outgoing packets (identification)
+- example with Pcp and PriorityToTrafficClassClassifier classifier example
+- example with combined Ethernet virtual LANs and TSN features
+
+- duplicate animation from EthernetFcsChecker through NetworkInterface due to animate always going through the gate chain even though the packet stops at NetworkInterface to attach an InterfaceInd 
+- come up with realistic frame replication showcases such as multiple link breaks which still produce the traffic at the destination
+- replace GatingPriorityQueue with ShaperPriorityQueue/PriorityShaper?
+- add examples to flow measurements for store-and-forward, A-MPDU aggregation, preemption, cut-through and their effects on the bit and packet total times
+
+- naming things according to standards, have parameter names according to the standard
+- have modules named as TransmissionSelectionAlgorithm
+
+implement multicast support in one gate scheduling configurator
+
+determining the next protocol for a packet in a protocol module (DispatchProtocolReq)
+ - use protocol for specific address type (Ipv4, Ipv6)
+ - use protocol based on socket type
+ - use first protocol in encapsulation protocol list request (EncapsulationProtocolReq)
+ - use the requested transport protocol, network protocol, MAC protocol (TransportProtocolReq, NetworkProtocolReq, MacProtocolReq)
+ - use native protocol of network interface (specified as NetworkInterface protocol parameter)
+ - use default next protocol of protocol module (hard-coded or specified as protocol parameter)
+
+ - chunk queue and various chunk buffers don't have region tags, there's no place to store data specific tags from packets when reassembling data
+ - fragmentation and defragmentation doesn't copy packet region tags in Ipv4
+
+ - visualizer/canvas/spectrum -> GHz overlapping with node label
+ - visualizer/instrumentfigures -> plot figure size parameter not working
+ - visualizer/styling -> switching config lead to crash
+ - visualizer/canvas/transportconnection -> switching config lead to crash
+ - wireless/ratecontrol -> missing visualization when run in fast mode
+
+ - compound figures should be updated to have a bounds property that contains all elements and they must not be over-determined (e.g. size vs plotSize) see topic/figures
+ - refactor ICMP/ICMPv6 error message sending and error indication
+   - separate sending an ICMP error message on the network from sending an ICMP error indiciation up to a transport protocol or an application
+   - ICMP error indication must not contain an ICMP header but ICMP specific Ind tags instead
+   - IPv4 can call both sendIcmpErrorMessage to send an ICMP error message on the network to a peer
+     or it can call sendIcmpErrorIndication directly to send an ICMP Indication message (not a packet) to a transport protocol or an application
+   - when ICMP is processing an incoming ICMP message (processIcmpMessage) it may be an error message (processsIcmpErrorMessage) which in turn
+     should call the same sendIcmpErrorIndication that can also be called by Ipv4 or Udp, etc.
+     the ICMP error indication should contain the quoted packet part in the form of a chunk or a packet for higher layer protocols to process
+   - UDP must not understand ICMP headers, it should simply handle ICMP error indiciation messages (not packets) and the attached meta information
+     when UDP sends up an error indication it should also attach all the received ICMP indication tags
+ - ThruputMeteringChannel -> result filter + visualizer for measuring the channel throughput using channel signals and result for analysis
+ - Add Ethernet socket support to layered model.
+ - Implement fingerprints for figures and values for all example simulations.
+ - update all EV statements to use EV_FIELD
+ - replace cross module pointers with ModuleRef<T>
+ - cleanup bitrate vs datarate
+ - cleanup operator<<, printOn, str, etc. in all classes
+
+handlePullPacketChanged can come from the queue when
+ - a high priority frame is already being streamed and it gets interrupted
+ - a low priority frame cannot be interrupted because it's already too close to its end (remaining minPacketLength)
+in both cases a progress report is sent which is unnecessary and confusing
+
+- ethernet preemption example: 2nd out of 3 sends per packet must be avoided
+  - add a check for whether the two packets are definitely equal or may be different?!
+  - change the preamble insertion module to immediately start with a progress of 8 bytes and
+  - change the transmitter to check if the at the progress update the expected progress position is at the end of the packet to skip the progress report
+
+- create release script (remove trailing spaces, replace leading tabs, fix header guards, format source code)
+
+- check Ethernet FCS progress report at the correct moment of time
+
+Parallel simulation support
+ - compute earliest input/output time (function?!) for each gate in the network
+   - earliest output time (EOT) per gate starts from the earliest event in the module (using virtual method in modules with default implementation)
+   - also take into account C++ methods calls when propagating EIT/EOT
+   - earliest input time (EIT) per gate is computed from neighbors' earliest output time per gate + channel delay
+   - refine times by propagating EOT to EIT until there's no change
+   - neighbor partitions' EIT can be easily found
+
+- Add parameters to ScenarioManager disconnect operation to allow cutting connection at either end (source or destination)
+  and also support disconnecting bidirectional connections in all four combinations.
+
+ - generic TCP/UDP socket tagging, with automatic copying of tags to outgoing packets
+
+ - temporal and spectral and spatial energy density
+   - sampling
+   - filling
+   - integrating
+
+ - use @reconnect to simplify network nodes which copy big parts of StandardHost
  - similarly to timing API other meta-data could also be stored for the packet data per bit (e.g. hop count)
  - when deleting a network interface or deleting a network node, the interface deleted signal is missing
- - extend packet API with updateAtFront<> and updateAtBack taking a modifier lambda function as argument (to replace the remove/insert idiom)
  - add generic IpApp, EthernetApp similarly to UdpApp and TcpApp
  - unify C++ namespaces, NED namespaces, folders and file names (e.g. ospfv vs. Ospf3*)
  - implement additional INET specific fingerprint ingredients: network interface configuration, routing table, mobility state, etc.
@@ -15,12 +138,8 @@
  - implement MemoizedFunction and multi dimensional domain subdivision tree
  - add parameter for orthogonal combinator function: multiplicative and minimum based
  - add parameter for bit error estimation: based on min(packet), mean(packet), min(mean(symbol))
- - test cmdenv-fake-gui & figure fingerprinting from OMNeT++ 6.0
- - clang compiler bug, see test.cc
 
-
-most important topics
- - chapter in developers guild about signals and statistics, naming convention, what constitues a signal and what does not, etc.
+ - chapter in developers guide about signals and statistics, naming convention, what constitutes a signal and what does not, etc.
  - existing protocols
    - 802.11 statistics, logging, display strings, code cleanup, memory management
    - complete IPv6
@@ -40,9 +159,6 @@ most important topics
  - port existing 3rd party models
    - help ANSA porting to INET 4.0
 
-=====================
-
- - implicit serialization of chunks for conversion must be controllable from the API with flags
  - the packet dissector may need to do implicit chunk conversion because it has to choose a representation which may or may not be the same as the one in the packet (e.g. two interoperable frameworks)
  - add parameter to mobility base which determines what should happen if the energy storage is depleted. For example, a drone should just stop, but a satellite should continue its motion.
 
@@ -94,9 +210,6 @@ most important topics
  - nicely position submodules in compound modules, prepare for 2 info lines
  - extend main protocol modules (and all submodules) with 2 info lines above the submodule icon
  - avoid specifying module icon sizes by default, override icon size in submodules
- - sort includes alphabetically
- - pretty print white spaces
-
 
 TODO: cleanup MSG files
  remove if possible:

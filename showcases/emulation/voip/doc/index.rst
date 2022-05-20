@@ -23,12 +23,12 @@ traffic (contents of an audio file) between them. The received audio will be
 saved to a file, which can be compared to the original to examine how the audio
 quality is affected by the packets passing through the network.
 
-Note that this showcase requires the ``VoIPStream`` and ``Emulation``
+Note that this showcase requires the ``VoipStream`` and ``NetworkEmulationSupport``
 features of the INET Framework to be turned on (they are off by default), and it
 only runs on Linux.
 
 | INET version: ``4.0``
-| Source files location: `inet/showcases/emulation/voip <https://github.com/inet-framework/inet-showcases/tree/master/emulation/voip>`__
+| Source files location: `inet/showcases/emulation/voip <https://github.com/inet-framework/inet/tree/master/showcases/emulation/voip>`__
 
 
 Introduction
@@ -56,6 +56,9 @@ voice quality. The simulations will be run under a real-time event scheduler
 Note that the division of the simulated and real parts of the network is
 arbitrary; INET has support for dividing the network at other levels of the
 protocol stack; for example, at the link layer.
+
+For an more information on emulation
+in INET, read the :doc:`Emulation section </users-guide/ch-emulation>` in the User's Guide.
 
 The Simulation Setup
 --------------------

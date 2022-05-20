@@ -14,6 +14,7 @@
 #
 import os
 import sys
+import re
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('_themes'))
 
@@ -24,16 +25,16 @@ project = 'INET'
 copyright = 'INET community'
 author = 'INET community'
 
-# The short X.Y version
-version = '4.2'
-# The full version, including alpha/beta/rc tags
-release = '4.2'
+# The short X.Y version this doc refers to (last tagged release)
+release = re.sub('^v', '', os.popen('git describe --tags --abbrev=0 --match=v[0-9].*').read().strip())
+# Git version this documentation built from (including last release tag, number of commints since then and git hash)
+version = re.sub('^v', '', os.popen('git describe --tags --abbrev=4 --match=v[0-9].*').read().strip())
 
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-needs_sphinx = '2.2'
+needs_sphinx = '3.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -45,7 +46,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.githubpages',
     'sphinx.ext.graphviz',
-#    'sphinxcontrib.images',  ## needed, but not yet compatible with sphinx 2.x
+    #'sphinxcontrib.images',
     'tools.doxylink',
 ]
 
@@ -63,7 +64,6 @@ source_suffix = [ '.rst',
 source_parsers = {
 #   '.md': 'recommonmark.parser.CommonMarkParser',
 }
-
 
 # The master toctree document.
 master_doc = 'index'
@@ -142,7 +142,10 @@ html_theme_options = {
     'show_drawer_title': False,
     # Render footer.
     # Values: True, False (Default: True)
-    'show_footer': False
+    'show_footer': False,
+
+    # google analytics
+    'googleanalytics_id': 'UA-240922-3'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -226,7 +229,7 @@ extlinks = {
 
 # image extension config
 images_config = {
-    'override_image_directive': False,
+    'override_image_directive': True,
 #    'backend': 'LightBox2',
 #    'default_image_width': '100%',
 #    'default_image_height': 'auto',
@@ -238,9 +241,9 @@ images_config = {
 # -- Doxylink config ---------------------------------------------------------
 
 doxylink = {
-#        'cpp' : ('doxytags.xml', 'https://omnetpp.org/doc/inet/api-current/doxy/'),
-        'ned' : ('nedtags.xml', 'https://omnetpp.org/doc/inet/api-current/neddoc/'),
-        'msg' : ('msgtags.xml', 'https://omnetpp.org/doc/inet/api-current/neddoc/'),
+#        'cpp' : ('doxytags.xml', 'https://doc.omnetpp.org/inet/api-current/doxy/'),
+        'ned' : ('nedtags.xml', 'https://doc.omnetpp.org/inet/api-current/neddoc/'),
+        'msg' : ('msgtags.xml', 'https://doc.omnetpp.org/inet/api-current/neddoc/'),
 }
 
 # -- Extension configuration -------------------------------------------------
@@ -285,6 +288,7 @@ from pygments.lexers.c_cpp import CLexer, CppLexer
 from pygments.lexer import RegexLexer, include, bygroups, using, this, inherit, default, words
 from pygments.token import Name, Keyword, Comment, Text, Operator, String, Number, Punctuation, Error
 from sphinx.highlighting import lexers
+from pygments.formatters import HtmlFormatter
 
 #####
 class NedLexer(RegexLexer):
@@ -421,6 +425,43 @@ class IniLexer(RegexLexer):
 lexers['ini'] = IniLexer(startinline=True)
 
 #######################################################################
+
+from pygments.style import Style
+from pygments.token import Keyword, Name, Comment, String, Error, \
+     Number, Operator, Generic, Whitespace
+
+class FpStyle(Style):
+	default_style = "default"
+	style = {
+		Text:	'#ffffff'
+}
+
+class FingerprintLexer(RegexLexer):
+    name = 'fp'
+    filenames = ['*.fp']
+    mimetypes = ['text/x-fp']
+    pygments_style = "FpStyle"
+
+    tokens = {
+        'root': [
+            #(r'.*: ', Text),
+            #(r'PASS', Keyword),
+            #(r'FAILED', String),
+	    (r'(.* : )(PASS)?(FAILED)?(ERROR)?',
+             bygroups(Name.Entity, Name.Builtin, String, String)),
+	    (r'.*?\n', Name.Entity),
+        ],
+    }
+
+    def analyse_text(text):
+        npos = text.find('\n')
+        if npos < 3:
+            return False
+        return text[0] == '[' and text[npos-1] == ']'
+
+lexers['fp'] = FingerprintLexer(startinline=True)
+
+#######################################################################
 # -- setup the customizations
 import tools.video
 import tools.audio
@@ -431,5 +472,6 @@ def setup(app):
     app.add_directive('youtube', tools.video.Youtube)
     app.add_directive('vimeo', tools.video.Vimeo)
     app.add_directive('video', tools.video.Video)
+    app.add_directive('video_noloop', tools.video.Video_noloop)
     app.add_directive('audio', tools.audio.Audio)
     app.add_directive('card', opptheme.CardDirective)
