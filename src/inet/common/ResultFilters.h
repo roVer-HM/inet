@@ -411,6 +411,7 @@ class INET_API ThroughputFilter : public cObjectResultFilter
   protected:
     simtime_t interval = -1;
     int numLengthLimit = -1;
+    bool dropLastSignal = false;
     bool emitIntermediateZeros = true;
 
     simtime_t lastSignalTime;

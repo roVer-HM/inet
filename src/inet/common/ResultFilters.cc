@@ -663,6 +663,10 @@ void ThroughputFilter::init(Context *ctx)
     interval = cConfiguration::parseDouble(intervalValue, "s", nullptr, 0.1);
     auto numLengthLimitValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "numLengthLimit");
     numLengthLimit = cConfiguration::parseLong(numLengthLimitValue, nullptr, 100);
+    auto dropLastSignalValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
+    dropLastSignal = cConfiguration::parseBool(dropLastSignalValue, nullptr, false);
+    auto emitIntermediateZerosValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
+    emitIntermediateZeros = cConfiguration::parseBool(emitIntermediateZerosValue, nullptr, true);
     lastSignalTime = simTime();
 }
 
@@ -728,7 +732,9 @@ void ThroughputFilter::finish(cComponent *component, simsignal_t signalID)
                     emitThroughput(lastSignalTime + interval, details);
             }
         }
-        emitThroughput(now, details);
+        if (dropLastSignal){ // last interval will be smaller. Do not emit if dropLastSignal=true
+            emitThroughput(now, details);
+        }
     }
 }
 
