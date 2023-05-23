@@ -73,8 +73,12 @@ cGroupFigure *OpenStreetMapSceneCanvasVisualizer::createMapFigure(const OpenStre
 
     for (const auto& way : map.getWays()) {
         std::vector<cFigure::Point> points;
-        for (const auto& node : way->getNodes())
+        if (way->getNodes().size() <= 0){
+            continue;
+        }
+        for (const auto& node : way->getNodes()){
             points.push_back(toCanvas(map, node->getLat(), node->getLon()));
+        }
         bool isArea = way->getNodes().front() == way->getNodes().back();
 
         if (!isArea) {

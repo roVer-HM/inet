@@ -106,10 +106,16 @@ OpenStreetMap OpenStreetMap::from(cXMLElement *mapRoot)
     }
 
     for (cXMLElement *nodeElem : mapRoot->getChildrenByTagName("node")) {
+        auto lat = nodeElem->getAttribute("lat");
+        auto lon = nodeElem->getAttribute("lon");
+        auto id = nodeElem->getAttribute("id");
+        if (lat == nullptr || lon == nullptr || id == nullptr){
+            continue;
+        }
         Node *node = new Node();
-        node->id = parseId(nodeElem->getAttribute("id"));
-        node->lat = parseDouble(nodeElem->getAttribute("lat"));
-        node->lon = parseDouble(nodeElem->getAttribute("lon"));
+        node->id = parseId(id);
+        node->lat = parseDouble(lat);
+        node->lon = parseDouble(lon);
         map.parseTags(nodeElem, node->tags);
         map.nodes.push_back(node);
         nodeById[node->id] = node;
