@@ -241,11 +241,10 @@ void EthernetCsmaMac::handleUpperPacket(Packet *packet)
     EV_INFO << "Received " << packet << " from upper layer." << endl;
 
     numFramesFromHL++;
-    emit(packetReceivedFromUpperSignal, packet);
 
     MacAddress address = getMacAddress();
 
-    auto macHeader = packet->peekAtFront<EthernetMacHeader>();
+    const auto& macHeader = packet->peekAtFront<EthernetMacHeader>();
     if (macHeader->getDest().equals(address)) {
         throw cRuntimeError("Logic error: frame %s from higher layer has local MAC address as dest (%s)",
                 packet->getFullName(), macHeader->getDest().str().c_str());
@@ -267,15 +266,6 @@ void EthernetCsmaMac::handleUpperPacket(Packet *packet)
         return;
     }
 
-    // fill in src address if not set
-    if (macHeader->getSrc().isUnspecified()) {
-        // macHeader is immutable
-        macHeader = nullptr;
-        auto newHeader = packet->removeAtFront<EthernetMacHeader>();
-        newHeader->setSrc(address);
-        packet->insertAtFront(newHeader);
-        macHeader = newHeader;
-    }
     if (currentTxFrame != nullptr)
         throw cRuntimeError("EthernetMac already has a transmit packet when packet arrived from upper layer");
     addPaddingAndSetFcs(packet, MIN_ETHERNET_FRAME_BYTES);
@@ -590,7 +580,7 @@ void EthernetCsmaMac::sendJamSignal()
     simtime_t duration = simTime() - curTxSignal->getCreationTime(); // TODO save and use start tx time
     cutEthernetSignalEnd(curTxSignal, duration); // TODO save and use start tx time
     emit(transmissionEndedSignal, curTxSignal);
-    send(curTxSignal, SendOptions().finishTx(curTxSignal->getId()).duration(duration), physOutGate);
+    send(curTxSignal, SendOptions().finishTx(curTxSignal->getId()), physOutGate);
     curTxSignal = nullptr;
 
     // send JAM

@@ -8,7 +8,7 @@ In this example we demonstrate per-stream policing using chained token buckets
 which allows specifying committed/excess information rates and burst sizes.
 
 | INET version: ``4.4``
-| Source files location: `inet/showcases/tsn/streamfiltering/tokenbucket <https://github.com/inet-framework/tree/master/showcases/tsn/streamfiltering/tokenbucket>`__
+| Source files location: `inet/showcases/tsn/streamfiltering/tokenbucket <https://github.com/inet-framework/inet/tree/master/showcases/tsn/streamfiltering/tokenbucket>`__
 
 The Model
 ---------
@@ -100,5 +100,5 @@ Sources: :download:`omnetpp.ini <../omnetpp.ini>`
 Discussion
 ----------
 
-Use `this <https://github.com/inet-framework/inet/discussions/TODO>`__ page in the GitHub issue tracker for commenting on this showcase.
+Use `this <https://github.com/inet-framework/inet/discussions/795>`__ page in the GitHub issue tracker for commenting on this showcase.
 

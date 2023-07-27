@@ -89,6 +89,14 @@ namespace inet {
  *  - attach tags (metadata) to the packet as a whole
  *  - attache tags (metadata) to regions of the content of the packet
  *  - convert to a human readable string
+ *
+ * Packets can have packet tags attached to the whole packet. Packet tags are
+ * identified by their type. Tags are usually small data structures that hold
+ * some relevant information.
+ *
+ * Packets can also have region tags are attached to a specific region of their
+ * data. Region tags are identified by their type. Regions are identified by
+ * their offset and length, and they are not allowed to overlap.
  */
 class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedObject, public IRegionTaggedObject
 {
@@ -952,7 +960,7 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
         const auto& frontPart = frontLength > b(0) ? peekAt(b(0), frontLength) : nullptr;
         b backLength = totalLength - offset - chunkLength;
         const auto& backPart = backLength > b(0) ? peekAt(totalLength - backLength, backLength) : nullptr;
-        content = EmptyChunk::singleton;
+        content = makeShared<EmptyChunk>();
         const auto& result = makeExclusivelyOwnedMutableChunk(oldChunk);
         CHUNK_CHECK_USAGE(chunkLength == chunk->getChunkLength(), "length is different");
         if (frontLength == b(0) && backLength == b(0))
@@ -1274,6 +1282,13 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
      */
     void copyTags(const Packet& source) {
         tags.copyTags(source.tags);
+    }
+
+    /**
+     * Returns true if the packet tag for the provided type is found.
+     */
+    template<typename T> bool hasTag() const {
+        return tags.findTag<T>() != nullptr;
     }
 
     /**

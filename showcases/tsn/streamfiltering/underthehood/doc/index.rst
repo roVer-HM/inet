@@ -10,7 +10,7 @@ validating specific complex filtering and policing behaviors which can be diffic
 to replicate in a complete network.
 
 | INET version: ``4.4``
-| Source files location: `inet/showcases/tsn/streamfiltering/underthehood <https://github.com/inet-framework/tree/master/showcases/tsn/streamfiltering/underthehood>`__
+| Source files location: `inet/showcases/tsn/streamfiltering/underthehood <https://github.com/inet-framework/inet/tree/master/showcases/tsn/streamfiltering/underthehood>`__
 
 The Model
 ---------
@@ -61,5 +61,5 @@ Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`PeekingUnderTheHoo
 Discussion
 ----------
 
-Use `this <https://github.com/inet-framework/inet/discussions/TODO>`__ page in the GitHub issue tracker for commenting on this showcase.
+Use `this <https://github.com/inet-framework/inet/discussions/796>`__ page in the GitHub issue tracker for commenting on this showcase.
 

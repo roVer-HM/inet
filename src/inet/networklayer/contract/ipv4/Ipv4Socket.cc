@@ -17,7 +17,7 @@
 namespace inet {
 
 Ipv4Socket::Ipv4Socket(cGate *outputGate) :
-    socketId(getEnvir()->getUniqueNumber()),
+    socketId(getActiveSimulationOrEnvir()->getUniqueNumber()),
     outputGate(outputGate)
 {
 }
@@ -30,8 +30,8 @@ void Ipv4Socket::setCallback(INetworkSocket::ICallback *callback)
 bool Ipv4Socket::belongsToSocket(cMessage *msg) const
 {
     auto& tags = check_and_cast<ITaggedObject *>(msg)->getTags();
-    int msgSocketId = tags.getTag<SocketInd>()->getSocketId();
-    return socketId == msgSocketId;
+    const auto& socketInd = tags.findTag<SocketInd>();
+    return socketInd != nullptr && socketInd->getSocketId() == socketId;
 }
 
 void Ipv4Socket::processMessage(cMessage *msg)

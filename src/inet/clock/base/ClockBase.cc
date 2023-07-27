@@ -14,13 +14,29 @@ simsignal_t ClockBase::timeChangedSignal = cComponent::registerSignal("timeChang
 
 void ClockBase::initialize(int stage)
 {
-    if (stage == INITSTAGE_LOCAL)
+    if (stage == INITSTAGE_LOCAL) {
         displayStringTextFormat = par("displayStringTextFormat");
+        emitClockTimeInterval = par("emitClockTimeInterval");
+        if (emitClockTimeInterval != 0) {
+            timer = new cMessage();
+            scheduleAt(simTime(), timer);
+        }
+    }
     else if (stage == INITSTAGE_LAST) {
         referenceClockModule.reference(this, "referenceClock", false);
         updateDisplayString();
         emit(timeChangedSignal, getClockTime().asSimTime());
     }
+}
+
+void ClockBase::handleMessage(cMessage *msg)
+{
+    if (msg == timer) {
+        emit(timeChangedSignal, getClockTime().asSimTime());
+        scheduleAfter(emitClockTimeInterval, timer);
+    }
+    else
+        throw cRuntimeError("Unknown message");
 }
 
 void ClockBase::finish()
@@ -37,7 +53,7 @@ void ClockBase::updateDisplayString() const
 {
     if (getEnvir()->isGUI()) {
         auto text = StringFormat::formatString(displayStringTextFormat, this);
-        getDisplayString().setTagArg("t", 0, text);
+        getDisplayString().setTagArg("t", 0, text.c_str());
     }
 }
 
@@ -86,23 +102,18 @@ void ClockBase::handleClockEvent(ClockEvent *msg)
     clockEventTime = -1;
 }
 
-const char *ClockBase::resolveDirective(char directive) const
+std::string ClockBase::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 't':
-            result = getClockTime().str() + " s";
-            break;
+            return getClockTime().str() + " s";
         case 'T':
-            result = getClockTime().ustr();
-            break;
+            return getClockTime().ustr();
         case 'd':
-            result = (getClockTime() - referenceClockModule->getClockTime()).ustr();
-            break;
+            return (getClockTime() - referenceClockModule->getClockTime()).ustr();
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 } // namespace inet

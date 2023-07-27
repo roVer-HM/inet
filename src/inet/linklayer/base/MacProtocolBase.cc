@@ -9,6 +9,7 @@
 
 #include "inet/common/IInterfaceRegistrationListener.h"
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/Simsignals.h"
 
 namespace inet {
 
@@ -164,7 +165,7 @@ queueing::IPacketQueue *MacProtocolBase::getQueue(cGate *gate) const
                 return m;
         }
     }
-    throw cRuntimeError("Gate %s is not connected to a module of type queueing::IPacketQueue", gate->getFullPath().c_str());
+    throw cRuntimeError("Gate %s is not connected to a module of type queueing::IPacketQueue (did you use OmittedPacketQueue as queue type?)", gate->getFullPath().c_str());
 }
 
 bool MacProtocolBase::canDequeuePacket() const
@@ -177,6 +178,7 @@ Packet *MacProtocolBase::dequeuePacket()
     Packet *packet = txQueue->dequeuePacket();
     take(packet);
     packet->setArrival(getId(), upperLayerInGateId, simTime());
+    emit(packetReceivedFromUpperSignal, packet);
     return packet;
 }
 

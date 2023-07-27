@@ -62,11 +62,9 @@ void MacForwardingTable::initialize(int stage)
 
 void MacForwardingTable::handleParameterChange(const char *name)
 {
-    if (name != nullptr) {
-        if (!strcmp(name, "forwardingTable")) {
-            clearTable();
-            parseForwardingTableParameter();
-        }
+    if (!strcmp(name, "forwardingTable")) {
+        clearTable();
+        parseForwardingTableParameter();
     }
 }
 
@@ -114,23 +112,20 @@ void MacForwardingTable::updateDisplayString() const
 {
     if (getEnvir()->isGUI()) {
         auto text = StringFormat::formatString(par("displayStringTextFormat"), this);
-        getDisplayString().setTagArg("t", 0, text);
+        getDisplayString().setTagArg("t", 0, text.c_str());
     }
 }
 
-const char *MacForwardingTable::resolveDirective(char directive) const
+std::string MacForwardingTable::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'a':
-            result = std::to_string(forwardingTable.size());
-            break;
+            return std::to_string(forwardingTable.size());
         case 'v':
-            break;
+            return "";
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 int MacForwardingTable::getUnicastAddressForwardingInterface(const MacAddress& address, unsigned int vid) const
@@ -354,10 +349,12 @@ void MacForwardingTable::readForwardingTable(const char *fileName)
 
 void MacForwardingTable::parseForwardingTableParameter()
 {
-    auto forwardingTable = check_and_cast<cValueArray *>(par("forwardingTable").objectValue());
-    for (int i = 0; i < forwardingTable->size(); i++) {
-        cValueMap *entry = check_and_cast<cValueMap *>(forwardingTable->get(i).objectValue());
-        auto vlan = entry->containsKey("vlan") ? entry->get("vlan").intValue() : 0;
+    auto forwardingTableObject = check_and_cast<cValueArray *>(par("forwardingTable").objectValue());
+    for (int i = 0; i < forwardingTableObject->size(); i++) {
+        cValueMap *entry = check_and_cast<cValueMap *>(forwardingTableObject->get(i).objectValue());
+        unsigned int vlan = 0;
+        if (entry->containsKey("vlan"))
+            vlan = entry->get("vlan");
         auto macAddressString = entry->get("address").stringValue();
         L3Address l3Address;
         if (!L3AddressResolver().tryResolve(macAddressString, l3Address, L3AddressResolver::ADDR_MAC))
@@ -369,8 +366,12 @@ void MacForwardingTable::parseForwardingTableParameter()
             throw cRuntimeError("Cannot find network interface '%s'", interfaceName);
         if (macAddress.isMulticast())
             addMulticastAddressForwardingInterface(networkInterface->getInterfaceId(), macAddress, vlan);
-        else
+        else {
+            ForwardingTableKey key(vlan, macAddress);
+            if (containsKey(forwardingTable, key))
+                throw cRuntimeError("Table already contains %s unicast MAC address for vlan %u.", macAddress.str().c_str(), vlan);
             setUnicastAddressForwardingInterface(networkInterface->getInterfaceId(), macAddress, vlan);
+        }
     }
 }
 

@@ -11,12 +11,6 @@
 
 set -e # make the script exit with error if any executed command exits with error
 
-export PATH="/root/omnetpp-6.0pre12-$TARGET_PLATFORM/bin:$PATH"
-
-# HACK: When cross-building to macOS, the linker complains about this
-# being a missing search directory, so let's make sure it exists...
-# (Just to silence that warning...)
-mkdir -p /root/omnetpp-6.0pre12-macosx/tools/macosx/lib
 # MEGA HACK: When cross-building to Windows, make complains about this
 # being a missing executable. Let's make sure it exists, but it doesn't
 # matter exactly what it does, as it's only used to translate
@@ -28,7 +22,8 @@ cd $GITHUB_WORKSPACE
 
 . setenv -f
 
-cp -r /root/nsc-0.5.3 3rdparty
+# activating ccache
+export PATH=/usr/lib/ccache:$PATH
 
 echo "::group::Enable all features"
 opp_featuretool enable all 2>&1 # redirecting stderr so it doesn't get out of sync with stdout
@@ -45,7 +40,6 @@ if [ "$TARGET_PLATFORM" != "linux" ]; then
         VoipStream VoipStreamExamples \
         NetworkEmulationSupport NetworkEmulationExamples NetworkEmulationShowcases \
         TcpLwip VisualizationOsg VisualizationOsgShowcases 2>&1
-    opp_featuretool disable TcpNsc 2>&1 || true
     echo "::endgroup::"
 fi
 

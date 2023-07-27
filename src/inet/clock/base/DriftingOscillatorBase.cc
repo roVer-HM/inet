@@ -13,9 +13,12 @@ void DriftingOscillatorBase::initialize(int stage)
 {
     OscillatorBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
-        nominalTickLength = par("nominalTickLength");
+        double nominalTickLengthAsDouble = par("nominalTickLength");
+        nominalTickLength = nominalTickLengthAsDouble;
         if (nominalTickLength == 0)
             nominalTickLength.setRaw(1);
+        else if (std::abs(nominalTickLength.dbl() - nominalTickLengthAsDouble) / nominalTickLengthAsDouble > 1E-15)
+            throw cRuntimeError("The nominalTickLength parameter value %lg cannot be accurately represented with the current simulation time precision, conversion result: %s", nominalTickLengthAsDouble, nominalTickLength.ustr().c_str());
         inverseDriftRate = invertDriftRate(driftRate);
         origin = simTime();
         simtime_t currentTickLength = getCurrentTickLength();
@@ -33,7 +36,7 @@ void DriftingOscillatorBase::initialize(int stage)
     }
 }
 
-void DriftingOscillatorBase::setDriftRate(double newDriftRate)
+void DriftingOscillatorBase::setDriftRate(ppm newDriftRate)
 {
     Enter_Method("setDriftRate");
     if (newDriftRate != driftRate) {
@@ -43,7 +46,7 @@ void DriftingOscillatorBase::setDriftRate(double newDriftRate)
         simtime_t currentTickLength = getCurrentTickLength();
         simtime_t baseTickTime = origin + nextTickFromOrigin - currentTickLength;
         simtime_t elapsedTickTime = fmod(currentSimTime - baseTickTime, currentTickLength);
-        double newInverseDriftRate = invertDriftRate(newDriftRate);
+        ppm newInverseDriftRate = invertDriftRate(newDriftRate);
         if (elapsedTickTime == SIMTIME_ZERO)
             nextTickFromOrigin = 0;
         else {
@@ -53,7 +56,7 @@ void DriftingOscillatorBase::setDriftRate(double newDriftRate)
         driftRate = newDriftRate;
         inverseDriftRate = newInverseDriftRate;
         origin = currentSimTime;
-        emit(driftRateChangedSignal, driftRate);
+        emit(driftRateChangedSignal, ppm(driftRate).get());
         emit(postOscillatorStateChangedSignal, this);
         updateDisplayString();
     }
@@ -100,7 +103,7 @@ void DriftingOscillatorBase::processCommand(const cXMLElement& node)
     Enter_Method("processCommand");
     if (!strcmp(node.getTagName(), "set-oscillator")) {
         if (const char *driftRateStr = node.getAttribute("drift-rate")) {
-            double newDriftRate = strtod(driftRateStr, nullptr) / 1E+6;
+            ppm newDriftRate = ppm(strtod(driftRateStr, nullptr));
             setDriftRate(newDriftRate);
         }
         if (const char *tickOffsetStr = node.getAttribute("tick-offset")) {
@@ -112,20 +115,16 @@ void DriftingOscillatorBase::processCommand(const cXMLElement& node)
         throw cRuntimeError("Invalid command: %s", node.getTagName());
 }
 
-const char *DriftingOscillatorBase::resolveDirective(char directive) const
+std::string DriftingOscillatorBase::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'c':
-            result = getCurrentTickLength().str() + " s";
-            break;
+            return std::to_string(getCurrentTickLength()) + " s";
         case 'd':
-            result = std::to_string((int64_t)(driftRate * 1E+6)) + " ppm";
-            break;
+            return driftRate.str();
         default:
             return OscillatorBase::resolveDirective(directive);
     }
-    return result.c_str();
 }
 
 } // namespace inet

@@ -18,26 +18,20 @@ InfoVisualizerBase::InfoVisualization::InfoVisualization(int moduleId) :
 {
 }
 
-const char *InfoVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
+std::string InfoVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'n':
-            result = module->getFullName();
-            break;
+            return module->getFullName();
         case 'p':
-            result = module->getFullPath();
-            break;
+            return module->getFullPath();
         case 't':
-            result = module->getDisplayString().getTagArg("t", 0);
-            break;
+            return module->getDisplayString().getTagArg("t", 0);
         case 's':
-            result = module->str();
-            break;
+            return module->str();
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 void InfoVisualizerBase::preDelete(cComponent *root)
@@ -70,14 +64,12 @@ void InfoVisualizerBase::initialize(int stage)
 void InfoVisualizerBase::handleParameterChange(const char *name)
 {
     if (!hasGUI()) return;
-    if (name != nullptr) {
-        if (!strcmp(name, "modules"))
-            modules.setPattern(par("modules"));
-        else if (!strcmp(name, "format"))
-            format.parseFormat(par("format"));
-        removeAllInfoVisualizations();
-        addInfoVisualizations();
-    }
+    if (!strcmp(name, "modules"))
+        modules.setPattern(par("modules"));
+    else if (!strcmp(name, "format"))
+        format.parseFormat(par("format"));
+    removeAllInfoVisualizations();
+    addInfoVisualizations();
 }
 
 void InfoVisualizerBase::refreshDisplay() const
@@ -86,7 +78,7 @@ void InfoVisualizerBase::refreshDisplay() const
     for (auto infoVisualization : infoVisualizations) {
         auto module = simulation->getModule(infoVisualization->moduleId);
         if (module != nullptr)
-            refreshInfoVisualization(infoVisualization, getInfoVisualizationText(module));
+            refreshInfoVisualization(infoVisualization, getInfoVisualizationText(module).c_str());
     }
 }
 
@@ -120,7 +112,7 @@ void InfoVisualizerBase::removeAllInfoVisualizations()
     }
 }
 
-const char *InfoVisualizerBase::getInfoVisualizationText(cModule *module) const
+std::string InfoVisualizerBase::getInfoVisualizationText(cModule *module) const
 {
     DirectiveResolver directiveResolver(module);
     return format.formatString(&directiveResolver);

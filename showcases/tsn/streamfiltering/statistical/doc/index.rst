@@ -8,7 +8,7 @@ In this example we combine a sliding window rate meter with a probabilistic pack
 dropper to achieve a simple statistical policing.
 
 | INET version: ``4.4``
-| Source files location: `inet/showcases/tsn/streamfiltering/statistical <https://github.com/inet-framework/tree/master/showcases/tsn/streamfiltering/statistical>`__
+| Source files location: `inet/showcases/tsn/streamfiltering/statistical <https://github.com/inet-framework/inet/tree/master/showcases/tsn/streamfiltering/statistical>`__
 
 The Model
 ---------
@@ -51,5 +51,5 @@ Sources: :download:`omnetpp.ini <../omnetpp.ini>`
 Discussion
 ----------
 
-Use `this <https://github.com/inet-framework/inet/discussions/TODO>`__ page in the GitHub issue tracker for commenting on this showcase.
+Use `this <https://github.com/inet-framework/inet/discussions/794>`__ page in the GitHub issue tracker for commenting on this showcase.
 

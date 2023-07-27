@@ -15,35 +15,26 @@ namespace inet {
 
 Register_MessagePrinter(PacketPrinter);
 
-const char *PacketPrinter::DirectiveResolver::resolveDirective(char directive) const
+std::string PacketPrinter::DirectiveResolver::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 's':
-            result = context.sourceColumn.str();
-            break;
+            return context.sourceColumn.str();
         case 'd':
-            result = context.destinationColumn.str();
-            break;
+            return context.destinationColumn.str();
         case 'p':
-            result = context.protocolColumn.str();
-            break;
+            return context.protocolColumn.str();
         case 'l':
-            result = context.lengthColumn.str();
-            break;
+            return context.lengthColumn.str();
         case 't':
-            result = context.typeColumn.str();
-            break;
+            return context.typeColumn.str();
         case 'i':
-            result = context.infoColumn.str();
-            break;
+            return context.infoColumn.str();
         case 'n':
-            result = std::to_string(numPacket);
-            break;
+            return std::to_string(numPacket);
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 int PacketPrinter::getScoreFor(cMessage *msg) const
@@ -74,9 +65,9 @@ bool PacketPrinter::isEnabledInfo(const Options *options, const Protocol *protoc
 
 const ProtocolPrinter& PacketPrinter::getProtocolPrinter(const Protocol *protocol) const
 {
-    auto protocolPrinter = ProtocolPrinterRegistry::globalRegistry.findProtocolPrinter(protocol);
+    auto protocolPrinter = ProtocolPrinterRegistry::getInstance().findProtocolPrinter(protocol);
     if (protocolPrinter == nullptr)
-        protocolPrinter = ProtocolPrinterRegistry::globalRegistry.findProtocolPrinter(nullptr);
+        protocolPrinter = ProtocolPrinterRegistry::getInstance().findProtocolPrinter(nullptr);
     return *protocolPrinter;
 }
 
@@ -204,7 +195,7 @@ void PacketPrinter::printPacket(Packet *packet, const Options *options, Context&
 {
     PacketDissector::PduTreeBuilder pduTreeBuilder;
     try {
-        PacketDissector packetDissector(ProtocolDissectorRegistry::globalRegistry, pduTreeBuilder);
+        PacketDissector packetDissector(ProtocolDissectorRegistry::getInstance(), pduTreeBuilder);
         packetDissector.dissectPacket(packet);
     }
     catch (cRuntimeError& e) {
@@ -250,7 +241,8 @@ void PacketPrinter::printPacketInsideOut(const Ptr<const PacketDissector::Protoc
                 context.infoLevel = protocolDataUnit->getLevel();
                 printSourceColumn(protocolContext.sourceColumn.str(), protocol, options, context);
                 printDestinationColumn(protocolContext.destinationColumn.str(), protocol, options, context);
-                printProtocolColumn(protocol, options, context);
+                if (protocol != &Protocol::unknown)
+                    printProtocolColumn(protocol, options, context);
                 // prepend info column
                 bool showAutoInfo = isEnabledOption(options, "Show auto info");
                 bool showInnermostInfo = isEnabledOption(options, "Show innermost info");
@@ -291,7 +283,8 @@ void PacketPrinter::printPacketLeftToRight(const Ptr<const PacketDissector::Prot
                 context.infoLevel = protocolDataUnit->getLevel();
                 printSourceColumn(protocolContext.sourceColumn.str(), protocol, options, context);
                 printDestinationColumn(protocolContext.destinationColumn.str(), protocol, options, context);
-                printProtocolColumn(protocol, options, context);
+                if (protocol != &Protocol::unknown)
+                    printProtocolColumn(protocol, options, context);
             }
             // append info column
             if (isEnabledInfo(options, protocol)) {

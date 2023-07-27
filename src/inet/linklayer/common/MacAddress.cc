@@ -56,7 +56,6 @@ bool MacAddress::tryParse(const char *hexstr)
     // if hext string is shorter, address is filled with zeros;
     // Non-hex characters are discarded before conversion.
     address = 0; // clear top 16 bits too that setAddressByte() calls skip
-    int k = 0;
     const char *s = hexstr;
     for (int pos = 0; pos < MAC_ADDRESS_SIZE; pos++) {
         if (!s || !*s) {
@@ -83,7 +82,6 @@ bool MacAddress::tryParse(const char *hexstr)
             s++;
 
             setAddressByte(pos, d);
-            k++;
         }
     }
     return true;
@@ -132,8 +130,9 @@ InterfaceToken MacAddress::formInterfaceIdentifier() const
 
 MacAddress MacAddress::generateAutoAddress()
 {
-    static SimulationRunUniqueNumberGenerator<uint64_t> counter;
-    uint64_t raw = 0x0AAA00000000ULL + (counter.getNextValue() & 0xffffffffUL) + getEnvir()->getParsimProcId() * 0x000100000000ULL;
+    static int handle = cSimulationOrSharedDataManager::registerSharedCounterName("inet::MacAddress::counter");
+    uint64_t& counter = getSimulationOrSharedDataManager()->getSharedCounter(handle, getActiveSimulationOrEnvir()->getParsimProcId() * 0x000100000000ULL);
+    uint64_t raw = 0x0AAA00000000ULL + (++counter & 0xffffffffUL);
     return MacAddress(raw);
 }
 

@@ -119,8 +119,7 @@ void WiseRoute::handleSelfMessage(cMessage *msg)
         floodSeqNumber++;
         pkt->setIsFlood(1);
         pkt->setHeaderKind(ROUTE_FLOOD);
-        auto packet = new Packet("route-flood");
-        packet->insertAtBack(pkt);
+        auto packet = new Packet("route-flood", pkt);
         setDownControlInfo(packet, MacAddress::BROADCAST_ADDRESS);
         sendDown(packet);
         nbFloodsSent++;
@@ -135,17 +134,17 @@ void WiseRoute::handleSelfMessage(cMessage *msg)
 
 void WiseRoute::handleLowerPacket(Packet *packet)
 {
-    auto wiseRouteHeader = staticPtrCast<WiseRouteHeader>(packet->peekAtFront<WiseRouteHeader>()->dupShared());
-    const L3Address& finalDestAddr = wiseRouteHeader->getFinalDestAddr();
-    const L3Address& initialSrcAddr = wiseRouteHeader->getInitialSrcAddr();
-    const L3Address& srcAddr = wiseRouteHeader->getSourceAddress();
+    auto inHeader = packet->peekAtFront<WiseRouteHeader>();
+    const L3Address& finalDestAddr = inHeader->getFinalDestAddr();
+    const L3Address& initialSrcAddr = inHeader->getInitialSrcAddr();
+    const L3Address& srcAddr = inHeader->getSourceAddress();
     // KLUDGE get rssi and ber
     EV_ERROR << "Getting RSSI and BER from the received frame is not yet implemented. Using default values.\n";
     double rssi = 1; // TODO ctrlInfo->getRSSI();
     double ber = 0; // TODO ctrlInfo->getBitErrorRate();
     // Check whether the message is a flood and if it has to be forwarded.
-    floodTypes floodType = updateFloodTable(wiseRouteHeader->getIsFlood(), initialSrcAddr, finalDestAddr,
-                wiseRouteHeader->getSeqNum());
+    floodTypes floodType = updateFloodTable(inHeader->getIsFlood(), initialSrcAddr, finalDestAddr,
+                inHeader->getSeqNum());
     allReceivedRSSI.record(rssi);
     allReceivedBER.record(ber);
     if (floodType == DUPLICATE) {
@@ -155,57 +154,50 @@ void WiseRoute::handleLowerPacket(Packet *packet)
     else {
         const cObject *pCtrlInfo = nullptr;
         // If the message is a route flood, update the routing table.
-        if (wiseRouteHeader->getHeaderKind() == ROUTE_FLOOD)
+        if (inHeader->getHeaderKind() == ROUTE_FLOOD)
             updateRouteTable(initialSrcAddr, srcAddr, rssi, ber);
 
         if (finalDestAddr == myNetwAddr || finalDestAddr.isBroadcast()) {
-            Packet *packetCopy;
             if (floodType == FORWARD) {
                 // it's a flood. copy for delivery, forward original.
                 // if we are here (see updateFloodTable()), finalDestAddr == IP Broadcast. Hence finalDestAddr,
                 // initialSrcAddr, and destAddr have already been correctly set
                 // at origin, as well as the MAC control info. Hence only update
                 // local hop source address.
-                packetCopy = packet->dup();
-                wiseRouteHeader->setSourceAddress(myNetwAddr);
                 pCtrlInfo = packet->removeControlInfo();
-                wiseRouteHeader->setNbHops(wiseRouteHeader->getNbHops() + 1);
-                auto p = new Packet(packet->getName());
-                packet->popAtFront<WiseRouteHeader>();
-                p->insertAtBack(packet->peekDataAt(b(0), packet->getDataLength()));
-                wiseRouteHeader->setPayloadLengthField(p->getDataLength());
-                p->insertAtFront(wiseRouteHeader);
+                auto p = packet->dup();
+                p->clearTags();
+                auto outHeader = p->removeAtFront<WiseRouteHeader>();
+                outHeader->setSourceAddress(myNetwAddr);
+                outHeader->setNbHops(outHeader->getNbHops() + 1);
+                outHeader->setPayloadLengthField(p->getDataLength());
+                p->insertAtFront(outHeader);
                 setDownControlInfo(p, MacAddress::BROADCAST_ADDRESS);
                 sendDown(p);
                 nbDataPacketsForwarded++;
-                delete packet;
             }
-            else {
-                packetCopy = packet;
-            }
-            if (wiseRouteHeader->getHeaderKind() == DATA) {
-                decapsulate(packetCopy);
-                sendUp(packetCopy);
+            if (inHeader->getHeaderKind() == DATA) {
+                decapsulate(packet);
+                sendUp(packet);
                 nbDataPacketsReceived++;
             }
             else {
                 nbRouteFloodsReceived++;
-                delete packetCopy;
+                delete packet;
             }
         }
         else {
             // not for me. if flood, forward as flood. else select a route
             if (floodType == FORWARD) {
-                wiseRouteHeader->setSourceAddress(myNetwAddr);
                 pCtrlInfo = packet->removeControlInfo();
-                wiseRouteHeader->setNbHops(wiseRouteHeader->getNbHops() + 1);
-                auto p = new Packet(packet->getName());
-                packet->popAtFront<WiseRouteHeader>();
-                p->insertAtBack(packet->peekDataAt(b(0), packet->getDataLength()));
-                wiseRouteHeader->setPayloadLengthField(p->getDataLength());
-                p->insertAtFront(wiseRouteHeader);
-                setDownControlInfo(p, MacAddress::BROADCAST_ADDRESS);
-                sendDown(p);
+                auto outHeader = packet->removeAtFront<WiseRouteHeader>();
+                packet->clearTags();
+                outHeader->setSourceAddress(myNetwAddr);
+                outHeader->setNbHops(outHeader->getNbHops() + 1);
+                outHeader->setPayloadLengthField(packet->getDataLength());
+                packet->insertAtFront(outHeader);
+                setDownControlInfo(packet, MacAddress::BROADCAST_ADDRESS);
+                sendDown(packet);
                 nbDataPacketsForwarded++;
                 nbUnicastFloodForwarded++;
             }
@@ -216,24 +208,22 @@ void WiseRoute::handleLowerPacket(Packet *packet)
                     nextHop = finalDestAddr;
                     nbGetRouteFailures++;
                 }
-                wiseRouteHeader->setSourceAddress(myNetwAddr);
-                wiseRouteHeader->setDestinationAddress(nextHop);
                 pCtrlInfo = packet->removeControlInfo();
                 MacAddress nextHopMacAddr = arp->resolveL3Address(nextHop, nullptr); // FIXME interface entry pointer needed
                 if (nextHopMacAddr.isUnspecified())
                     throw cRuntimeError("Cannot immediately resolve MAC address. Please configure a GlobalArp module.");
-                wiseRouteHeader->setNbHops(wiseRouteHeader->getNbHops() + 1);
-                auto p = new Packet(packet->getName());
-                packet->popAtFront<WiseRouteHeader>();
-                p->insertAtBack(packet->peekDataAt(b(0), packet->getDataLength()));
-                wiseRouteHeader->setPayloadLengthField(p->getDataLength());
-                p->insertAtFront(wiseRouteHeader);
-                setDownControlInfo(p, nextHopMacAddr);
-                sendDown(p);
+                auto outHeader = packet->removeAtFront<WiseRouteHeader>();
+                packet->clearTags();
+                outHeader->setSourceAddress(myNetwAddr);
+                outHeader->setDestinationAddress(nextHop);
+                outHeader->setNbHops(outHeader->getNbHops() + 1);
+                outHeader->setPayloadLengthField(packet->getDataLength());
+                packet->insertAtFront(outHeader);
+                setDownControlInfo(packet, nextHopMacAddr);
+                sendDown(packet);
                 nbDataPacketsForwarded++;
                 nbPureUnicastForwarded++;
             }
-            delete packet;
         }
         if (pCtrlInfo != nullptr)
             delete pCtrlInfo;
@@ -265,7 +255,7 @@ void WiseRoute::handleUpperPacket(Packet *packet)
     pkt->setInitialSrcAddr(myNetwAddr);
     pkt->setSourceAddress(myNetwAddr);
     pkt->setNbHops(0);
-    pkt->setProtocolId(static_cast<IpProtocolId>(ProtocolGroup::ipprotocol.getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol())));
+    pkt->setProtocolId(static_cast<IpProtocolId>(ProtocolGroup::getIpProtocolGroup()->getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol())));
 
     if (finalDestAddr.isBroadcast())
         nextHopAddr = myNetwAddr.getAddressType()->getBroadcastAddress();

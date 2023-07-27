@@ -400,7 +400,7 @@ void SctpAssociation::sendToIP(Packet *pkt, const Ptr<SctpHeader>& sctpmsg,
         pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::sctp);
     }
 
-    IL3AddressType *addressType = dest.getAddressType();
+    const IL3AddressType *addressType = dest.getAddressType();
     pkt->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
 
     if (sctpMain->getInterfaceId() != -1) {
@@ -411,7 +411,7 @@ void SctpAssociation::sendToIP(Packet *pkt, const Ptr<SctpHeader>& sctpmsg,
     addresses->setDestAddress(dest);
     pkt->addTagIfAbsent<SocketReq>()->setSocketId(assocId);
     EV_INFO << "send packet " << pkt << " to ipOut\n";
-    check_and_cast<Sctp *>(getSimulation()->getContextModule())->send(pkt, "ipOut");
+    sctpMain->send(pkt, "ipOut");
 
     if (chunkType == HEARTBEAT) {
         SctpPathVariables *path = getPath(dest);

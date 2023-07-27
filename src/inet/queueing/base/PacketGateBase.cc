@@ -26,6 +26,11 @@ void PacketGateBase::initialize(int stage)
         emit(gateStateChangedSignal, isOpen_);
 }
 
+void PacketGateBase::finish()
+{
+    emit(gateStateChangedSignal, isOpen_);
+}
+
 cGate *PacketGateBase::getRegistrationForwardingGate(cGate *gate)
 {
     if (gate == outputGate)
@@ -64,6 +69,8 @@ void PacketGateBase::close()
 
 void PacketGateBase::processPacket(Packet *packet)
 {
+    if (!isOpen_)
+        throw cRuntimeError("Illegal operation on the gate, a packet is being passed through while the gate is not open");
     EV_INFO << "Passing through packet" << EV_FIELD(packet) << EV_ENDL;
 }
 
@@ -105,6 +112,7 @@ void PacketGateBase::handleCanPullPacketChanged(cGate *gate)
 
 bool PacketGateBase::canPacketFlowThrough(Packet *packet) const
 {
+    ASSERT(isOpen_);
     return true;
 }
 

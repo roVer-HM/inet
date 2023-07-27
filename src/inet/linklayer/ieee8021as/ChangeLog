@@ -1,6 +1,34 @@
 ====== inet-4.x ======
 
-2022-07-27  ------ inet-4.4.1 released ------
+2023-04-04  ------ inet-4.5.0 released ------
+
+2023-03-13  Levente Mészáros
+
+	Changed oscillator compensation to be in ppm.
+
+2023-03-13  Levente Mészáros
+
+	Removed the word factor from oscillatorCompensationFactor.
+
+2023-01-30  Zoltan Bojthe
+
+	Gptp: drop incoming packets with foreign domainNumber ("not for me")
+
+2022-12-05  Levente Mészáros
+
+	Fixed the computation of gmRateRatio.
+
+	The formula uses the previous and the current timestamp of the peer time
+	synchronization frame sending events. We could not find parts of the
+	standard that would justify this but the OneMasterClock example of the
+	gPTP time synchronization showcase proves this method to be accurate and
+	the old method to be completely wrong.
+
+2022-12-02  Levente Mészáros
+
+	Fixed pdelayRespEventIngressTimestamp adjustment after synchronization.
+	This is a local timestamp and must be adjusted similarly to pdelayReqEventEgressTimestamp.
+	GptpEndstation: Changed gptp submodule to be optional.
 
 2022-05-13  ------ inet-4.4.0 released ------
 

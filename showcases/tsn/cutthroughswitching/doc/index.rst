@@ -4,19 +4,17 @@ Cut-Through Switching
 Goals
 -----
 
-This showcase demonstrates cut-through switching, and compares it to store-and-forward
-switching in terms of delay.
-
-Cut-through switching, also called cut-through forwarding is a method for packet switching systems, 
-wherein the switch starts forwarding a frame (or packet) before the whole frame has been received, 
-normally as soon as the destination address and outgoing interface is determined (from Wikipedia).
-
-Cut-through switching may reduce the switching delay of Ethernet frames, as opposed to store-and-forward 
-switching,
-in which the whole frame is received and then forwarded.
+Cut-through switching is a method used in packet switching systems, such as Ethernet switches, to forward frames or 
+packets through the network. It involves starting the forwarding process before the entire frame has been received, 
+typically as soon as the destination address and outgoing interface are determined. This is in contrast to store-and-forward 
+switching, which waits until the entire frame has been received before forwarding it. One advantage of cut-through switching 
+is that it may reduce the switching delay of Ethernet frames, since the switch can begin forwarding the frame as soon as it 
+has enough information to do so. However, cut-through switching also has some potential disadvantages, such as a higher error 
+rate compared to store-and-forward switching, since it does not check the entire frame for errors before forwarding it. In this 
+showcase, we will demonstrate cut-through switching and compare it to store-and-forward switching in terms of delay.
 
 | INET version: ``4.3``
-| Source files location: `inet/showcases/tsn/cutthroughswitching <https://github.com/inet-framework/tree/master/showcases/tsn/cutthroughswitching>`__
+| Source files location: `inet/showcases/tsn/cutthroughswitching <https://github.com/inet-framework/inet/tree/master/showcases/tsn/cutthroughswitching>`__
 
 The Model
 ---------
@@ -82,18 +80,18 @@ The next video shows the cut-through behavior:
 The following sequence chart excerpt shows a packet sent from ``device1`` to ``device2`` via the switches,
 for store-and-forward and cut-through, respectively (the timeline is linear):
 
-.. .. figure:: media/storeandforwardseq2.png
+.. figure:: media/storeandforwardseq2.png
    :align: center
    :width: 100%
 
-.. .. figure:: media/seqchart2.png
+.. figure:: media/seqchart2.png
    :align: center
    :width: 100%
 
 We compared the end-to-end delay of the UDP packets in the case of store-and-forward switching
 vs cut-through switching:
 
-.. .. figure:: media/delay.png
+.. figure:: media/delay.png
    :align: center
    :width: 100%
 

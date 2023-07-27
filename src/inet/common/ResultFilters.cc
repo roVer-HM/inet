@@ -262,10 +262,11 @@ void UtilizationFilter::init(Context *ctx)
 {
     cNumericResultFilter::init(ctx);
     std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".throughput";
-    auto intervalValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "interval");
-    interval = cConfiguration::parseDouble(intervalValue, "s", nullptr, 0.1);
-    auto numValueLimitValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "numValueLimit");
-    numValueLimit = cConfiguration::parseLong(numValueLimitValue, nullptr, 100);
+    cConfiguration *cfg = getEnvir()->getConfig();
+    auto intervalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "interval");
+    interval = cfg->parseDouble(intervalValue, "s", nullptr, 0.1);
+    auto numValueLimitValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "numValueLimit");
+    numValueLimit = cfg->parseLong(numValueLimitValue, nullptr, 100);
     lastSignalTime = totalValueTime = simTime();
     numValueLimit = numValueLimit * 2;
 }
@@ -314,7 +315,7 @@ bool UtilizationFilter::process(simtime_t& t, double& value, cObject *details)
 void UtilizationFilter::emitUtilization(simtime_t time, cObject *details)
 {
     double utilization = time == lastSignalTime ? 0 : totalValue / (time - lastSignalTime).dbl();
-    ASSERT(0 <= utilization && utilization <= 1);
+    utilization = std::min(std::max(utilization, 0.0), 1.0);
     fire(this, time, utilization, details);
     lastSignalTime = time;
     totalValue = 0;
@@ -532,15 +533,19 @@ Register_ResultFilter("elapsedTimePerRegion", ElapsedTimePerRegionFilter);
 void ElapsedTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<ElapsedTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const ElapsedTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue((simTime() - tag->getBitTotalTimes(i)).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue((simTime() - tag->getBitTotalTimes(i)).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -550,15 +555,19 @@ Register_ResultFilter("delayingTimePerRegion", DelayingTimePerRegionFilter);
 void DelayingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<DelayingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const DelayingTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -568,15 +577,19 @@ Register_ResultFilter("processingTimePerRegion", ProcessingTimePerRegionFilter);
 void ProcessingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<ProcessingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const ProcessingTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -586,15 +599,19 @@ Register_ResultFilter("queueingTimePerRegion", QueueingTimePerRegionFilter);
 void QueueingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<QueueingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const QueueingTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -604,15 +621,19 @@ Register_ResultFilter("propagationTimePerRegion", PropagationTimePerRegionFilter
 void PropagationTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<PropagationTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const PropagationTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -622,15 +643,19 @@ Register_ResultFilter("transmissionTimePerRegion", TransmissionTimePerRegionFilt
 void TransmissionTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<TransmissionTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const TransmissionTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getBitTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
 }
@@ -640,17 +665,85 @@ Register_ResultFilter("packetTransmissionTimePerRegion", PacketTransmissionTimeP
 void PacketTransmissionTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
+    auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<TransmissionTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const TransmissionTimeTag>& tag) {
         for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
-            PacketRegionValue packetRegionValue;
-            packetRegionValue.packet = packet;
-            packetRegionValue.offset = o;
-            packetRegionValue.length = l;
-            // TODO: no type conversion please
-            packetRegionValue.value = cValue(tag->getPacketTotalTimes(i).dbl());
-            fire(this, t, &packetRegionValue, details);
+            auto flowName = tag->getFlowNames(i);
+            if (flow == nullptr || !strcmp(flowName, flow->getName())) {
+                PacketRegionValue packetRegionValue;
+                packetRegionValue.packet = packet;
+                packetRegionValue.offset = o;
+                packetRegionValue.length = l;
+                // TODO: no type conversion please
+                packetRegionValue.value = cValue(tag->getPacketTotalTimes(i).dbl());
+                fire(this, t, &packetRegionValue, details);
+            }
         }
     });
+}
+
+Register_ResultFilter("packetRate", PacketRateFilter);
+
+void PacketRateFilter::init(Context *ctx)
+{
+    cObjectResultFilter::init(ctx);
+    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".packetRate";
+    cConfiguration *cfg = getEnvir()->getConfig();
+    auto intervalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "interval");
+    interval = cfg->parseDouble(intervalValue, "s", nullptr, 1.0);
+    lastSignalTime = simTime();
+}
+
+PacketRateFilter *PacketRateFilter::clone() const
+{
+    auto clone = new PacketRateFilter();
+    clone->interval = interval;
+    return clone;
+}
+
+void PacketRateFilter::emitPacketRate(simtime_t endInterval, cObject *details)
+{
+    double packetrate = endInterval == lastSignalTime ? 0 : numPackets / (endInterval - lastSignalTime).dbl();
+    fire(this, endInterval, packetrate, details);
+    lastSignalTime = endInterval;
+    numPackets = 0;
+}
+
+void PacketRateFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    if (auto packet = dynamic_cast<cPacket *>(object)) {
+        const simtime_t now = simTime();
+        if (lastSignalTime + interval <= now) {
+            emitPacketRate(lastSignalTime + interval, details);
+            if (emitIntermediateZeros) {
+                while (lastSignalTime + interval <= now)
+                    emitPacketRate(lastSignalTime + interval, details);
+            }
+            else {
+                if (lastSignalTime + interval <= now) { // no packets arrived for a long period
+                    // zero should have been signaled at the beginning of this packet (approximation)
+                    emitPacketRate(now - interval, details);
+                }
+            }
+        }
+        numPackets++;
+    }
+}
+
+void PacketRateFilter::finish(cComponent *component, simsignal_t signalID)
+{
+    const simtime_t now = simTime();
+    if (lastSignalTime < now) {
+        cObject *details = nullptr;
+        if (lastSignalTime + interval < now) {
+            emitPacketRate(lastSignalTime + interval, details);
+            if (emitIntermediateZeros) {
+                while (lastSignalTime + interval < now)
+                    emitPacketRate(lastSignalTime + interval, details);
+            }
+        }
+        emitPacketRate(now, details);
+    }
 }
 
 Register_ResultFilter("throughput", ThroughputFilter);
@@ -659,14 +752,17 @@ void ThroughputFilter::init(Context *ctx)
 {
     cObjectResultFilter::init(ctx);
     std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".throughput";
-    auto intervalValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "interval");
-    interval = cConfiguration::parseDouble(intervalValue, "s", nullptr, 0.1);
-    auto numLengthLimitValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "numLengthLimit");
-    numLengthLimit = cConfiguration::parseLong(numLengthLimitValue, nullptr, 100);
-    auto dropLastSignalValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
+    
+    cConfiguration *cfg = getEnvir()->getConfig();
+    auto intervalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "interval");
+    interval = cfg->parseDouble(intervalValue, "s", nullptr, 0.1);
+    auto numLengthLimitValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "numLengthLimit");
+    numLengthLimit = cfg->parseLong(numLengthLimitValue, nullptr, 100);
+    auto dropLastSignalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
     dropLastSignal = cConfiguration::parseBool(dropLastSignalValue, nullptr, false);
-    auto emitIntermediateZerosValue = getEnvir()->getConfig()->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
+    auto emitIntermediateZerosValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
     emitIntermediateZeros = cConfiguration::parseBool(emitIntermediateZerosValue, nullptr, true);
+
     lastSignalTime = simTime();
 }
 
@@ -691,7 +787,7 @@ void ThroughputFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, intv
 {
     const simtime_t now = simTime();
     numLengths++;
-    ASSERT(numLengths <= numLengthLimit);
+    ASSERT(numLengthLimit == 0 || numLengths <= numLengthLimit);
     if (numLengthLimit > 0 && numLengths == numLengthLimit) {
         totalLength += length;
         emitThroughput(now, details);

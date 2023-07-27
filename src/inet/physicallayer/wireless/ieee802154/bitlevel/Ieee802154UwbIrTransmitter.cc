@@ -27,17 +27,6 @@ namespace physicallayer {
 
 Define_Module(Ieee802154UwbIrTransmitter);
 
-Ieee802154UwbIrTransmitter::Ieee802154UwbIrTransmitter()
-{
-}
-
-void Ieee802154UwbIrTransmitter::initialize(int stage)
-{
-    if (stage == INITSTAGE_LOCAL) {
-        cfg = Ieee802154UwbIrMode::cfg_mandatory_16M;
-    }
-}
-
 std::ostream& Ieee802154UwbIrTransmitter::printToStream(std::ostream& stream, int level, int evFlags) const
 {
     return stream << "Ieee802154UwbIrTransmitter";
@@ -71,7 +60,6 @@ simtime_t Ieee802154UwbIrTransmitter::getThdr() const
                 case Ieee802154UwbIrMode::NOMINAL_4_M:
 //                    throw cRuntimeError("This optional mode is not implemented.");
                     return 0;
-                    break;
                 case Ieee802154UwbIrMode::NOMINAL_16_M:
                     return 16.4E-6;
                 case Ieee802154UwbIrMode::NOMINAL_64_M:
@@ -203,7 +191,7 @@ const ITransmission *Ieee802154UwbIrTransmitter::createTransmission(const IRadio
     const Quaternion& startOrientation = mobility->getCurrentAngularPosition();
     const Quaternion& endOrientation = mobility->getCurrentAngularPosition();
     const Ptr<const IFunction<WpHz, Domain<simsec, Hz>>>& powerFunction = generateIEEE802154AUWBSignal(startTime, bits);
-    return new DimensionalTransmission(transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation, nullptr, packet->getTotalLength(), b(-1), cfg.centerFrequency, cfg.bandwidth, cfg.bitrate, powerFunction);
+    return new DimensionalTransmission(transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation, packet->getTotalLength(), b(-1), nullptr, -1, cfg.centerFrequency, cfg.bandwidth, cfg.bitrate, NaN, powerFunction);
 }
 
 } // namespace physicallayer

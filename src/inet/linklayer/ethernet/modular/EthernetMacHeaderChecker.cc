@@ -11,6 +11,7 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolGroup.h"
 #include "inet/common/ProtocolTag_m.h"
+#include "inet/common/ProtocolUtils.h"
 #include "inet/linklayer/common/EtherType_m.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 #include "inet/linklayer/common/MacAddressTag_m.h"
@@ -35,6 +36,7 @@ void EthernetMacHeaderChecker::initialize(int stage)
 void EthernetMacHeaderChecker::processPacket(Packet *packet)
 {
     const auto& header = packet->popAtFront<EthernetMacHeader>();
+    appendEncapsulationProtocolInd(packet, &Protocol::ethernetMac);
     auto macAddressInd = packet->addTagIfAbsent<MacAddressInd>();
     macAddressInd->setSrcAddress(header->getSrc());
     macAddressInd->setDestAddress(header->getDest());
@@ -44,7 +46,7 @@ void EthernetMacHeaderChecker::processPacket(Packet *packet)
     if (isIeee8023Length(typeOrLength))
         protocol = &Protocol::ieee8022llc;
     else
-        protocol = ProtocolGroup::ethertype.getProtocol(typeOrLength);
+        protocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocol(typeOrLength);
     packetProtocolTag->setFrontOffset(b(0));
     packetProtocolTag->setBackOffset(b(0));
     packetProtocolTag->setProtocol(protocol);
@@ -63,7 +65,7 @@ bool EthernetMacHeaderChecker::matchesPacket(const Packet *packet) const
         if (isIeee8023Length(typeOrLength))
             return true;
         else
-            return ProtocolGroup::ethertype.findProtocol(typeOrLength) != nullptr;
+            return ProtocolGroup::getEthertypeProtocolGroup()->findProtocol(typeOrLength) != nullptr;
     }
 }
 

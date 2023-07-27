@@ -21,20 +21,16 @@ LinkVisualizerBase::LinkVisualization::LinkVisualization(int sourceModuleId, int
 {
 }
 
-const char *LinkVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
+std::string LinkVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'n':
-            result = packet->getName();
-            break;
+            return packet->getName();
         case 'c':
-            result = packet->getClassName();
-            break;
+            return packet->getClassName();
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 void LinkVisualizerBase::preDelete(cComponent *root)
@@ -85,15 +81,13 @@ void LinkVisualizerBase::initialize(int stage)
 void LinkVisualizerBase::handleParameterChange(const char *name)
 {
     if (!hasGUI()) return;
-    if (name != nullptr) {
-        if (!strcmp(name, "nodeFilter"))
-            nodeFilter.setPattern(par("nodeFilter"));
-        else if (!strcmp(name, "interfaceFilter"))
-            interfaceFilter.setPattern(par("interfaceFilter"));
-        else if (!strcmp(name, "packetFilter"))
-            packetFilter.setExpression(par("packetFilter").objectValue());
-        removeAllLinkVisualizations();
-    }
+    if (!strcmp(name, "nodeFilter"))
+        nodeFilter.setPattern(par("nodeFilter"));
+    else if (!strcmp(name, "interfaceFilter"))
+        interfaceFilter.setPattern(par("interfaceFilter"));
+    else if (!strcmp(name, "packetFilter"))
+        packetFilter.setExpression(par("packetFilter").objectValue());
+    removeAllLinkVisualizations();
 }
 
 void LinkVisualizerBase::refreshDisplay() const

@@ -98,7 +98,7 @@ class INET_API Topology : public cOwnedObject
         /**
          * Returns the pointer to the network module to which this node corresponds.
          */
-        cModule *getModule() const { return getSimulation()->getModule(moduleId); }
+        cModule *getModule() const { return cSimulation::getActiveSimulation()->getModule(moduleId); }
 
         /**
          * Returns the weight of this node. Weight is used with the
@@ -546,11 +546,20 @@ class INET_API Topology : public cOwnedObject
     void calculateUnweightedSingleShortestPathsTo(Node *target) const;
 
     /**
+     * Apply the Dijkstra algorithm to find all shortest paths from the given
+     * graph node. The paths found can be extracted via Node's methods.
+     * Uses weights in nodes and links.
+     */
+     void calculateWeightedSingleShortestPathsFrom(Node *source) const;
+
+    /**
      * Apply the Dijkstra algorithm to find all shortest paths to the given
      * graph node. The paths found can be extracted via Node's methods.
      * Uses weights in nodes and links.
      */
     void calculateWeightedSingleShortestPathsTo(Node *target) const;
+
+    void calculateWeightedSingleShortestPaths(Node *initial, bool to) const;
     //@}
 
   protected:

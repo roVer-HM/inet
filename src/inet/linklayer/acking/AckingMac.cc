@@ -90,6 +90,8 @@ void AckingMac::receiveSignal(cComponent *source, simsignal_t signalID, intval_t
         if (transmissionState == IRadio::TRANSMISSION_STATE_TRANSMITTING && newRadioTransmissionState == IRadio::TRANSMISSION_STATE_IDLE) {
             radio->setRadioMode(fullDuplex ? IRadio::RADIO_MODE_TRANSCEIVER : IRadio::RADIO_MODE_RECEIVER);
             transmissionState = newRadioTransmissionState;
+            if (currentTxFrame != nullptr && (!useAck || !ackTimeoutMsg->isScheduled())) // current TX not wait for ACK
+                deleteCurrentTxFrame();
             if (currentTxFrame == nullptr && canDequeuePacket())
                 processUpperPacket();
         }
@@ -102,13 +104,9 @@ void AckingMac::startTransmitting()
 {
     // if there's any control info, remove it; then encapsulate the packet
     MacAddress dest = currentTxFrame->getTag<MacAddressReq>()->getDestAddress();
-    Packet *msg = currentTxFrame;
-    if (useAck && !dest.isBroadcast() && !dest.isMulticast() && !dest.isUnspecified()) { // unicast
-        msg = currentTxFrame->dup();
+    Packet *msg = currentTxFrame->dup();
+    if (useAck && !dest.isBroadcast() && !dest.isMulticast() && !dest.isUnspecified()) // unicast
         scheduleAfter(ackTimeout, ackTimeoutMsg);
-    }
-    else
-        currentTxFrame = nullptr;
 
     encapsulate(msg);
 
@@ -164,7 +162,7 @@ void AckingMac::handleSelfMessage(cMessage *message)
         // packet lost
         emit(linkBrokenSignal, currentTxFrame);
         PacketDropDetails details;
-        details.setReason(OTHER_PACKET_DROP);
+        details.setReason(RETRY_LIMIT_REACHED);
         dropCurrentTxFrame(details);
         if (transmissionState != IRadio::TRANSMISSION_STATE_TRANSMITTING && canDequeuePacket())
             processUpperPacket();
@@ -194,19 +192,20 @@ void AckingMac::encapsulate(Packet *packet)
     auto macHeader = makeShared<AckingMacHeader>();
     macHeader->setChunkLength(B(headerLength));
     auto macAddressReq = packet->getTag<MacAddressReq>();
-    macHeader->setSrc(macAddressReq->getSrcAddress());
-    macHeader->setDest(macAddressReq->getDestAddress());
+    MacAddress src = macAddressReq->getSrcAddress();
     MacAddress dest = macAddressReq->getDestAddress();
+    macHeader->setSrc(src.isUnspecified() ? networkInterface->getMacAddress() : src);
+    macHeader->setDest(dest);
     if (dest.isBroadcast() || dest.isMulticast() || dest.isUnspecified())
         macHeader->setSrcModuleId(-1);
     else
         macHeader->setSrcModuleId(getId());
-    macHeader->setNetworkProtocol(ProtocolGroup::ethertype.getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol()));
+    macHeader->setNetworkProtocol(ProtocolGroup::getEthertypeProtocolGroup()->getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol()));
     packet->insertAtFront(macHeader);
     auto macAddressInd = packet->addTagIfAbsent<MacAddressInd>();
     macAddressInd->setSrcAddress(macHeader->getSrc());
     macAddressInd->setDestAddress(macHeader->getDest());
-    packet->getTagForUpdate<PacketProtocolTag>()->setProtocol(&Protocol::ackingMac);
+    packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ackingMac);
 }
 
 bool AckingMac::dropFrameNotForUs(Packet *packet)
@@ -243,7 +242,7 @@ void AckingMac::decapsulate(Packet *packet)
     macAddressInd->setSrcAddress(macHeader->getSrc());
     macAddressInd->setDestAddress(macHeader->getDest());
     packet->addTagIfAbsent<InterfaceInd>()->setInterfaceId(networkInterface->getInterfaceId());
-    auto payloadProtocol = ProtocolGroup::ethertype.getProtocol(macHeader->getNetworkProtocol());
+    auto payloadProtocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocol(macHeader->getNetworkProtocol());
     packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(payloadProtocol);
     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(payloadProtocol);
 }

@@ -150,7 +150,7 @@ using namespace units::values;
  * Representation duality is a very important aspect of the chunk API. It means
  * that a protocol doesn't have to worry about the actual representation of the
  * packet's data while it's processing. For example, when the IP protocol peeks
- * the packet for the IpHeader, there are a few possiblities. The requested class
+ * the packet for the IpHeader, there are a few possibilities. The requested class
  * is either already there to be returned, or if the packet contains the raw
  * bytes, then it's going to be deserialized automatically and transparently.
  *
@@ -234,6 +234,11 @@ using namespace units::values;
  * c) Inserting a BytesChunk into a BytesChunk merges them
  * d) Inserting a ByteCountChunk into a ByteCountChunk merges them
  * e) Inserting a connecting SliceChunk into a SliceChunk merges them
+ *
+ * Chunks can have region tags are attached to a specific region of their data.
+ * Region tags are identified by their type. Regions are identified by their
+ * offset and length, and they are not allowed to overlap. Tags are usually
+ * small data structures that hold some relevant information.
  */
 // TODO performance related; avoid iteration in SequenceChunk::getChunkLength, avoid peek for simplifying, use vector instead of deque, reverse order for frequent prepends?
 class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintableObject, public IRegionTaggedObject
@@ -241,6 +246,7 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
     friend class SliceChunk;
     friend class EncryptedChunk;
     friend class SequenceChunk;
+    friend class StreamBufferChunk;
     friend class ChunkDescriptor;
 
   protected:
@@ -268,6 +274,7 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
         CT_ENCRYPTED,
         CT_CPACKET,
         CT_SEQUENCE,
+        CT_STREAM,
         CT_FIELDS
     };
 
@@ -280,7 +287,7 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
         PF_ALLOW_INCOMPLETE             = (1 << 2),
         PF_ALLOW_INCORRECT              = (1 << 3),
         PF_ALLOW_IMPROPERLY_REPRESENTED = (1 << 4),
-        PF_ALLOW_SERIALIZATION          = (1 << 5),
+        PF_ALLOW_REINTERPRETATION       = (1 << 5),
         PF_ALLOW_ALL                    = -1
     };
 
@@ -332,15 +339,6 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
         BackwardIterator& operator=(const BackwardIterator& other) { position = other.position; index = other.index; CHUNK_CHECK_IMPLEMENTATION(isCorrect()); return *this; }
     };
 
-  public:
-    /**
-     * Peeking some part into a chunk that requires automatic serialization
-     * will throw an exception when implicit chunk serialization is disabled.
-     */
-    static bool enableImplicitChunkSerialization;
-
-    static int nextId;
-
   protected:
     /**
      * The id is automatically assigned sequentially during construction.
@@ -360,8 +358,8 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
     //@{
     int getBinDumpNumLines() const;
     int getHexDumpNumLines() const;
-    const char *getBinDumpLine(int index);
-    const char *getHexDumpLine(int index);
+    std::string getBinDumpLine(int index);
+    std::string getHexDumpLine(int index);
     const SharingRegionTagSet::RegionTag<TagBase>& _getTag(int index) const { return regionTags.getRegionTag(index); }
     //@}
 
@@ -424,6 +422,8 @@ class INET_API Chunk : public cObject, public SharedBase<Chunk>, public IPrintab
         }
         return chunk;
     }
+
+    static uint64_t getNextId();
 
   public:
     /** @name Constructors, destructors and duplication related functions */

@@ -19,18 +19,14 @@
 
 namespace inet {
 
-EXECUTE_ON_STARTUP(
-        cEnum * e = cEnum::find("inet::ChooseDestAddrMode");
-        if (!e)
-            omnetpp::internal::enums.getInstance()->add(e = new cEnum("inet::ChooseDestAddrMode"));
-        e->insert(UdpBasicBurst::ONCE, "once");
-        e->insert(UdpBasicBurst::PER_BURST, "perBurst");
-        e->insert(UdpBasicBurst::PER_SEND, "perSend");
-        );
+Register_Enum2(destAddrMode, "inet::ChooseDestAddrMode", (
+        "once", UdpBasicBurst::ONCE,
+        "perBurst", UdpBasicBurst::PER_BURST,
+        "perSend", UdpBasicBurst::PER_SEND,
+        nullptr
+        ));
 
 Define_Module(UdpBasicBurst);
-
-int UdpBasicBurst::counter;
 
 simsignal_t UdpBasicBurst::outOfOrderPkSignal = registerSignal("outOfOrderPk");
 
@@ -96,7 +92,7 @@ L3Address UdpBasicBurst::chooseDestAddr()
 Packet *UdpBasicBurst::createPacket()
 {
     char msgName[32];
-    sprintf(msgName, "UDPBasicAppData-%d", counter++);
+    sprintf(msgName, "UDPBasicAppData-%lu", (unsigned long)counter++);
     long msgByteLength = *messageLengthPar;
     Packet *pk = new Packet(msgName);
     const auto& payload = makeShared<ApplicationPacket>();

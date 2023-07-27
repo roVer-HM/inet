@@ -62,23 +62,20 @@ PacketDropVisualizerBase::DirectiveResolver::DirectiveResolver(const PacketDrop 
 {
 }
 
-const char *PacketDropVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
+std::string PacketDropVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'n':
-            result = packetDrop->getPacket_()->getName();
-            break;
+            return packetDrop->getPacket_()->getName();
         case 'c':
-            result = packetDrop->getPacket_()->getClassName();
-            break;
+            return packetDrop->getPacket_()->getClassName();
         case 'r':
-            result = std::to_string(packetDrop->getReason());
-            break;
+            return std::to_string(packetDrop->getReason());
+        case 's':
+            return cEnum::find("inet::PacketDropReason")->getStringFor(packetDrop->getReason());
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 void PacketDropVisualizerBase::DetailsFilter::setPattern(const char *pattern)
@@ -127,19 +124,17 @@ void PacketDropVisualizerBase::initialize(int stage)
 void PacketDropVisualizerBase::handleParameterChange(const char *name)
 {
     if (!hasGUI()) return;
-    if (name != nullptr) {
-        if (!strcmp(name, "nodeFilter"))
-            nodeFilter.setPattern(par("nodeFilter"));
-        else if (!strcmp(name, "interfaceFilter"))
-            interfaceFilter.setPattern(par("interfaceFilter"));
-        else if (!strcmp(name, "packetFilter"))
-            packetFilter.setExpression(par("packetFilter").objectValue());
-        else if (!strcmp(name, "detailsFilter"))
-            detailsFilter.setPattern(par("detailsFilter"));
-        else if (!strcmp(name, "labelFormat"))
-            labelFormat.parseFormat(par("labelFormat"));
-        removeAllPacketDropVisualizations();
-    }
+    if (!strcmp(name, "nodeFilter"))
+        nodeFilter.setPattern(par("nodeFilter"));
+    else if (!strcmp(name, "interfaceFilter"))
+        interfaceFilter.setPattern(par("interfaceFilter"));
+    else if (!strcmp(name, "packetFilter"))
+        packetFilter.setExpression(par("packetFilter").objectValue());
+    else if (!strcmp(name, "detailsFilter"))
+        detailsFilter.setPattern(par("detailsFilter"));
+    else if (!strcmp(name, "labelFormat"))
+        labelFormat.parseFormat(par("labelFormat"));
+    removeAllPacketDropVisualizations();
 }
 
 void PacketDropVisualizerBase::refreshDisplay() const

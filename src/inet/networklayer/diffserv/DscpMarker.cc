@@ -95,7 +95,7 @@ bool DscpMarker::markPacket(Packet *packet, int dscp)
             auto ethHeader = packet->peekDataAt<EthernetMacHeader>(offset);
             if (isEth2Header(*ethHeader)) {
                 offset += ethHeader->getChunkLength();
-                protocol = ProtocolGroup::ethertype.getProtocol(ethHeader->getTypeOrLength());
+                protocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocol(ethHeader->getTypeOrLength());
             }
 #else
         throw cRuntimeError("Ethernet feature is disabled");
@@ -112,7 +112,7 @@ bool DscpMarker::markPacket(Packet *packet, int dscp)
         packet->removeTagIfPresent<NetworkProtocolInd>();
         auto ipv4Header = packet->removeDataAt<Ipv4Header>(offset);
         ipv4Header->setDscp(dscp);
-        Ipv4::insertCrc(ipv4Header); // recalculate IP header checksum
+        ipv4Header->updateCrc(); // recalculate IP header checksum
         auto networkProtocolInd = packet->addTagIfAbsent<NetworkProtocolInd>();
         networkProtocolInd->setProtocol(protocol);
         networkProtocolInd->setNetworkProtocolHeader(ipv4Header);

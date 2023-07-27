@@ -7,9 +7,6 @@
 
 package inet.queueing.base;
 
-import inet.queueing.contract.IPacketSink;
-import inet.queueing.contract.IPacketSource;
-
 //
 // This is a base module for various packet tagger modules.
 //
@@ -25,6 +22,7 @@ simple PacketTaggerBase extends PacketMarkerBase
         int pcp = default(-1); // specifies PCP, unused by default
         int userPriority = default(-1); // specifies user priority, unused by default
         double transmissionPower @unit(W) = default(nan W); // specifies signal transmission power, unused by default
+        object encapsulationProtocols = default([]);
         displayStringTextFormat = default("tagged %p pk (%l)");
         @class(PacketTaggerBase);
         @display("i=block/star");

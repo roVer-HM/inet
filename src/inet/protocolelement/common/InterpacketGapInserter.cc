@@ -51,7 +51,7 @@ void InterpacketGapInserter::handleMessage(cMessage *message)
 {
     if (message->isSelfMessage()) {
         if (message == timer) {
-            emit(interpacketGapEndedSignal, NaN);
+            emit(interpacketGapEndedSignal, 0.0);
             if (canPushSomePacket(inputGate))
                 if (producer != nullptr)
                     producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
@@ -217,20 +217,16 @@ void InterpacketGapInserter::pushOrSendOrSchedulePacketProgress(Packet *packet, 
     }
 }
 
-const char *InterpacketGapInserter::resolveDirective(char directive) const
+std::string InterpacketGapInserter::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'g':
-            result = simtime_t(durationPar->doubleValue()).ustr().c_str();
-            break;
+            return simtime_t(durationPar->doubleValue()).ustr().c_str();
         case 'd':
-            result = CLOCKTIME_AS_SIMTIME(packetDelay).ustr().c_str();
-            break;
+            return CLOCKTIME_AS_SIMTIME(packetDelay).ustr().c_str();
         default:
             return PacketPusherBase::resolveDirective(directive);
     }
-    return result.c_str();
 }
 
 } // namespace inet

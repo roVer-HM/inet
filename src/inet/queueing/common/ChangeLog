@@ -1,6 +1,24 @@
 ====== inet-4.x ======
 
-2022-07-27  ------ inet-4.4.1 released ------
+2023-04-04  ------ inet-4.5.0 released ------
+
+2023-01-09  Levente Mészáros
+
+	Extracted PacketDelayerBase module from PacketDelayer.
+	PacketDelayer: Fixed calling base class initialize.
+
+2023-01-04  Levente Mészáros
+
+	PacketDelayer: Added schedulingPriority and scheduleZeroDelay parameters.
+
+2022-12-19  Levente Mészáros
+
+	PacketDelayer: Added bitrate parameter.
+
+2022-11-10  Levente Mészáros
+
+	Added new BackPressureBarrier module that prevents backpressure to propagate
+	from one side to the other.
 
 2022-05-13  ------ inet-4.4.0 released ------
 

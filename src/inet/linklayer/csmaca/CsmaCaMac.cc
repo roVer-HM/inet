@@ -377,7 +377,7 @@ void CsmaCaMac::encapsulate(Packet *frame)
     macHeader->setChunkLength(headerLength);
     macHeader->setHeaderLengthField(B(headerLength).get());
     auto transportProtocol = frame->getTag<PacketProtocolTag>()->getProtocol();
-    auto networkProtocol = ProtocolGroup::ethertype.getProtocolNumber(transportProtocol);
+    auto networkProtocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocolNumber(transportProtocol);
     macHeader->setNetworkProtocol(networkProtocol);
     macHeader->setTransmitterAddress(networkInterface->getMacAddress());
     macHeader->setReceiverAddress(frame->getTag<MacAddressReq>()->getDestAddress());
@@ -393,7 +393,7 @@ void CsmaCaMac::encapsulate(Packet *frame)
     auto macAddressInd = frame->addTagIfAbsent<MacAddressInd>();
     macAddressInd->setSrcAddress(macHeader->getTransmitterAddress());
     macAddressInd->setDestAddress(macHeader->getReceiverAddress());
-    frame->getTagForUpdate<PacketProtocolTag>()->setProtocol(&Protocol::csmaCaMac);
+    frame->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::csmaCaMac);
 }
 
 void CsmaCaMac::decapsulate(Packet *frame)
@@ -406,7 +406,7 @@ void CsmaCaMac::decapsulate(Packet *frame)
     frame->addTagIfAbsent<InterfaceInd>()->setInterfaceId(networkInterface->getInterfaceId());
     frame->addTagIfAbsent<UserPriorityInd>()->setUserPriority(macHeader->getPriority());
     auto networkProtocol = macHeader->getNetworkProtocol();
-    auto transportProtocol = ProtocolGroup::ethertype.getProtocol(networkProtocol);
+    auto transportProtocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocol(networkProtocol);
     frame->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(transportProtocol);
     frame->addTagIfAbsent<PacketProtocolTag>()->setProtocol(transportProtocol);
 }

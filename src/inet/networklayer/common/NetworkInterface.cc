@@ -186,6 +186,24 @@ void NetworkInterface::arrived(cMessage *message, cGate *gate, const SendOptions
     cModule::arrived(message, gate, options, time);
 }
 
+bool NetworkInterface::canPushSomePacket(cGate *gate) const
+{
+    auto pathEndGate = gate->getPathEndGate();
+    if (auto packetSink = dynamic_cast<IPassivePacketSink *>(pathEndGate->getOwnerModule()))
+        return packetSink->canPushSomePacket(gate);
+    else
+        return true;
+}
+
+bool NetworkInterface::canPushPacket(Packet *packet, cGate *gate) const
+{
+    auto pathEndGate = gate->getPathEndGate();
+    if (auto packetSink = dynamic_cast<IPassivePacketSink *>(pathEndGate->getOwnerModule()))
+        return packetSink->canPushPacket(packet, pathEndGate);
+    else
+        return true;
+}
+
 void NetworkInterface::pushPacket(Packet *packet, cGate *gate)
 {
     Enter_Method("pushPacket");
@@ -268,35 +286,29 @@ void NetworkInterface::updateDisplayString() const
 {
     if (getEnvir()->isGUI()) {
         auto text = StringFormat::formatString(par("displayStringTextFormat"), this);
-        getDisplayString().setTagArg("t", 0, text);
+        getDisplayString().setTagArg("t", 0, text.c_str());
     }
 }
 
-const char *NetworkInterface::resolveDirective(char directive) const
+std::string NetworkInterface::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'i':
-            result = std::to_string(interfaceId);
-            break;
+            return std::to_string(interfaceId);
         case 'm':
-            result = macAddr.str();
-            break;
+            return macAddr.str();
         case 'n':
-            result = interfaceName;
-            break;
+            return interfaceName;
         case 'a':
-            result = getNetworkAddress().str();
-            break;
+            return getNetworkAddress().str();
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 void NetworkInterface::handleParameterChange(const char *name)
 {
-    if (name != nullptr && !strcmp(name, "bitrate"))
+    if (!strcmp(name, "bitrate"))
         setDatarate(computeDatarate());
 }
 

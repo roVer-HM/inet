@@ -101,17 +101,17 @@ void SceneCanvasVisualizer::refreshAxis(double axisLength)
 void SceneCanvasVisualizer::handleParameterChange(const char *name)
 {
     if (!hasGUI()) return;
-    if (name && !strcmp(name, "viewAngle")) {
+    if (!strcmp(name, "viewAngle")) {
         bool invertY;
         canvasProjection->setRotation(parseViewAngle(par("viewAngle"), invertY));
         canvasProjection->setScale(parse2D(par("viewScale"), invertY));
         // TODO update all visualizers
     }
-    else if (name && !strcmp(name, "viewScale")) {
+    else if (!strcmp(name, "viewScale")) {
         canvasProjection->setScale(parse2D(par("viewScale")));
         // TODO update all visualizers
     }
-    else if (name && !strcmp(name, "viewTranslation")) {
+    else if (!strcmp(name, "viewTranslation")) {
         canvasProjection->setTranslation(parse2D(par("viewTranslation")));
         // TODO update all visualizers
     }
@@ -217,9 +217,14 @@ void SceneCanvasVisualizer::displayDescription(const char *descriptionFigurePath
         throw cRuntimeError("Figure \"%s\" not found", descriptionFigurePath);
     auto descriptionTextFigure = check_and_cast<cAbstractTextFigure *>(descriptionFigure);
 
+#if OMNETPP_BUILDNUM < 2000
     auto config = getEnvir()->getConfigEx();
     const char *activeConfig = config->getActiveConfigName();
     std::string description = std::string(activeConfig) + ": " + config->getConfigDescription(activeConfig);
+#else
+    auto cfg = getEnvir()->getConfig();
+    std::string description = std::string(cfg->getVariable(CFGVAR_CONFIGNAME)) + ": " + cfg->getVariable(CFGVAR_DESCRIPTION);
+#endif
     descriptionTextFigure->setText(description.c_str());
 }
 

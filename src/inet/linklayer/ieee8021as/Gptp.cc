@@ -171,8 +171,15 @@ void Gptp::handleMessage(cMessage *msg)
         auto gptp = packet->peekAtFront<GptpBase>();
         auto gptpMessageType = gptp->getMessageType();
         auto incomingNicId = packet->getTag<InterfaceInd>()->getInterfaceId();
+        int incomingDomainNumber = gptp->getDomainNumber();
 
-        if (incomingNicId == slavePortId) {
+        if (incomingDomainNumber != domainNumber) {
+            EV_ERROR << "Message " << msg->getClassAndFullName() << " arrived with foreign domainNumber " << incomingDomainNumber << ", dropped\n";
+            PacketDropDetails details;
+            details.setReason(NOT_ADDRESSED_TO_US);
+            emit(packetDroppedSignal, packet, &details);
+        }
+        else if (incomingNicId == slavePortId) {
             // slave port
             switch (gptpMessageType) {
                 case GPTPTYPE_SYNC:
@@ -380,17 +387,24 @@ void Gptp::synchronize()
     clocktime_t newTime = peerSentTimeSync + peerDelay + correctionField + residenceTime;
 
     ASSERT(gptpNodeType != MASTER_NODE);
-    check_and_cast<SettableClock *>(clock.get())->setClockTime(newTime);
 
-    // TODO computeGmRateRatio:
-    gmRateRatio = (origNow - newLocalTimeAtTimeSync) / (syncIngressTimestamp - receivedTimeSync);
-    gmRateRatio = 1.0 / gmRateRatio;
+    // TODO validate the following expression with the standard
+    if (oldPeerSentTimeSync == -1)
+        gmRateRatio = 1;
+    else
+        gmRateRatio = (peerSentTimeSync - oldPeerSentTimeSync) / (origNow - newLocalTimeAtTimeSync) ;
 
+    auto settableClock = check_and_cast<SettableClock *>(clock.get());
+    ppm newOscillatorCompensation = unit(gmRateRatio * (1 + unit(settableClock->getOscillatorCompensation()).get()) - 1);
+    settableClock->setClockTime(newTime, newOscillatorCompensation, true);
+
+    oldPeerSentTimeSync = peerSentTimeSync;
     oldLocalTimeAtTimeSync = origNow;
     newLocalTimeAtTimeSync = clock->getClockTime();
     receivedTimeSync = syncIngressTimestamp;
 
     // adjust local timestamps, too
+    pdelayRespEventIngressTimestamp += newLocalTimeAtTimeSync - oldLocalTimeAtTimeSync;
     pdelayReqEventEgressTimestamp += newLocalTimeAtTimeSync - oldLocalTimeAtTimeSync;
 
     /************** Rate ratio calculation *************************************

@@ -42,6 +42,8 @@ class INET_API MacEstimateCostProcess
     virtual int getNeighbors(MacAddress[]) = 0;
 };
 
+//TODO declare InterfaceProtocolData and descendants in MSG file
+
 /**
  * Base class for protocol-specific data on an interface.
  * Notable subclasses are Ipv4InterfaceData and Ipv6InterfaceData.
@@ -162,7 +164,7 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     virtual void handleParameterChange(const char *name) override;
     virtual void refreshDisplay() const override;
     virtual void updateDisplayString() const override;
-    virtual const char *resolveDirective(char directive) const override;
+    virtual std::string resolveDirective(char directive) const override;
     virtual void receiveSignal(cComponent *source, simsignal_t signal, cObject *obj, cObject *details) override;
     virtual cGate *createGateObject(cGate::Type type) override {
         return type == cGate::INPUT ? new LocalGate(this) : cModule::createGateObject(type);
@@ -193,8 +195,8 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     virtual bool supportsPacketPulling(cGate *gate) const override { return false; }
     virtual bool supportsPacketPassing(cGate *gate) const override { return true; }
     virtual bool supportsPacketStreaming(cGate *gate) const override { return false; }
-    virtual bool canPushSomePacket(cGate *gate) const override { return true; }
-    virtual bool canPushPacket(Packet *packet, cGate *gate) const override { return true; }
+    virtual bool canPushSomePacket(cGate *gate) const override;
+    virtual bool canPushPacket(Packet *packet, cGate *gate) const override;
     virtual void pushPacket(Packet *packet, cGate *gate) override;
     virtual void pushPacketStart(Packet *packet, cGate *gate, bps datarate) override;
     virtual void pushPacketEnd(Packet *packet, cGate *gate) override;

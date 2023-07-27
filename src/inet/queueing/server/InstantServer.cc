@@ -14,16 +14,41 @@ namespace queueing {
 
 Define_Module(InstantServer);
 
+InstantServer::~InstantServer()
+{
+    cancelAndDelete(serveTimer);
+}
+
+void InstantServer::initialize(int stage)
+{
+    PacketServerBase::initialize(stage);
+    if (stage == INITSTAGE_LOCAL) {
+        int serveSchedulingPriority = par("serveSchedulingPriority");
+        if (serveSchedulingPriority != -1) {
+            serveTimer = new cMessage("ServeTimer");
+            serveTimer->setSchedulingPriority(serveSchedulingPriority);
+        }
+    }
+}
+
+void InstantServer::handleMessage(cMessage *message)
+{
+    if (message == serveTimer)
+        processPackets();
+    else
+        PacketServerBase::handleMessage(message);
+}
+
 bool InstantServer::canProcessPacket()
 {
     auto inputGatePathStartGate = inputGate->getPathStartGate();
     auto outputGatePathEndGate = outputGate->getPathEndGate();
-    if (provider->canPullSomePacket(inputGatePathStartGate) && consumer->canPushSomePacket(outputGatePathEndGate))
-        return true;
-    else {
+    if (provider->canPullSomePacket(inputGatePathStartGate) && consumer->canPushSomePacket(outputGatePathEndGate)) {
         auto packet = provider->canPullPacket(inputGatePathStartGate);
         return packet != nullptr && consumer->canPushPacket(packet, outputGatePathEndGate);
     }
+    else
+        return false;
 }
 
 void InstantServer::processPacket()
@@ -44,13 +69,19 @@ void InstantServer::processPacket()
 void InstantServer::handleCanPushPacketChanged(cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
-    processPackets();
+    if (serveTimer)
+        rescheduleAt(simTime(), serveTimer);
+    else
+        processPackets();
 }
 
 void InstantServer::handleCanPullPacketChanged(cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
-    processPackets();
+    if (serveTimer)
+        rescheduleAt(simTime(), serveTimer);
+    else
+        processPackets();
 }
 
 void InstantServer::processPackets()

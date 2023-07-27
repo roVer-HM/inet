@@ -103,6 +103,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
         for (int packetIndex = 0; packetIndex < getPacketCount(flow); packetIndex++) {
             std::shared_ptr<expr> firstTransmissionStartTimeVariable;
             std::shared_ptr<expr> previousReceptionEndTimeVariable;
+            std::shared_ptr<expr> previousReceptionStartTimeVariable;
             for (auto pathFragment : flow->pathFragments) {
                 for (int nodeIndex = 0; nodeIndex < pathFragment->networkNodes.size() - 1; nodeIndex++) {
                     auto transmissionPort = pathFragment->outputPorts[nodeIndex];
@@ -110,11 +111,19 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
                     if (firstTransmissionStartTimeVariable == nullptr)
                         firstTransmissionStartTimeVariable = transmissionStartTimeVariable;
                     auto receptionPort = pathFragment->inputPorts[nodeIndex];
+                    auto receptionStartTimeVariable = getReceptionStartTimeVariable(flow, packetIndex, receptionPort, flow->gateIndex);
                     auto receptionEndTimeVariable = getReceptionEndTimeVariable(flow, packetIndex, receptionPort, flow->gateIndex);
                     if (nodeIndex == 0)
                         addAssert(applicationStartTimeVariable + packetIntervalVariable * z3Context->real_val(packetIndex) == transmissionStartTimeVariable);
-                    else if (previousReceptionEndTimeVariable)
-                        addAssert(transmissionStartTimeVariable >= previousReceptionEndTimeVariable);
+                    else if (previousReceptionEndTimeVariable) {
+                        if (transmissionPort->cutthroughSwitchingEnabled && receptionPort->cutthroughSwitchingEnabled && flow->cutthroughSwitchingHeaderSize != b(0)) {
+                            simtime_t cutthroughDelay = s(flow->cutthroughSwitchingHeaderSize / receptionPort->datarate).get();
+                            addAssert(transmissionStartTimeVariable >= previousReceptionStartTimeVariable + z3Context->real_val(cutthroughDelay.str().c_str()));
+                        }
+                        else
+                            addAssert(transmissionStartTimeVariable >= previousReceptionEndTimeVariable);
+                    }
+                    previousReceptionStartTimeVariable = receptionStartTimeVariable;
                     previousReceptionEndTimeVariable = receptionEndTimeVariable;
                 }
             }
@@ -169,17 +178,19 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
     // 6. add queueing constraints to prevent reordering packets
     for (auto port : input.ports) {
         for (int gateIndex = 0; gateIndex < port->numGates; gateIndex++) {
-            auto transmissionStartTimeVariables = getTransmissionStartTimeVariables(port, gateIndex);
             auto transmissionEndTimeVariables = getTransmissionEndTimeVariables(port, gateIndex);
-            auto receptionStartTimeVariables = getReceptionStartTimeVariables(port, gateIndex);
             auto receptionEndTimeVariables = getReceptionEndTimeVariables(port, gateIndex);
-            for (int i = 0; i < transmissionStartTimeVariables.size(); i++) {
+            for (int i = 0; i < transmissionEndTimeVariables.size(); i++) {
                 auto transmissionEndTimeVariableI = transmissionEndTimeVariables[i];
-                auto receptionEndTimeVariableI = receptionEndTimeVariables[i];
-                for (int j = i + 1; j < transmissionStartTimeVariables.size(); j++) {
-                    auto transmissionEndTimeVariableJ = transmissionEndTimeVariables[j];
-                    auto receptionEndTimeVariableJ = receptionEndTimeVariables[j];
-                    addAssert(receptionEndTimeVariableI < receptionEndTimeVariableJ == transmissionEndTimeVariableI < transmissionEndTimeVariableJ);
+                if (i < receptionEndTimeVariables.size()) {
+                    auto receptionEndTimeVariableI = receptionEndTimeVariables[i];
+                    for (int j = i + 1; j < transmissionEndTimeVariables.size(); j++) {
+                        auto transmissionEndTimeVariableJ = transmissionEndTimeVariables[j];
+                        if (j < receptionEndTimeVariables.size()) {
+                            auto receptionEndTimeVariableJ = receptionEndTimeVariables[j];
+                            addAssert(receptionEndTimeVariableI < receptionEndTimeVariableJ == transmissionEndTimeVariableI < transmissionEndTimeVariableJ);
+                        }
+                    }
                 }
             }
         }
@@ -193,11 +204,13 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
             for (int gateIndexJ = gateIndexI + 1; gateIndexJ < port->numGates; gateIndexJ++) {
                 auto transmissionStartTimeVariablesJ = getTransmissionStartTimeVariables(port, gateIndexJ);
                 for (int i = 0; i < receptionEndTimeVariablesI.size(); i++) {
-                    auto transmissionStartTimeVariableI = transmissionStartTimeVariablesI[i];
                     auto receptionEndTimeVariableI = receptionEndTimeVariablesI[i];
-                    for (int j = 0; j < transmissionStartTimeVariablesJ.size(); j++) {
-                        auto transmissionStartTimeVariableJ = transmissionStartTimeVariablesJ[j];
-                        addAssert(transmissionStartTimeVariableJ <= receptionEndTimeVariableI || transmissionStartTimeVariableJ >= transmissionStartTimeVariableI);
+                    if (i < transmissionStartTimeVariablesI.size()) {
+                        auto transmissionStartTimeVariableI = transmissionStartTimeVariablesI[i];
+                        for (int j = 0; j < transmissionStartTimeVariablesJ.size(); j++) {
+                            auto transmissionStartTimeVariableJ = transmissionStartTimeVariablesJ[j];
+                            addAssert(transmissionStartTimeVariableJ <= receptionEndTimeVariableI || transmissionStartTimeVariableJ >= transmissionStartTimeVariableI);
+                        }
                     }
                 }
             }

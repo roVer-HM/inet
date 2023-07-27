@@ -18,7 +18,7 @@ void GateScheduleConfiguratorBase::initialize(int stage)
         gateCycleDuration = par("gateCycleDuration");
         configuration = check_and_cast<cValueArray *>(par("configuration").objectValue());
     }
-    if (stage == INITSTAGE_QUEUEING) {
+    else if (stage == INITSTAGE_GATE_SCHEDULE_CONFIGURATION) {
         computeConfiguration();
         configureGateScheduling();
         configureApplicationOffsets();
@@ -27,14 +27,12 @@ void GateScheduleConfiguratorBase::initialize(int stage)
 
 void GateScheduleConfiguratorBase::handleParameterChange(const char *name)
 {
-    if (name != nullptr) {
-        if (!strcmp(name, "configuration")) {
-            configuration = check_and_cast<cValueArray *>(par("configuration").objectValue());
-            clearConfiguration();
-            computeConfiguration();
-            configureGateScheduling();
-            configureApplicationOffsets();
-        }
+    if (!strcmp(name, "configuration")) {
+        configuration = check_and_cast<cValueArray *>(par("configuration").objectValue());
+        clearConfiguration();
+        computeConfiguration();
+        configureGateScheduling();
+        configureApplicationOffsets();
     }
 }
 
@@ -113,6 +111,7 @@ void GateScheduleConfiguratorBase::addPorts(Input& input) const
                 port->guardBand = s(port->maxPacketLength / port->datarate).get();
                 port->maxCycleTime = gateCycleDuration;
                 port->maxSlotDuration = gateCycleDuration;
+                port->cutthroughSwitchingEnabled = true; // TODO: extract from network interface!
                 port->startNode = networkNode;
                 networkNode->ports.push_back(port);
                 input.ports.push_back(port);
@@ -158,6 +157,7 @@ void GateScheduleConfiguratorBase::addFlows(Input& input) const
                     int pcp = entry->get("pcp").intValue();
                     int gateIndex = entry->get("gateIndex").intValue();
                     b packetLength = b(entry->get("packetLength").doubleValueInUnit("b"));
+                    b cutthroughSwitchingHeaderSize = entry->containsKey("cutthroughSwitchingHeaderSize") ? b(entry->get("cutthroughSwitchingHeaderSize").doubleValueInUnit("b")) : b(0);
                     simtime_t packetInterval = entry->get("packetInterval").doubleValueInUnit("s");
                     simtime_t maxLatency = entry->containsKey("maxLatency") ? entry->get("maxLatency").doubleValueInUnit("s") : -1;
                     simtime_t maxJitter = entry->containsKey("maxJitter") ? entry->get("maxJitter").doubleValueInUnit("s") : 0;
@@ -180,6 +180,7 @@ void GateScheduleConfiguratorBase::addFlows(Input& input) const
                     auto flow = new Input::Flow();
                     flow->name = entry->containsKey("name") ? entry->get("name").stringValue() : (std::string("flow") + std::to_string(flowIndex++)).c_str();
                     flow->gateIndex = gateIndex;
+                    flow->cutthroughSwitchingHeaderSize = cutthroughSwitchingHeaderSize;
                     flow->startApplication = startApplication;
                     flow->endDevice = endDevice;
                     cValueArray *pathFragments;
@@ -253,7 +254,6 @@ void GateScheduleConfiguratorBase::configureGateScheduling()
 void GateScheduleConfiguratorBase::configureGateScheduling(cModule *networkNode, cModule *gate, Interface *interface)
 {
     auto networkInterface = interface->networkInterface;
-    bool initiallyOpen = false;
     simtime_t offset = 0;
     simtime_t slotEnd = 0;
     int gateIndex = gate->getIndex();
@@ -265,6 +265,7 @@ void GateScheduleConfiguratorBase::configureGateScheduling(cModule *networkNode,
     if (gateIndex >= schedules.size())
         throw cRuntimeError("Cannot find schedule for traffic class, interface = %s, gate index = %d", port->module->getFullPath().c_str(), gateIndex);
     auto schedule = schedules[gateIndex];
+    bool initiallyOpen = !schedule->open;
     cValueArray *durations = new cValueArray();
     for (auto& slot : schedule->slots) {
         simtime_t slotStart = slot.start;
@@ -272,7 +273,7 @@ void GateScheduleConfiguratorBase::configureGateScheduling(cModule *networkNode,
         if (slotStart < 0 || slotStart + slotDuration > gateCycleDuration)
             throw cRuntimeError("Invalid slot start and/or duration");
         if (slotStart == 0)
-            initiallyOpen = true;
+            initiallyOpen = schedule->open;
         else {
             simtime_t duration = slotStart - slotEnd;
             ASSERT(duration >= 0);
@@ -285,8 +286,14 @@ void GateScheduleConfiguratorBase::configureGateScheduling(cModule *networkNode,
     if (slotEnd != 0) {
         if (remainingDuration != 0)
             durations->add(cValue(remainingDuration.dbl(), "s"));
-        if (durations->size() % 2 != 0)
-            durations->add(cValue(0, "s"));
+        if (durations->size() % 2 != 0) {
+            if (durations->size() > 1) {
+                double delta = durations->get(durations->size() - 1).doubleValueInUnit("s");
+                durations->set(0, cValue(durations->get(0).doubleValueInUnit("s") + delta, "s"));
+                offset += delta;
+            }
+            durations->erase(durations->size() - 1);
+        }
     }
     EV_DEBUG << "Configuring gate scheduling parameters" << EV_FIELD(networkNode) << EV_FIELD(networkInterface) << EV_FIELD(gate) << EV_FIELD(initiallyOpen) << EV_FIELD(offset) << EV_FIELD(durations) << EV_ENDL;
     gate->par("initiallyOpen") = initiallyOpen;

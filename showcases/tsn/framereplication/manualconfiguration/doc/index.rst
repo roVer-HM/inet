@@ -9,7 +9,7 @@ stream splitting, stream merging, stream encoding and stream decoding to achieve
 the desired stream redundancy.
 
 | INET version: ``4.4``
-| Source files location: `inet/showcases/tsn/framereplication/manualconfiguration <https://github.com/inet-framework/tree/master/showcases/tsn/framereplication/manualconfiguration>`__
+| Source files location: `inet/showcases/tsn/framereplication/manualconfiguration <https://github.com/inet-framework/inet/tree/master/showcases/tsn/framereplication/manualconfiguration>`__
 
 The Model
 ---------
@@ -64,5 +64,5 @@ Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`ManualConfiguratio
 Discussion
 ----------
 
-Use `this <https://github.com/inet-framework/inet/discussions/TODO>`__ page in the GitHub issue tracker for commenting on this showcase.
+Use `this <https://github.com/inet-framework/inet/discussions/789>`__ page in the GitHub issue tracker for commenting on this showcase.
 

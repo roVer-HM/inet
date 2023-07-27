@@ -234,7 +234,7 @@ void TcpConnection::initClonedConnection(TcpConnection *listenerConn)
 TcpConnection *TcpConnection::cloneListeningConnection()
 {
     auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
-    int newSocketId = getEnvir()->getUniqueNumber();
+    int newSocketId = getActiveSimulationOrEnvir()->getUniqueNumber();
     char submoduleName[24];
     sprintf(submoduleName, "conn-%d", newSocketId);
     auto conn = check_and_cast<TcpConnection *>(moduleType->createScheduleInit(submoduleName, tcpMain));
@@ -263,7 +263,7 @@ void TcpConnection::sendToIP(Packet *tcpSegment, const Ptr<TcpHeader>& tcpHeader
 
     // TODO reuse next function for sending
 
-    IL3AddressType *addressType = remoteAddr.getAddressType();
+    const IL3AddressType *addressType = remoteAddr.getAddressType();
     tcpSegment->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
 
     if (ttl != -1 && tcpSegment->findTag<HopLimitReq>() == nullptr)
@@ -311,7 +311,7 @@ void TcpConnection::sendToIP(Packet *tcpSegment, const Ptr<TcpHeader>& tcpHeader
     EV_INFO << "Sending: ";
     printSegmentBrief(tcpSegment, tcpHeader);
 
-    IL3AddressType *addressType = dest.getAddressType();
+    const IL3AddressType *addressType = dest.getAddressType();
     ASSERT(tcpHeader->getChunkLength() == tcpHeader->getHeaderLength());
     tcpSegment->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
 

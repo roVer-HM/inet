@@ -24,35 +24,26 @@ RoutingTableVisualizerBase::RouteVisualization::RouteVisualization(const Ipv4Rou
 {
 }
 
-const char *RoutingTableVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
+std::string RoutingTableVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
         case 'm':
-            result = route->getNetmask().isUnspecified() ? "*" : std::to_string(route->getNetmask().getNetmaskLength());
-            break;
+            return route->getNetmask().isUnspecified() ? "*" : std::to_string(route->getNetmask().getNetmaskLength());
         case 'g':
-            result = route->getGateway().isUnspecified() ? "*" : route->getGateway().str();
-            break;
+            return route->getGateway().isUnspecified() ? "*" : route->getGateway().str();
         case 'd':
-            result = route->getDestination().isUnspecified() ? "*" : route->getDestination().str();
-            break;
+            return route->getDestination().isUnspecified() ? "*" : route->getDestination().str();
         case 'e':
-            result = std::to_string(route->getMetric());
-            break;
+            return std::to_string(route->getMetric());
         case 'n':
-            result = route->getInterface()->getInterfaceName();
-            break;
+            return route->getInterface()->getInterfaceName();
         case 'i':
-            result = route->str();
-            break;
+            return route->str();
         case 's':
-            result = route->str();
-            break;
+            return route->str();
         default:
             throw cRuntimeError("Unknown directive: %c", directive);
     }
-    return result.c_str();
 }
 
 void RoutingTableVisualizerBase::preDelete(cComponent *root)
@@ -91,15 +82,13 @@ void RoutingTableVisualizerBase::initialize(int stage)
 void RoutingTableVisualizerBase::handleParameterChange(const char *name)
 {
     if (!hasGUI()) return;
-    if (name != nullptr) {
-        if (!strcmp(name, "destinationFilter"))
-            destinationFilter.setPattern(par("destinationFilter"));
-        else if (!strcmp(name, "nodeFilter"))
-            nodeFilter.setPattern(par("nodeFilter"));
-        else if (!strcmp(name, "labelFormat"))
-            labelFormat.parseFormat(par("labelFormat"));
-        updateAllRouteVisualizations();
-    }
+    if (!strcmp(name, "destinationFilter"))
+        destinationFilter.setPattern(par("destinationFilter"));
+    else if (!strcmp(name, "nodeFilter"))
+        nodeFilter.setPattern(par("nodeFilter"));
+    else if (!strcmp(name, "labelFormat"))
+        labelFormat.parseFormat(par("labelFormat"));
+    updateAllRouteVisualizations();
 }
 
 void RoutingTableVisualizerBase::subscribe()
@@ -174,11 +163,13 @@ std::vector<Ipv4Address> RoutingTableVisualizerBase::getDestinations()
         auto networkNode = *it;
         if (isNetworkNode(networkNode) && destinationFilter.matches(networkNode)) {
             auto interfaceTable = addressResolver.findInterfaceTableOf(networkNode);
-            for (int i = 0; i < interfaceTable->getNumInterfaces(); i++) {
-                auto interface = interfaceTable->getInterface(i);
-                auto address = interface->getIpv4Address();
-                if (!address.isUnspecified())
-                    destinations.push_back(address);
+            if (interfaceTable != nullptr) {
+                for (int i = 0; i < interfaceTable->getNumInterfaces(); i++) {
+                    auto interface = interfaceTable->getInterface(i);
+                    auto address = interface->getIpv4Address();
+                    if (!address.isUnspecified())
+                        destinations.push_back(address);
+                }
             }
         }
     }

@@ -159,7 +159,7 @@ class TcpOptionUnknown extends TcpOption
 }
 
 //
-// Represents a TCP segment, to be used with the ~TCP module.
+// Represents a TCP segment, to be used with the ~Tcp module.
 //
 // TCP header fields not explicitly modelled: work on going
 // - Data Offset (number of 32 bit words in the header): represented
@@ -177,10 +177,10 @@ class TcpHeader extends TransportHeaderBase
     chunkLength = TCP_MIN_HEADER_LENGTH;
 
     // Source Port
-    unsigned short srcPort;
+    uint16_t srcPort;
 
     // Destination Port
-    unsigned short destPort;
+    uint16_t destPort;
 
     // Sequence Number: first sequence number of the first data octet
     // in the respective segment (except if SYN is set; then the the

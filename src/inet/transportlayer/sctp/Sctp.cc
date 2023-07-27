@@ -75,7 +75,7 @@ void Sctp::bindPortForUDP()
     EV_INFO << "Binding to UDP port " << SCTP_UDP_PORT << endl;
 
     udpSocket.setOutputGate(gate("ipOut"));
-    udpSockId = getEnvir()->getUniqueNumber();
+    udpSockId = getActiveSimulationOrEnvir()->getUniqueNumber();
     EV_INFO << "UDP socket Id is " << udpSocket.getSocketId() << endl;
 //    udpSocket.bind(SCTP_UDP_PORT);
 }
@@ -404,7 +404,7 @@ void Sctp::sendAbortFromMain(SctpHeader *sctpmsg, L3Address fromAddr, L3Address 
     auto addresses = pkt->addTag<L3AddressReq>();
     addresses->setSrcAddress(fromAddr);
     addresses->setDestAddress(toAddr);
-    IL3AddressType *addressType = toAddr.getAddressType();
+    const IL3AddressType *addressType = toAddr.getAddressType();
     pkt->addTag<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
     insertTransportProtocolHeader(pkt, Protocol::sctp, msg);
     send_to_ip(pkt);
@@ -435,7 +435,7 @@ void Sctp::sendShutdownCompleteFromMain(SctpHeader *sctpmsg, L3Address fromAddr,
     auto addresses = pkt->addTag<L3AddressReq>();
     addresses->setSrcAddress(fromAddr);
     addresses->setDestAddress(toAddr);
-    IL3AddressType *addressType = toAddr.getAddressType();
+    const IL3AddressType *addressType = toAddr.getAddressType();
     pkt->addTag<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
     insertTransportProtocolHeader(pkt, Protocol::sctp, msg);
     send_to_ip(pkt);

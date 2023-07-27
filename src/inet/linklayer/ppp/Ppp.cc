@@ -75,7 +75,7 @@ void Ppp::configureNetworkInterface()
     networkInterface->setCarrier(connected);
 
     // generate a link-layer address to be used as interface token for IPv6
-    InterfaceToken token(0, getSimulation()->getUniqueNumber(), 64);
+    InterfaceToken token(0, getActiveSimulationOrEnvir()->getUniqueNumber(), 64);
     networkInterface->setInterfaceToken(token);
 
     // MTU: typical values are 576 (Internet de facto), 1500 (Ethernet-friendly),
@@ -93,7 +93,11 @@ void Ppp::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, 
 
     MacProtocolBase::receiveSignal(source, signalID, obj, details);
 
-    if (getSimulation()->getSimulationStage() == CTX_CLEANUP)
+#if OMNETPP_BUILDNUM < 2001
+    if (getSimulation()->getSimulationStage() == STAGE(CLEANUP))
+#else
+    if (getSimulation()->getStage() == STAGE(CLEANUP))
+#endif
         return;
 
     if (signalID == POST_MODEL_CHANGE) {
@@ -136,7 +140,7 @@ void Ppp::refreshOutGateConnection(bool connected)
             b newLength = b(floor(curTxPacket->getBitLength() * sentPart));
             curTxPacket->removeAtBack(curTxPacket->getDataLength() - newLength);
             curTxPacket->setBitError(true);
-            send(curTxPacket, SendOptions().finishTx(curTxPacket->getId()).duration(sentDuration), physOutGate);
+            send(curTxPacket, SendOptions().finishTx(curTxPacket->getId()), physOutGate);
             curTxPacket = nullptr;
             cancelEvent(endTransmissionEvent);
         }
@@ -278,24 +282,19 @@ void Ppp::refreshDisplay() const
     MacProtocolBase::refreshDisplay();
 
     if (displayStringTextFormat != nullptr) {
-        auto text = StringFormat::formatString(displayStringTextFormat, [&] (char directive) {
-            static std::string result;
+        auto text = StringFormat::formatString(displayStringTextFormat, [&] (char directive) -> std::string {
             switch (directive) {
                 case 's':
-                    result = std::to_string(numSent);
-                    break;
+                    return std::to_string(numSent);
                 case 'r':
-                    result = std::to_string(numRcvdOK);
-                    break;
+                    return std::to_string(numRcvdOK);
                 case 'd':
-                    result = std::to_string(numDroppedIfaceDown + numDroppedBitErr);
-                    break;
+                    return std::to_string(numDroppedIfaceDown + numDroppedBitErr);
                 case 'q':
-                    result = std::to_string(txQueue->getNumPackets());
-                    break;
+                    return std::to_string(txQueue->getNumPackets());
                 case 'b':
                     if (datarateChannel == nullptr)
-                        result = "not connected";
+                        return "not connected";
                     else {
                         char datarateText[40];
                         double datarate = datarateChannel->getNominalDatarate();
@@ -307,15 +306,13 @@ void Ppp::refreshDisplay() const
                             sprintf(datarateText, "%gkbps", datarate / 1e3);
                         else
                             sprintf(datarateText, "%gbps", datarate);
-                        result = datarateText;
+                        return datarateText;
                     }
-                    break;
                 default:
                     throw cRuntimeError("Unknown directive: %c", directive);
             }
-            return result.c_str();
         });
-        getDisplayString().setTagArg("t", 0, text);
+        getDisplayString().setTagArg("t", 0, text.c_str());
     }
 
     const char *color = "";
@@ -331,7 +328,7 @@ void Ppp::refreshDisplay() const
 void Ppp::encapsulate(Packet *packet)
 {
     auto pppHeader = makeShared<PppHeader>();
-    pppHeader->setProtocol(ProtocolGroup::pppprotocol.getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol()));
+    pppHeader->setProtocol(ProtocolGroup::getPppProtocolGroup()->getProtocolNumber(packet->getTag<PacketProtocolTag>()->getProtocol()));
     packet->insertAtFront(pppHeader);
     auto pppTrailer = makeShared<PppTrailer>();
     packet->insertAtBack(pppTrailer);
@@ -347,7 +344,7 @@ void Ppp::decapsulate(Packet *packet)
     // TODO check CRC
     packet->addTagIfAbsent<InterfaceInd>()->setInterfaceId(networkInterface->getInterfaceId());
 
-    auto payloadProtocol = ProtocolGroup::pppprotocol.getProtocol(pppHeader->getProtocol());
+    auto payloadProtocol = ProtocolGroup::getPppProtocolGroup()->getProtocol(pppHeader->getProtocol());
     packet->addTagIfAbsent<DispatchProtocolReq>()->setProtocol(payloadProtocol);
     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(payloadProtocol);
 }

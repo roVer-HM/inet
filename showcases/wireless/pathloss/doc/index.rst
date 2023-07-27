@@ -4,13 +4,14 @@ Path Loss Models
 Goals
 -----
 
-INET features various path loss models for simulating radio propagation,
-ranging from simple ones like free space path loss to more complex ones
-like Rician and Rayleigh fading. This showcase demonstrates some of the
-available path loss models and how to use them in simulations.
+Path loss models are used to represent the loss of signal strength over distance
+in wireless communication. INET has a range
+of path loss models available, including simple models like free space path loss
+and more complex ones like Rician and Rayleigh fading.
 
-The showcase contains an example simulation, which computes received
-power vs. distance using several path loss model types.
+This showcase demonstrates how to use path loss models in simulations and
+it also compares the received power at different distances using different path
+loss models.
 
 | INET version: ``4.0``
 | Source files location: `inet/showcases/wireless/pathloss <https://github.com/inet-framework/inet/tree/master/showcases/wireless/pathloss>`__
@@ -135,12 +136,12 @@ The power of the received signal vs. distance, using
 :ned:`TwoRayInterference` path loss module types, is displayed on the
 following plot:
 
-.. image:: media/tworay.svg
+.. figure:: media/tworay.png
    :width: 100%
 
 Here is the same plot zoomed in:
 
-.. image:: media/tworay2.svg
+.. figure:: media/tworay_zoomed.png
    :width: 100%
 
 It is apparent that the two-ray ground reflection model yields the same
@@ -155,14 +156,14 @@ The next plot displays the power of the received signal vs. distance
 using the :ned:`RicianFading` and :ned:`LogNormalShadowing` models, and the
 :ned:`FreeSpacePathLoss` model for reference:
 
-.. image:: media/ricianlognormal.svg
+.. figure:: media/ricianlognormal.png
    :width: 100%
 
 The sharp visual change in the "raggedness" of the curves near 100m is
 due to the data points becoming less dense. Here is the same plot zoomed
 in on the near-field:
 
-.. image:: media/ricianlognormal2.svg
+.. figure:: media/ricianlognormal_zoomed.png
    :width: 100%
 
 Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`PathLossShowcase.ned <../PathLossShowcase.ned>`

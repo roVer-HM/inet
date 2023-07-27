@@ -67,7 +67,7 @@ void EthernetMac::handleMessageWhenUp(cMessage *msg)
     else if (msg->getArrivalGateId() == upperLayerInGateId)
         handleUpperPacket(check_and_cast<Packet *>(msg));
     else if (msg->getArrivalGate() == physInGate)
-        processMsgFromNetwork(check_and_cast<EthernetSignalBase *>(msg));
+        processMsgFromNetwork(check_and_cast<Signal *>(msg));
     else
         throw cRuntimeError("Message received from unknown gate!");
     processAtHandleMessageFinished();
@@ -118,8 +118,7 @@ void EthernetMac::startFrameTransmission()
     ASSERT(curTxSignal == nullptr);
     curTxSignal = signal->dup();
     emit(transmissionStartedSignal, signal);
-    send(signal, physOutGate);
-
+    send(signal, SendOptions().transmissionId(curTxSignal->getId()), physOutGate);
     scheduleAt(transmissionChannel->getTransmissionFinishTime(), endTxTimer);
     changeTransmissionState(TRANSMITTING_STATE);
 }
@@ -130,9 +129,8 @@ void EthernetMac::handleUpperPacket(Packet *packet)
     EV_INFO << "Received " << packet << " from upper layer." << endl;
 
     numFramesFromHL++;
-    emit(packetReceivedFromUpperSignal, packet);
 
-    auto frame = packet->peekAtFront<EthernetMacHeader>();
+    const auto& frame = packet->peekAtFront<EthernetMacHeader>();
     if (frame->getDest().equals(getMacAddress())) {
         throw cRuntimeError("logic error: frame %s from higher layer has local MAC address as dest (%s)",
                 packet->getFullName(), frame->getDest().str().c_str());
@@ -154,15 +152,6 @@ void EthernetMac::handleUpperPacket(Packet *packet)
         return;
     }
 
-    // fill in src address if not set
-    if (frame->getSrc().isUnspecified()) {
-        frame = nullptr; // drop shared ptr
-        auto newFrame = packet->removeAtFront<EthernetMacHeader>();
-        newFrame->setSrc(getMacAddress());
-        packet->insertAtFront(newFrame);
-        frame = newFrame;
-    }
-
     if (transmitState != TX_IDLE_STATE)
         throw cRuntimeError("EthernetMac not in TX_IDLE_STATE when packet arrived from upper layer");
     if (currentTxFrame != nullptr)
@@ -172,7 +161,7 @@ void EthernetMac::handleUpperPacket(Packet *packet)
     startFrameTransmission();
 }
 
-void EthernetMac::processMsgFromNetwork(EthernetSignalBase *signal)
+void EthernetMac::processMsgFromNetwork(Signal *signal)
 {
     EV_INFO << signal << " received." << endl;
 
@@ -198,8 +187,9 @@ void EthernetMac::processMsgFromNetwork(EthernetSignalBase *signal)
 
     totalSuccessfulRxTime += signal->getDuration();
 
-    if (signal->getSrcMacFullDuplex() != duplexMode)
-        throw cRuntimeError("Ethernet misconfiguration: MACs on the same link must be all in full duplex mode, or all in half-duplex mode");
+    if (auto ethernetSignal = dynamic_cast<EthernetSignalBase *>(signal))
+        if (ethernetSignal->getSrcMacFullDuplex() != duplexMode)
+            throw cRuntimeError("Ethernet misconfiguration: MACs on the same link must be all in full duplex mode, or all in half-duplex mode");
 
     if (dynamic_cast<EthernetFilledIfgSignal *>(signal))
         throw cRuntimeError("There is no burst mode in full-duplex operation: EtherFilledIfg is unexpected");
@@ -228,7 +218,7 @@ void EthernetMac::processMsgFromNetwork(EthernetSignalBase *signal)
         return;
 
     if (frame->getTypeOrLength() == ETHERTYPE_FLOW_CONTROL) {
-        const auto& controlFrame = currentTxFrame->peekDataAt<EthernetControlFrameBase>(frame->getChunkLength(), b(-1));
+        const auto& controlFrame = packet->peekDataAt<EthernetControlFrameBase>(frame->getChunkLength(), b(-1));
         if (controlFrame->getOpCode() == ETHERNET_CONTROL_PAUSE) {
             auto pauseFrame = check_and_cast<const EthernetPauseFrame *>(controlFrame.get());
             int pauseUnits = pauseFrame->getPauseTime();

@@ -9,8 +9,8 @@
 
 #include "inet/common/packet/chunk/BytesChunk.h"
 #include "inet/mobility/contract/IMobility.h"
+#include "inet/physicallayer/wireless/common/analogmodel/bitlevel/DimensionalSignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/analogmodel/bitlevel/LayeredTransmission.h"
-#include "inet/physicallayer/wireless/common/analogmodel/bitlevel/ScalarSignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/bitlevel/ISignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/radio/bitlevel/SignalPacketModel.h"
 #include "inet/physicallayer/wireless/ieee80211/bitlevel/Ieee80211ConvolutionalCode.h"
@@ -93,10 +93,10 @@ std::ostream& Ieee80211LayeredOfdmTransmitter::printToStream(std::ostream& strea
 
 const ITransmissionPacketModel *Ieee80211LayeredOfdmTransmitter::createPacketModel(const Packet *packet) const
 {
-    return new TransmissionPacketModel(packet, mode->getDataMode()->getNetBitrate());
+    return new TransmissionPacketModel(packet, mode->getHeaderMode()->getNetBitrate(), mode->getDataMode()->getNetBitrate());
 }
 
-const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createScalarAnalogModel(const ITransmissionPacketModel *packetModel, const ITransmissionBitModel *bitModel) const
+const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createDimensionalAnalogModel(simtime_t startTime, const ITransmissionPacketModel *packetModel, const ITransmissionBitModel *bitModel) const
 {
     int headerBitLength = -1;
     int dataBitLength = -1;
@@ -130,9 +130,10 @@ const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createScalarAna
     unsigned int numberOfDataApskSymbols = dataBitLength / dataCodeWordSize;
     unsigned int numberOfDataOFDMSymbols = numberOfDataApskSymbols / NUMBER_OF_OFDM_DATA_SUBCARRIERS;
     simtime_t dataDuration = numberOfDataOFDMSymbols * mode->getSymbolInterval();
-    simtime_t duration = preambleDuration + headerDuration + dataDuration;
+    auto endTime = startTime + preambleDuration + headerDuration + dataDuration;
     // TODO: centerFrequency doesn't take the channel into account
-    return new ScalarTransmissionSignalAnalogModel(duration, centerFrequency, mode->getDataMode()->getBandwidth(), power);
+    auto powerFunction = makeShared<math::Boxcar2DFunction<WpHz, simsec, Hz>>(simsec(startTime), simsec(endTime), centerFrequency - bandwidth / 2, centerFrequency + bandwidth / 2, power / bandwidth);
+    return new DimensionalTransmissionSignalAnalogModel(preambleDuration, headerDuration, dataDuration, centerFrequency, mode->getDataMode()->getBandwidth(), powerFunction);
 }
 
 const ITransmissionPacketModel *Ieee80211LayeredOfdmTransmitter::createSignalFieldPacketModel(const ITransmissionPacketModel *completePacketModel) const
@@ -141,14 +142,14 @@ const ITransmissionPacketModel *Ieee80211LayeredOfdmTransmitter::createSignalFie
     // fields, so the SIGNAL field is 24 bits (OFDM_SYMBOL_SIZE / 2) long.
     auto packet = completePacketModel->getPacket();
     const auto& signalChunk = packet->peekAt(b(0), b(NUMBER_OF_OFDM_DATA_SUBCARRIERS / 2));
-    return new TransmissionPacketModel(new Packet(nullptr, signalChunk), bps(NaN));
+    return new TransmissionPacketModel(new Packet(nullptr, signalChunk), bps(NaN), bps(NaN));
 }
 
 const ITransmissionPacketModel *Ieee80211LayeredOfdmTransmitter::createDataFieldPacketModel(const ITransmissionPacketModel *completePacketModel) const
 {
     auto packet = completePacketModel->getPacket();
     const auto& dataChunk = packet->peekAt(b(NUMBER_OF_OFDM_DATA_SUBCARRIERS / 2), packet->getTotalLength() - b(NUMBER_OF_OFDM_DATA_SUBCARRIERS / 2));
-    return new TransmissionPacketModel(new Packet(nullptr, dataChunk), bps(NaN));
+    return new TransmissionPacketModel(new Packet(nullptr, dataChunk), bps(NaN), bps(NaN));
 }
 
 void Ieee80211LayeredOfdmTransmitter::encodeAndModulate(const ITransmissionPacketModel *packetModel, const ITransmissionBitModel *& fieldBitModel, const ITransmissionSymbolModel *& fieldSymbolModel, const IEncoder *encoder, const IModulator *modulator, bool isSignalField) const
@@ -191,32 +192,32 @@ void Ieee80211LayeredOfdmTransmitter::encodeAndModulate(const ITransmissionPacke
 const ITransmissionSymbolModel *Ieee80211LayeredOfdmTransmitter::createSymbolModel(const ITransmissionSymbolModel *signalFieldSymbolModel, const ITransmissionSymbolModel *dataFieldSymbolModel) const
 {
     if (levelOfDetail >= SYMBOL_DOMAIN) {
-        const std::vector<const ISymbol *> *signalSymbols = signalFieldSymbolModel->getSymbols();
+        const std::vector<const ISymbol *> *signalSymbols = signalFieldSymbolModel->getAllSymbols();
         std::vector<const ISymbol *> *mergedSymbols = new std::vector<const ISymbol *>();
         const Ieee80211OfdmSymbol *ofdmSymbol = nullptr;
         for (auto& signalSymbol : *signalSymbols) {
             ofdmSymbol = check_and_cast<const Ieee80211OfdmSymbol *>(signalSymbol);
             mergedSymbols->push_back(new Ieee80211OfdmSymbol(*ofdmSymbol));
         }
-        const std::vector<const ISymbol *> *dataSymbols = dataFieldSymbolModel->getSymbols();
+        const std::vector<const ISymbol *> *dataSymbols = dataFieldSymbolModel->getAllSymbols();
         for (auto& dataSymbol : *dataSymbols) {
             ofdmSymbol = dynamic_cast<const Ieee80211OfdmSymbol *>(dataSymbol);
             mergedSymbols->push_back(new Ieee80211OfdmSymbol(*ofdmSymbol));
         }
-        const Ieee80211OfdmTransmissionSymbolModel *transmissionSymbolModel = new Ieee80211OfdmTransmissionSymbolModel(1, 1.0 / mode->getSignalMode()->getDuration(), mergedSymbols->size() - 1, 1.0 / mode->getSymbolInterval(), mergedSymbols, signalFieldSymbolModel->getHeaderModulation(), dataFieldSymbolModel->getPayloadModulation());
+        const Ieee80211OfdmTransmissionSymbolModel *transmissionSymbolModel = new Ieee80211OfdmTransmissionSymbolModel(1, 1.0 / mode->getSignalMode()->getDuration(), mergedSymbols->size() - 1, 1.0 / mode->getSymbolInterval(), mergedSymbols, signalFieldSymbolModel->getHeaderModulation(), dataFieldSymbolModel->getDataModulation());
         delete signalFieldSymbolModel;
         delete dataFieldSymbolModel;
         return transmissionSymbolModel;
     }
-    return new Ieee80211OfdmTransmissionSymbolModel(-1, NaN, -1, NaN, nullptr, mode->getSignalMode()->getModulation()->getSubcarrierModulation(), mode->getDataMode()->getModulation()->getSubcarrierModulation());
+    return new Ieee80211OfdmTransmissionSymbolModel(-1, NaN, -1, NaN, nullptr, mode->getSignalMode()->getModulation(), mode->getDataMode()->getModulation());
 }
 
 const ITransmissionBitModel *Ieee80211LayeredOfdmTransmitter::createBitModel(const ITransmissionBitModel *signalFieldBitModel, const ITransmissionBitModel *dataFieldBitModel, const ITransmissionPacketModel *packetModel) const
 {
     if (levelOfDetail >= BIT_DOMAIN) {
-        BitVector *encodedBits = new BitVector(*signalFieldBitModel->getBits());
-        unsigned int signalBitLength = signalFieldBitModel->getBits()->getSize();
-        const BitVector *dataFieldBits = dataFieldBitModel->getBits();
+        BitVector *encodedBits = new BitVector(*signalFieldBitModel->getAllBits());
+        unsigned int signalBitLength = signalFieldBitModel->getAllBits()->getSize();
+        const BitVector *dataFieldBits = dataFieldBitModel->getAllBits();
         unsigned int dataBitLength = dataFieldBits->getSize();
         for (unsigned int i = 0; i < dataFieldBits->getSize(); i++)
             encodedBits->appendBit(dataFieldBits->getBit(i));
@@ -248,7 +249,7 @@ const ITransmissionSampleModel *Ieee80211LayeredOfdmTransmitter::createSampleMod
         return nullptr;
 }
 
-const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createAnalogModel(const ITransmissionPacketModel *packetModel, const ITransmissionBitModel *bitModel, const ITransmissionSymbolModel *symbolModel, const ITransmissionSampleModel *sampleModel) const
+const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createAnalogModel(simtime_t startTime, const ITransmissionPacketModel *packetModel, const ITransmissionBitModel *bitModel, const ITransmissionSymbolModel *symbolModel, const ITransmissionSampleModel *sampleModel) const
 {
     const ITransmissionAnalogModel *analogModel = nullptr;
     if (digitalAnalogConverter) {
@@ -257,8 +258,8 @@ const ITransmissionAnalogModel *Ieee80211LayeredOfdmTransmitter::createAnalogMod
         else
             throw cRuntimeError("Digital/analog converter needs sample representation");
     }
-    else // TODO Analog model is obligatory, currently we use scalar analog model as default analog model
-        analogModel = createScalarAnalogModel(packetModel, bitModel);
+    else // TODO: Analog model is obligatory, currently we use dimensional analog model as default analog model
+        analogModel = createDimensionalAnalogModel(startTime, packetModel, bitModel);
     return analogModel;
 }
 
@@ -299,7 +300,7 @@ const ITransmission *Ieee80211LayeredOfdmTransmitter::createTransmission(const I
     bitModel = createBitModel(signalFieldBitModel, dataFieldBitModel, packetModel);
     symbolModel = createSymbolModel(signalFieldSymbolModel, dataFieldSymbolModel);
     sampleModel = createSampleModel(symbolModel);
-    analogModel = createAnalogModel(packetModel, bitModel, symbolModel, sampleModel);
+    analogModel = createAnalogModel(startTime, packetModel, bitModel, symbolModel, sampleModel);
     IMobility *mobility = transmitter->getAntenna()->getMobility();
     // assuming movement and rotation during transmission is negligible
     const simtime_t endTime = startTime + analogModel->getDuration();
@@ -307,8 +308,11 @@ const ITransmission *Ieee80211LayeredOfdmTransmitter::createTransmission(const I
     const Coord& endPosition = mobility->getCurrentPosition();
     const Quaternion& startOrientation = mobility->getCurrentAngularPosition();
     const Quaternion& endOrientation = mobility->getCurrentAngularPosition();
-    // TODO compute channel
-    return new Ieee80211LayeredTransmission(packetModel, bitModel, symbolModel, sampleModel, analogModel, transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation, mode, nullptr);
+    // TODO: compute channel
+    const simtime_t preambleDuration = mode->getPreambleLength();
+    const simtime_t headerDuration = mode->getHeaderMode()->getDuration();
+    const simtime_t dataDuration = mode->getDataMode()->getDuration(packet->getDataLength());
+    return new Ieee80211LayeredTransmission(packetModel, bitModel, symbolModel, sampleModel, analogModel, transmitter, packet, startTime, endTime, preambleDuration, headerDuration, dataDuration, startPosition, endPosition, startOrientation, endOrientation, mode, nullptr);
 }
 
 Ieee80211LayeredOfdmTransmitter::~Ieee80211LayeredOfdmTransmitter()

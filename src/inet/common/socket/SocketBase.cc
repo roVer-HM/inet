@@ -17,7 +17,7 @@ SocketBase::SocketBase()
 {
     // don't allow user-specified socketIds because they may conflict with
     // automatically assigned ones.
-    socketId = getEnvir()->getUniqueNumber();
+    socketId = getActiveSimulationOrEnvir()->getUniqueNumber();
     outputGate = nullptr;
 }
 
@@ -31,6 +31,16 @@ void SocketBase::sendOut(cMessage *msg)
     auto& tags = check_and_cast<ITaggedObject *>(msg)->getTags();
     tags.addTagIfAbsent<SocketReq>()->setSocketId(socketId);
     check_and_cast<cSimpleModule *>(outputGate->getOwnerModule())->send(msg, outputGate);
+}
+
+void SocketBase::sendOut(Request *request)
+{
+    sendOut(static_cast<cMessage *>(request));
+}
+
+void SocketBase::sendOut(Packet *packet)
+{
+    sendOut(static_cast<cMessage *>(packet));
 }
 
 void SocketBase::send(Packet *packet)

@@ -10,6 +10,7 @@
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ProtocolGroup.h"
 #include "inet/common/ProtocolTag_m.h"
+#include "inet/common/ProtocolUtils.h"
 #include "inet/linklayer/common/DropEligibleTag_m.h"
 #include "inet/linklayer/common/EtherType_m.h"
 #include "inet/linklayer/common/PcpTag_m.h"
@@ -40,15 +41,14 @@ void Ieee8021qTagEpdHeaderChecker::initialize(int stage)
 
 void Ieee8021qTagEpdHeaderChecker::handleParameterChange(const char *name)
 {
-    if (name != nullptr) {
-        if (!strcmp(name, "vlanIdFilter"))
-            vlanIdFilter = check_and_cast<cValueArray *>(par("vlanIdFilter").objectValue());
-   }
+    if (!strcmp(name, "vlanIdFilter"))
+        vlanIdFilter = check_and_cast<cValueArray *>(par("vlanIdFilter").objectValue());
 }
 
 void Ieee8021qTagEpdHeaderChecker::processPacket(Packet *packet)
 {
     const auto& header = packet->popAtFront<Ieee8021qTagEpdHeader>();
+    appendEncapsulationProtocolInd(packet, qtagProtocol);
     packet->addTagIfAbsent<UserPriorityInd>()->setUserPriority(header->getPcp());
     packet->addTagIfAbsent<PcpInd>()->setPcp(header->getPcp());
     packet->addTagIfAbsent<VlanInd>()->setVlanId(header->getVid());
@@ -58,7 +58,7 @@ void Ieee8021qTagEpdHeaderChecker::processPacket(Packet *packet)
     if (isIeee8023Length(typeOrLength))
         protocol = &Protocol::ieee8022llc;
     else
-        protocol = ProtocolGroup::ethertype.getProtocol(typeOrLength);
+        protocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocol(typeOrLength);
     auto packetProtocolTag = packet->addTagIfAbsent<PacketProtocolTag>();
     packetProtocolTag->setFrontOffset(b(0));
     packetProtocolTag->setBackOffset(b(0));
@@ -77,7 +77,7 @@ bool Ieee8021qTagEpdHeaderChecker::matchesPacket(const Packet *packet) const
 {
     const auto& header = packet->peekAtFront<Ieee8021qTagEpdHeader>();
     auto typeOrLength = header->getTypeOrLength();
-    if (!isIeee8023Length(typeOrLength) && ProtocolGroup::ethertype.findProtocol(typeOrLength) == nullptr)
+    if (!isIeee8023Length(typeOrLength) && ProtocolGroup::getEthertypeProtocolGroup()->findProtocol(typeOrLength) == nullptr)
         return false;
     else {
         auto vlanId = header->getVid();

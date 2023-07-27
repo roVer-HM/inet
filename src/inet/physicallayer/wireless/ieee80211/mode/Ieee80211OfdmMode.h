@@ -50,7 +50,11 @@ class INET_API Ieee80211OfdmModeBase : public Ieee80211OfdmTimingRelatedParamete
 
     int getNumberOfDataSubcarriers() const { return 48; }
     int getNumberOfPilotSubcarriers() const { return 4; }
+    // The null subcarrier and the guard subcarriers at the sides are not included.
     int getNumberOfTotalSubcarriers() const { return getNumberOfDataSubcarriers() + getNumberOfPilotSubcarriers(); }
+
+    Hz getSubcarrierStartFrequencyOffset(int subcarrierIndex) const;
+    Hz getSubcarrierEndFrequencyOffset(int subcarrierIndex) const;
 
     virtual bps getGrossBitrate() const;
     virtual bps getNetBitrate() const;
@@ -96,7 +100,8 @@ class INET_API Ieee80211OfdmSignalMode : public IIeee80211HeaderMode, public Iee
     virtual const simtime_t getDuration() const override { return getSymbolInterval(); }
 
     const Ieee80211OfdmCode *getCode() const { return code; }
-    const Ieee80211OfdmModulation *getModulation() const override { return modulation; }
+    virtual const simtime_t getSymbolInterval() const override { return Ieee80211OfdmTimingRelatedParametersBase::getSymbolInterval(); }
+    virtual const Ieee80211OfdmModulation *getModulation() const override { return modulation; }
 
     virtual bps getGrossBitrate() const override { return Ieee80211OfdmModeBase::getGrossBitrate(); }
     virtual bps getNetBitrate() const override { return Ieee80211OfdmModeBase::getNetBitrate(); }
@@ -121,7 +126,8 @@ class INET_API Ieee80211OfdmDataMode : public IIeee80211DataMode, public Ieee802
     virtual const simtime_t getDuration(b dataLength) const override;
 
     const Ieee80211OfdmCode *getCode() const { return code; }
-    const Ieee80211OfdmModulation *getModulation() const override { return modulation; }
+    virtual const simtime_t getSymbolInterval() const override { return Ieee80211OfdmTimingRelatedParametersBase::getSymbolInterval(); }
+    virtual const Ieee80211OfdmModulation *getModulation() const override { return modulation; }
     virtual bps getGrossBitrate() const override { return Ieee80211OfdmModeBase::getGrossBitrate(); }
     virtual bps getNetBitrate() const override { return Ieee80211OfdmModeBase::getNetBitrate(); }
     virtual int getNumberOfSpatialStreams() const override { return 1; }

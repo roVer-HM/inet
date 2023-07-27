@@ -5,13 +5,14 @@ import multiprocessing
 import multiprocessing.pool
 import sys
 import time
+import traceback
 
 from inet.common.util import *
 
 logger = logging.getLogger(__name__)
 
 class TaskResult:
-    def __init__(self, task=None, result="DONE", expected_result="DONE", reason=None, error_message=None, elapsed_wall_time=None, possible_results=["DONE", "CANCEL", "ERROR"], possible_result_colors=[COLOR_GREEN, COLOR_CYAN, COLOR_RED], **kwargs):
+    def __init__(self, task=None, result="DONE", expected_result="DONE", reason=None, error_message=None, exception=None, elapsed_wall_time=None, possible_results=["DONE", "CANCEL", "ERROR"], possible_result_colors=[COLOR_GREEN, COLOR_CYAN, COLOR_RED], **kwargs):
         self.locals = locals()
         self.locals.pop("self")
         self.kwargs = kwargs
@@ -21,6 +22,7 @@ class TaskResult:
         self.expected = expected_result == result
         self.reason = reason
         self.error_message = error_message
+        self.exception = exception
         self.elapsed_wall_time = elapsed_wall_time
         self.possible_results = possible_results
         self.possible_result_colors = possible_result_colors
@@ -217,7 +219,7 @@ class Task:
                 task_result = self.task_result_class(task=self, result="CANCEL", reason="Cancel by user")
             except Exception as e:
                 if handle_exception:
-                    task_result = self.task_result_class(task=self, result="ERROR", reason="Exception during task execution", error_message=e.__repr__())
+                    task_result = self.task_result_class(task=self, result="ERROR", reason="Exception during task execution", error_message=e.__repr__(), exception=e)
                 else:
                     raise e
             task_result.print_result(complete_error_message=False, output_stream=output_stream)
@@ -231,6 +233,18 @@ class Task:
 
     def rerun(self, **kwargs):
         return self.recreate(**kwargs).run()
+
+class SuccessfulTask(Task):
+    def run_protected(self, **kwargs):
+        return TaskResult(result="DONE")
+
+class FailingTask(Task):
+    def run_protected(self, **kwargs):
+        return TaskResult(result="FAIL", possible_results=["DONE", "FAIL"], possible_result_colors=[COLOR_GREEN, COLOR_YELLOW])
+
+class ErroneousTask(Task):
+    def run_protected(self, **kwargs):
+        1/0
 
 class MultipleTasks:
     def __init__(self, tasks=[], name="task", concurrent=True, randomize=False, chunksize=1, pool_class=multiprocessing.pool.ThreadPool, multiple_task_results_class=MultipleTaskResults, **kwargs):

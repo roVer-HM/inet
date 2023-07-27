@@ -60,28 +60,33 @@ void OscillatorBasedClock::initialize(int stage)
             roundingFunction = roundNone;
         else
             throw cRuntimeError("Unknown rounding mode");
-        WATCH(originClockTick);
+        WATCH(originSimulationTime);
+        WATCH(originClockTime);
         WATCH_PTRVECTOR(events);
     }
     else if (stage == INITSTAGE_CLOCK) {
-        simtime_t initialClockTime = par("initialClockTime");
-        if (initialClockTime.raw() % oscillator->getNominalTickLength().raw() != 0)
+        originSimulationTime = simTime();
+        originClockTime = par("initialClockTime");
+        if (originClockTime.raw() % oscillator->getNominalTickLength().raw() != 0)
             throw cRuntimeError("Initial clock time must be a multiple of the oscillator nominal tick length");
-        originClockTick = initialClockTime.raw() / oscillator->getNominalTickLength().raw();
     }
 }
 
 clocktime_t OscillatorBasedClock::computeClockTimeFromSimTime(simtime_t t) const
 {
     ASSERT(t >= simTime());
-    return ClockTime::from((originClockTick + oscillator->computeTicksForInterval(t - oscillator->getComputationOrigin())) * oscillator->getNominalTickLength());
+    return originClockTime +
+           SIMTIME_AS_CLOCKTIME((oscillator->computeTicksForInterval(t - oscillator->getComputationOrigin()) -
+                                 oscillator->computeTicksForInterval(originSimulationTime - oscillator->getComputationOrigin())) *
+                                oscillator->getNominalTickLength() * (1 + unit(getOscillatorCompensation()).get()));
 }
 
 simtime_t OscillatorBasedClock::computeSimTimeFromClockTime(clocktime_t t) const
 {
     ASSERT(t >= getClockTime());
-    int64_t numTicks = t.raw() / oscillator->getNominalTickLength().raw();
-    return oscillator->getComputationOrigin() + oscillator->computeIntervalForTicks(numTicks - originClockTick);
+    return oscillator->getComputationOrigin() +
+           oscillator->computeIntervalForTicks((t - originClockTime).dbl() / oscillator->getNominalTickLength() / (1 + unit(getOscillatorCompensation()).get()) +
+                                               oscillator->computeTicksForInterval(originSimulationTime - oscillator->getComputationOrigin()));
 }
 
 void OscillatorBasedClock::scheduleClockEventAt(clocktime_t time, ClockEvent *event)
@@ -110,28 +115,27 @@ void OscillatorBasedClock::handleClockEvent(ClockEvent *event)
     ClockBase::handleClockEvent(event);
 }
 
-const char *OscillatorBasedClock::resolveDirective(char directive) const
+std::string OscillatorBasedClock::resolveDirective(char directive) const
 {
-    static std::string result;
     switch (directive) {
-        case 'o':
-            result = std::to_string(originClockTick);
-            break;
+        case 's':
+            return originSimulationTime.str();
         case 'c':
-            result = std::to_string(originClockTick + oscillator->computeTicksForInterval(simTime() - oscillator->getComputationOrigin()));
-            break;
+            return originClockTime.str();
         default:
             return ClockBase::resolveDirective(directive);
     }
-    return result.c_str();
 }
 
 void OscillatorBasedClock::receiveSignal(cComponent *source, int signal, cObject *obj, cObject *details)
 {
     Enter_Method("%s", cComponent::getSignalName(signal));
 
-    if (signal == IOscillator::preOscillatorStateChangedSignal)
-        originClockTick += oscillator->computeTicksForInterval(simTime() - oscillator->getComputationOrigin());
+    if (signal == IOscillator::preOscillatorStateChangedSignal) {
+        // NOTE: the origin clock must be set first
+        originClockTime = getClockTime();
+        originSimulationTime = simTime();
+    }
     else if (signal == IOscillator::postOscillatorStateChangedSignal) {
         simtime_t currentSimTime = simTime();
         for (auto event : events) {

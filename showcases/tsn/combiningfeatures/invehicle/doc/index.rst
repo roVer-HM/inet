@@ -11,7 +11,7 @@ filtering and policying, stream redundancy, unicast and multicast streams, link
 failure protection, frame preemption, and cut-through switching.
 
 | INET version: ``4.4``
-| Source files location: `inet/showcases/tsn/combiningfeatures/invehicle <https://github.com/inet-framework/tree/master/showcases/tsn/combiningfeatures/invehicle>`__
+| Source files location: `inet/showcases/tsn/combiningfeatures/invehicle <https://github.com/inet-framework/inet/tree/master/showcases/tsn/combiningfeatures/invehicle>`__
 
 The Model
 ---------
@@ -46,11 +46,11 @@ evaluate their performance.
 Results
 -------
 
-The following video shows the behavior in Qtenv:
+.. The following video shows the behavior in Qtenv:
 
-.. video:: media/behavior.mp4
-   :align: center
-   :width: 90%
+   .. video:: media/behavior.mp4
+      :align: center
+      :width: 90%
 
 Here are the simulation results:
 
@@ -64,5 +64,5 @@ Sources: :download:`omnetpp.ini <../omnetpp.ini>`, :download:`InVehicleNetworkSh
 Discussion
 ----------
 
-Use `this <https://github.com/inet-framework/inet/discussions/TODO>`__ page in the GitHub issue tracker for commenting on this showcase.
+Use `this <https://github.com/inet-framework/inet/discussions/785>`__ page in the GitHub issue tracker for commenting on this showcase.
 

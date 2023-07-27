@@ -165,7 +165,11 @@ void Ipv6RoutingTable::handleMessage(cMessage *msg)
 
 void Ipv6RoutingTable::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
 {
-    if (getSimulation()->getContextType() == CTX_INITIALIZE)
+#if OMNETPP_BUILDNUM < 2001
+    if (getSimulation()->getSimulationStage() == STAGE(INITIALIZE))
+#else
+    if (getSimulation()->getStage() == STAGE(INITIALIZE))
+#endif
         return; // ignore notifications during initialize
 
     Enter_Method("%s", cComponent::getSignalName(signalID));
@@ -407,7 +411,7 @@ NetworkInterface *Ipv6RoutingTable::getInterfaceByAddress(const L3Address& addre
 
 bool Ipv6RoutingTable::isLocalAddress(const Ipv6Address& dest) const
 {
-    Enter_Method("isLocalAddress(%s) y/n", dest.str().c_str());
+    Enter_Method("isLocalAddress(%s)", dest.str().c_str());
 
     // first, check if we have an interface with this address
     if (ift->isLocalAddress(dest))

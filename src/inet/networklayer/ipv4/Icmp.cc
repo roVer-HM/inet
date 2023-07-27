@@ -29,13 +29,9 @@ namespace inet {
 
 Define_Module(Icmp);
 
-long Icmp::ctr = 0;
-
 void Icmp::handleParameterChange(const char *name)
 {
-    if (name == nullptr)
-        ;
-    else if (!strcmp(name, "crcMode"))
+    if (!strcmp(name, "crcMode"))
         crcMode = parseCrcMode(par("crcMode"), false);
     else if (!strcmp(name, "quoteLength"))
         parseQuoteLengthParameter();
@@ -259,7 +255,7 @@ void Icmp::processIcmpMessage(Packet *packet)
                 else {
                     auto dispatchProtocolReq = packet->addTagIfAbsent<DispatchProtocolReq>();
                     dispatchProtocolReq->setServicePrimitive(SP_INDICATION);
-                    dispatchProtocolReq->setProtocol(ProtocolGroup::ipprotocol.getProtocol(transportProtocol));
+                    dispatchProtocolReq->setProtocol(ProtocolGroup::getIpProtocolGroup()->getProtocol(transportProtocol));
                     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::icmpv4);
                     send(packet, "transportOut");
                 }
@@ -342,7 +338,7 @@ void Icmp::handleRegisterProtocol(const Protocol& protocol, cGate *gate, Service
 {
     Enter_Method("handleRegisterProtocol");
     if (!strcmp("transportOut", gate->getBaseName())) {
-        int protocolNumber = ProtocolGroup::ipprotocol.findProtocolNumber(&protocol);
+        int protocolNumber = ProtocolGroup::getIpProtocolGroup()->findProtocolNumber(&protocol);
         if (protocolNumber != -1)
             transportProtocols.insert(protocolNumber);
     }
