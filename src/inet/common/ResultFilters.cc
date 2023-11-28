@@ -760,7 +760,7 @@ void ThroughputFilter::init(Context *ctx)
     numLengthLimit = cfg->parseLong(numLengthLimitValue, nullptr, 100);
     auto dropLastSignalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
     dropLastSignal = cConfiguration::parseBool(dropLastSignalValue, nullptr, false);
-    auto emitIntermediateZerosValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
+    auto emitIntermediateZerosValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "emitIntermediateZerosValue");
     emitIntermediateZeros = cConfiguration::parseBool(emitIntermediateZerosValue, nullptr, true);
 
     lastSignalTime = simTime();
