@@ -32,10 +32,10 @@ class PacketTestTask(TestTask):
         return self.task_result_class(self, result=match.group(1) if match and subprocess_result.returncode == 0 else "FAIL")
 
 def get_packet_test_tasks(filter=None, working_directory_filter=None, ini_file_filter=None, config_filter=None, run_filter=None, **kwargs):
-    if filter or working_directory_filter or ini_file_filter or config_filter or run_filter:
+    if filter or (working_directory_filter and not os.path.abspath("tests/packet").startswith(os.path.abspath(working_directory_filter))) or ini_file_filter or config_filter or run_filter:
         packet_test_tasks = []
     else:
-        packet_test_tasks = [PacketTestTask(inet_project)]
+        packet_test_tasks = [PacketTestTask(inet_project, **kwargs)]
     return MultipleTestTasks(tasks=packet_test_tasks, name="packet test", **kwargs)
 
 def get_queueing_test_tasks(**kwargs):
@@ -51,25 +51,27 @@ def get_unit_test_tasks(**kwargs):
     return get_opp_test_tasks("tests/unit", name="unit test", **kwargs)
 
 def get_all_test_tasks(**kwargs):
-    test_task_functions = [get_smoke_test_tasks,
-                           get_sanitizer_test_tasks,
-                           get_fingerprint_test_tasks,
-                           get_statistical_test_tasks,
-                           get_validation_test_tasks,
-                           #get_speed_test_tasks,
+    test_task_functions = [
+                           #get_chart_test_tasks,
                            #get_feature_test_tasks,
-                           get_packet_test_tasks,
-                           get_queueing_test_tasks,
-                           get_protocol_test_tasks,
+                           get_fingerprint_test_tasks,
                            get_module_test_tasks,
+                           get_packet_test_tasks,
+                           get_protocol_test_tasks,
+                           get_queueing_test_tasks,
+                           get_sanitizer_test_tasks,
+                           get_smoke_test_tasks,
+                           #get_speed_test_tasks,
+                           #get_statistical_test_tasks,
                            get_unit_test_tasks,
-                           get_chart_test_tasks]
+                           get_validation_test_tasks
+                          ]
     test_tasks = []
     for test_task_function in test_task_functions:
         multiple_test_tasks = test_task_function(**kwargs)
         if multiple_test_tasks.tasks:
             test_tasks.append(multiple_test_tasks)
-    return MultipleTestTasks(test_tasks, name="test group", **dict(kwargs, concurrent=False))
+    return MultipleTestTasks(tasks=test_tasks, **dict(kwargs, name="test group", start=None, end=None, concurrent=False))
 
 def run_packet_tests(**kwargs):
     return get_packet_test_tasks(**kwargs).run(**kwargs)

@@ -41,7 +41,7 @@ class ChartTestTask(TestTask):
                 folder = os.path.dirname(self.simulation_project.get_full_path(self.analysis_file_name))
                 file_name = analysis.export_image(chart, folder, workspace, format="png", dpi=150, target_folder="doc/media", filename=image_export_filename + "_new")
                 new_file_name = os.path.join(folder, file_name)
-                old_file_name = os.path.join(folder, re.sub("_new", "", file_name))
+                old_file_name = os.path.join(folder, re.sub(r"_new", "", file_name))
                 if os.path.isfile(old_file_name):
                     new_image = matplotlib.image.imread(new_file_name)
                     old_image = matplotlib.image.imread(old_file_name)
@@ -49,7 +49,7 @@ class ChartTestTask(TestTask):
                     if metric == 0 or not keep_charts:
                         os.remove(new_file_name)
                     else:
-                        diff_file_name = os.path.join(folder, re.sub("_new", "_diff", file_name))
+                        diff_file_name = os.path.join(folder, re.sub(r"_new", "_diff", file_name))
                         print(diff_file_name)
                         image_diff = numpy.abs(new_image - old_image)
                         matplotlib.image.imsave(diff_file_name, image_diff)
@@ -72,7 +72,7 @@ class MultipleChartTestTasks(MultipleTestTasks):
         multiple_simulation_task_results = self.multiple_simulation_tasks.run_protected(**kwargs)
         return super().run_protected(**kwargs)
 
-def get_chart_test_tasks(simulation_project=default_project, run_simulations=True, filter=None, working_directory_filter=None, pool_class=multiprocessing.Pool, **kwargs):
+def get_chart_test_tasks(simulation_project=default_project, run=0, run_simulations=True, filter=None, working_directory_filter=None, pool_class=multiprocessing.Pool, **kwargs):
     test_tasks = []
     simulation_tasks = []
     for analysis_file_name in get_analysis_files(simulation_project=simulation_project, filter=filter or working_directory_filter, **kwargs):
@@ -81,7 +81,7 @@ def get_chart_test_tasks(simulation_project=default_project, run_simulations=Tru
             folder = os.path.dirname(simulation_project.get_full_path(analysis_file_name))
             working_directory = os.path.relpath(folder, simulation_project.get_full_path("."))
             if run_simulations:
-                multiple_simulation_tasks = get_simulation_tasks(simulation_project=simulation_project, working_directory_filter=working_directory, sim_time_limit=get_statistical_result_sim_time_limit, **kwargs)
+                multiple_simulation_tasks = get_simulation_tasks(simulation_project=simulation_project, run=run, working_directory_filter=working_directory, sim_time_limit=get_statistical_result_sim_time_limit, **kwargs)
                 for simulation_task in multiple_simulation_tasks.tasks:
                     if not list(builtins.filter(lambda element: element.simulation_config == simulation_task.simulation_config and element._run == simulation_task._run, simulation_tasks)):
                         simulation_tasks.append(simulation_task)
@@ -117,7 +117,7 @@ class ChartUpdateTask(UpdateTask):
                 folder = os.path.dirname(self.simulation_project.get_full_path(self.analysis_file_name))
                 file_name = analysis.export_image(chart, folder, workspace, format="png", dpi=150, target_folder="doc/media", filename=image_export_filename + "_new")
                 new_file_name = os.path.join(folder, file_name)
-                old_file_name = os.path.join(folder, re.sub("_new", "", file_name))
+                old_file_name = os.path.join(folder, re.sub(r"_new", "", file_name))
                 if os.path.isfile(old_file_name):
                     new_image = matplotlib.image.imread(new_file_name)
                     old_image = matplotlib.image.imread(old_file_name)
@@ -126,8 +126,8 @@ class ChartUpdateTask(UpdateTask):
                         os.remove(new_file_name)
                     else:
                         if keep_charts:
-                            os.rename(old_file_name, re.sub("_new", "_old", file_name))
-                            diff_file_name = os.path.join(folder, re.sub("_new", "_diff", file_name))
+                            os.rename(old_file_name, re.sub(r"_new", "_old", file_name))
+                            diff_file_name = os.path.join(folder, re.sub(r"_new", "_diff", file_name))
                             image_diff = numpy.abs(new_image - old_image)
                             matplotlib.image.imsave(diff_file_name, image_diff)
                         else:

@@ -12,7 +12,7 @@ from inet.common.util import *
 logger = logging.getLogger(__name__)
 
 class TaskResult:
-    def __init__(self, task=None, result="DONE", expected_result="DONE", reason=None, error_message=None, exception=None, elapsed_wall_time=None, possible_results=["DONE", "CANCEL", "ERROR"], possible_result_colors=[COLOR_GREEN, COLOR_CYAN, COLOR_RED], **kwargs):
+    def __init__(self, task=None, result="DONE", expected_result="DONE", reason=None, stdout=None, stderr=None, error_message=None, exception=None, elapsed_wall_time=None, possible_results=["DONE", "CANCEL", "ERROR"], possible_result_colors=[COLOR_GREEN, COLOR_CYAN, COLOR_RED], **kwargs):
         self.locals = locals()
         self.locals.pop("self")
         self.kwargs = kwargs
@@ -21,6 +21,8 @@ class TaskResult:
         self.expected_result = expected_result
         self.expected = expected_result == result
         self.reason = reason
+        self.stdout = stdout
+        self.stderr = stderr
         self.error_message = error_message
         self.exception = exception
         self.elapsed_wall_time = elapsed_wall_time
@@ -40,7 +42,7 @@ class TaskResult:
                (" " + self.get_error_message(complete_error_message=complete_error_message) if self.result == "ERROR" else "")
 
     def get_error_message(self, **kwargs):
-        return self.error_message or "<Error message not found>"
+        return self.error_message or self.stderr or (self.exception and str(self.exception)) or "<No error message>"
 
     def print_result(self, complete_error_message=False, output_stream=sys.stdout, **kwargs):
         print(self.get_description(complete_error_message=complete_error_message), file=output_stream)
@@ -247,12 +249,14 @@ class ErroneousTask(Task):
         1/0
 
 class MultipleTasks:
-    def __init__(self, tasks=[], name="task", concurrent=True, randomize=False, chunksize=1, pool_class=multiprocessing.pool.ThreadPool, multiple_task_results_class=MultipleTaskResults, **kwargs):
+    def __init__(self, tasks=[], name="task", start=None, end=None, concurrent=True, randomize=False, chunksize=1, pool_class=multiprocessing.pool.ThreadPool, multiple_task_results_class=MultipleTaskResults, **kwargs):
         self.locals = locals()
         self.locals.pop("self")
         self.kwargs = kwargs
         self.tasks = tasks
         self.name = name
+        self.start = start
+        self.end = end
         self.concurrent = concurrent
         self.randomize = randomize
         self.chunksize = chunksize
@@ -287,7 +291,7 @@ class MultipleTasks:
         return multiple_task_results
 
     def run_protected(self, **kwargs):
-        tasks = self.tasks
+        tasks = self.tasks[self.start:self.end+1] if self.start is not None and self.end is not None else self.tasks
         task_count = len(tasks)
         for task in tasks:
             task.set_cancel(False)

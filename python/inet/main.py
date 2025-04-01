@@ -21,6 +21,8 @@ def parse_arguments(task_name):
     parser.add_argument("-u", "--user-interface", choices=["Cmdenv", "Qtenv"], default="Cmdenv", help="User interface")
     parser.add_argument("-t", "--sim-time-limit", default=None, help="Simulation time limit")
     parser.add_argument("-T", "--cpu-time-limit", default=None, help="CPU time limit")
+    parser.add_argument('--start', default=None, help="First task index")
+    parser.add_argument('--end', default=None, help="Last task index")
     parser.add_argument("-f", "--filter", default=None, help="Filter")
     parser.add_argument("--exclude-filter", default=None, help="Exclude filter")
     parser.add_argument("-w", "--working-directory-filter", default=None, help="Working directory filter")
@@ -43,7 +45,7 @@ def process_arguments(task):
     logger.addHandler(handler)
     kwargs = {k: v for k, v in vars(args).items() if v is not None}
     kwargs["working_directory_filter"] = args.working_directory_filter or os.path.relpath(os.getcwd(), os.path.realpath(inet_project.get_full_path(".")))
-    kwargs["working_directory_filter"] = re.sub("(.*)/$", "\\1", kwargs["working_directory_filter"])
+    kwargs["working_directory_filter"] = re.sub(r"(.*)/$", "\\1", kwargs["working_directory_filter"])
     return kwargs
 
 def run_main(main_function, task_name):
@@ -94,4 +96,7 @@ def run_validation_tests_main():
     run_main(run_validation_tests, "validation tests")
 
 def run_all_tests_main():
-    run_main(run_all_tests, "tests")
+    run_main(run_all_tests, "all tests")
+
+def run_release_tests_main():
+    run_main(run_release_tests, "release tests")
