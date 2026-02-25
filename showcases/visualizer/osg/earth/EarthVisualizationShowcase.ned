@@ -7,6 +7,7 @@ import inet.node.inet.AdhocHost;
 import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211RadioMedium;
 import inet.visualizer.common.IntegratedVisualizer;
 
+
 network EarthVisualizationShowcase
 {
     submodules:

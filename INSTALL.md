@@ -41,12 +41,10 @@ If you are building from command line:
 4. Make sure that any required Python modules are properly installed by executing
   `pip install -r python/requirements.txt`
 
-5. Type `make makefiles`. This should generate the makefiles for you automatically.
-
-6. Type `make` to build the inet executable (release version). Use `make MODE=debug`
+5. Type `make` to build the inet executable (release version). Use `make MODE=debug`
    to build debug version.
 
-7. You can run specific examples by changing into the example's directory and executing `inet`
+6. You can run specific examples by changing into the example's directory and executing `inet`
 
 If you are using the IDE:
 -------------------------

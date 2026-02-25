@@ -623,8 +623,6 @@ class MultipleTasks:
         self.kwargs = kwargs
         self.tasks = tasks
         self.name = name
-        self.start = start
-        self.end = end
         self.concurrent = concurrent
         self.pass_keyboard_interrupt = pass_keyboard_interrupt
         self.randomize = randomize
