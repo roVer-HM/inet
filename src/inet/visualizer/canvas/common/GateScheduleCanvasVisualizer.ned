@@ -11,14 +11,14 @@ import inet.visualizer.base.GateScheduleVisualizerBase;
 import inet.visualizer.contract.IGateScheduleVisualizer;
 
 //
-// This module visualizes gates on a 2D canvas.
+// Visualizes gates on a 2D canvas.
 //
 // @see ~GateScheduleOsgVisualizer, ~GateScheduleVisualizer, ~GateScheduleVisualizerBase, ~IGateScheduleVisualizer
 //
 simple GateScheduleCanvasVisualizer extends GateScheduleVisualizerBase like IGateScheduleVisualizer
 {
     parameters:
-        double zIndex = default(10); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(10); // Determines the drawing order of figures relative to other visualizers
         @class(GateScheduleCanvasVisualizer);
 }
 

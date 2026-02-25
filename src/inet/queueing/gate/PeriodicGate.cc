@@ -71,10 +71,10 @@ void PeriodicGate::readDurationsPar()
         throw cRuntimeError("The duration parameter must contain an even number of values");
     totalDuration = CLOCKTIME_ZERO;
     durations.resize(size);
-    for (int i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         clocktime_t duration = durationsPar->get(i).doubleValueInUnit("s");
         if (duration <= CLOCKTIME_ZERO)
-            throw cRuntimeError("Unaccepted duration value (%s) at position %d", durationsPar->get(i).str().c_str(), i);
+            throw cRuntimeError("Unaccepted duration value (%s) at position %u", durationsPar->get(i).str().c_str(), (unsigned int)i);
         durations[i] = duration;
         totalDuration += duration;
     }
@@ -96,7 +96,10 @@ void PeriodicGate::initializeGating()
 {
     index = 0;
     isOpen_ = initiallyOpen;
-    offset.setRaw(totalDuration != 0 ? initialOffset.raw() % totalDuration.raw() : 0);
+    if (totalDuration.raw() == 0)
+        offset.setRaw(0);
+    else
+        offset.setRaw((initialOffset.raw() % totalDuration.raw() + totalDuration.raw()) % totalDuration.raw());
     while (offset > CLOCKTIME_ZERO) {
         clocktime_t duration = durations[index];
         if (offset >= duration) {
@@ -145,8 +148,8 @@ bool PeriodicGate::canPacketFlowThrough(Packet *packet) const
         return false;
     else {
         if (enableImplicitGuardBand) {
-            clocktime_t flowEndTime = getClockTime() + s((packet->getDataLength() + extraLength) / bitrate).get() + SIMTIME_AS_CLOCKTIME(extraDuration);
-            return !changeTimer->isScheduled() || flowEndTime <= getArrivalClockTime(changeTimer);
+            clocktime_t flowEndTime = getClockTime() + ((packet->getDataLength() + extraLength) / bitrate).get<s>() + SIMTIME_AS_CLOCKTIME(extraDuration);
+            return !isScheduledClockEvent(changeTimer) || flowEndTime <= getArrivalClockTime(changeTimer);
         }
         else
             return PacketGateBase::canPacketFlowThrough(packet);
@@ -157,7 +160,7 @@ void PeriodicGate::updateIsInGuardBand()
 {
     bool newIsInGuardBand = false;
     if (isOpen_) {
-        auto packet = provider != nullptr ? provider->canPullPacket(inputGate->getPathStartGate()) : nullptr;
+        auto packet = provider != nullptr ? provider.canPullPacket() : nullptr;
         newIsInGuardBand = packet != nullptr && !canPacketFlowThrough(packet);
     }
     if (isInGuardBand_ != newIsInGuardBand) {
@@ -167,13 +170,13 @@ void PeriodicGate::updateIsInGuardBand()
     }
 }
 
-void PeriodicGate::handleCanPushPacketChanged(cGate *gate)
+void PeriodicGate::handleCanPushPacketChanged(const cGate *gate)
 {
     PacketGateBase::handleCanPushPacketChanged(gate);
     updateIsInGuardBand();
 }
 
-void PeriodicGate::handleCanPullPacketChanged(cGate *gate)
+void PeriodicGate::handleCanPullPacketChanged(const cGate *gate)
 {
     PacketGateBase::handleCanPullPacketChanged(gate);
     updateIsInGuardBand();

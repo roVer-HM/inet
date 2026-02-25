@@ -11,15 +11,15 @@ import inet.visualizer.base.NetworkConnectionVisualizerBase;
 import inet.visualizer.contract.INetworkConnectionVisualizer;
 
 //
-// This module visualizes multiple network connections on a 2D canvas.
+// Visualizes multiple network connections on a 2D canvas.
 //
 // @see ~NetworkConnectionCanvasVisualizer, ~NetworkConnectionVisualizer, ~NetworkConnectionVisualizerBase, ~INetworkConnectionVisualizer
 //
 simple NetworkConnectionCanvasVisualizer extends NetworkConnectionVisualizerBase like INetworkConnectionVisualizer
 {
     parameters:
-        double zIndex = default(0); // determines the drawing order of figures relative to other visualizers
-        nodeFilter = default(""); // disabled because omnetpp displays network connections by default
+        double zIndex = default(0); // Determines the drawing order of figures relative to other visualizers
+        nodeFilter = default(""); // Disabled because OMNeT++ displays network connections by default
         @class(NetworkConnectionCanvasVisualizer);
 }
 

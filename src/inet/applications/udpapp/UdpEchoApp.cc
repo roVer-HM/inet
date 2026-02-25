@@ -11,7 +11,7 @@
 #include "inet/common/Simsignals.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
 #include "inet/transportlayer/common/L4PortTag_m.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -58,15 +58,6 @@ void UdpEchoApp::socketClosed(UdpSocket *socket)
 {
     if (operationalState == State::STOPPING_OPERATION)
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
-}
-
-void UdpEchoApp::refreshDisplay() const
-{
-    ApplicationBase::refreshDisplay();
-
-    char buf[40];
-    sprintf(buf, "echoed: %d pks", numEchoed);
-    getDisplayString().setTagArg("t", 0, buf);
 }
 
 void UdpEchoApp::finish()

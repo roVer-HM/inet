@@ -14,13 +14,14 @@
 #include "inet/common/LayeredProtocolBase.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
-#include "inet/common/checksum/TcpIpChecksum.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/common/lifecycle/NodeStatus.h"
 #include "inet/common/socket/SocketTag_m.h"
 #include "inet/common/stlutils.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 #include "inet/networklayer/common/DscpTag_m.h"
 #include "inet/networklayer/common/HopLimitTag_m.h"
+#include "inet/networklayer/common/IcmpErrorTag_m.h"
 #include "inet/networklayer/common/IpProtocolId_m.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
 #include "inet/networklayer/common/L3Tools.h"
@@ -47,7 +48,7 @@
 namespace inet {
 
 Define_Module(Udp);
-Define_Module(UdpCrcInsertionHook);
+Define_Module(UdpChecksumInsertionHook);
 
 Udp::Udp()
 {
@@ -63,8 +64,8 @@ void Udp::initialize(int stage)
     OperationalBase::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
-        const char *crcModeString = par("crcMode");
-        crcMode = parseCrcMode(crcModeString, true);
+        const char *checksumModeString = par("checksumMode");
+        checksumMode = parseChecksumMode(checksumModeString, true);
 
         lastEphemeralPort = EPHEMERAL_PORTRANGE_START;
         ift.reference(this, "interfaceTableModule", true);
@@ -89,11 +90,11 @@ void Udp::initialize(int stage)
         WATCH_MAP(socketsByPortMap);
     }
     else if (stage == INITSTAGE_TRANSPORT_LAYER) {
-        if (crcMode == CRC_COMPUTED) {
-            cModuleType *moduleType = cModuleType::get("inet.transportlayer.udp.UdpCrcInsertionHook");
-            auto crcInsertion = check_and_cast<UdpCrcInsertionHook *>(moduleType->create("crcInsertion", this));
-            crcInsertion->finalizeParameters();
-            crcInsertion->callInitialize();
+        if (checksumMode == CHECKSUM_COMPUTED) {
+            cModuleType *moduleType = cModuleType::get("inet.transportlayer.udp.UdpChecksumInsertionHook");
+            auto checksumInsertion = check_and_cast<UdpChecksumInsertionHook *>(moduleType->create("checksumInsertion", this));
+            checksumInsertion->finalizeParameters();
+            checksumInsertion->callInitialize();
 
             // TODO
             // Unlike IPv4, when UDP packets are originated by an IPv6 node,
@@ -107,12 +108,12 @@ void Udp::initialize(int stage)
 #ifdef INET_WITH_IPv4
             auto ipv4 = dynamic_cast<INetfilter *>(findModuleByPath("^.ipv4.ip"));
             if (ipv4 != nullptr)
-                ipv4->registerHook(0, crcInsertion);
+                ipv4->registerHook(0, checksumInsertion);
 #endif
 #ifdef INET_WITH_IPv6
             auto ipv6 = dynamic_cast<INetfilter *>(findModuleByPath("^.ipv6.ipv6"));
             if (ipv6 != nullptr)
-                ipv6->registerHook(0, crcInsertion);
+                ipv6->registerHook(0, checksumInsertion);
 #endif
         }
         registerService(Protocol::udp, gate("appIn"), gate("appOut"));
@@ -774,18 +775,18 @@ void Udp::handleUpperPacket(Packet *packet)
     udpHeader->setSourcePort(srcPort);
     udpHeader->setDestinationPort(destPort);
 
-    B totalLength = udpHeader->getChunkLength() + packet->getTotalLength();
+    B totalLength = udpHeader->getChunkLength() + packet->getDataLength();
     if (totalLength.get() > UDP_MAX_MESSAGE_SIZE)
         throw cRuntimeError("send: total UDP message size exceeds %u", UDP_MAX_MESSAGE_SIZE);
 
     udpHeader->setTotalLengthField(totalLength);
-    if (crcMode == CRC_COMPUTED) {
-        udpHeader->setCrcMode(CRC_COMPUTED);
-        udpHeader->setCrc(0x0000); // crcMode == CRC_COMPUTED is done in an INetfilter hook
+    if (checksumMode == CHECKSUM_COMPUTED) {
+        udpHeader->setChecksumMode(CHECKSUM_COMPUTED);
+        udpHeader->setChecksum(0x0000); // checksumMode == CHECKSUM_COMPUTED is done in an INetfilter hook
     }
     else {
-        udpHeader->setCrcMode(crcMode);
-        insertCrc(l3Protocol, srcAddr, destAddr, udpHeader, packet);
+        udpHeader->setChecksumMode(checksumMode);
+        insertChecksum(l3Protocol, srcAddr, destAddr, udpHeader, packet);
     }
 
     insertTransportProtocolHeader(packet, Protocol::udp, udpHeader);
@@ -799,39 +800,40 @@ void Udp::handleUpperPacket(Packet *packet)
     numSent++;
 }
 
-void Udp::insertCrc(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<UdpHeader>& udpHeader, Packet *packet)
+void Udp::insertChecksum(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<UdpHeader>& udpHeader, Packet *packet)
 {
-    CrcMode crcMode = udpHeader->getCrcMode();
-    switch (crcMode) {
-        case CRC_DISABLED:
-            // if the CRC mode is disabled, then the CRC is 0
-            udpHeader->setCrc(0x0000);
+    ChecksumMode checksumMode = udpHeader->getChecksumMode();
+    switch (checksumMode) {
+        case CHECKSUM_DISABLED:
+            // if the checksum mode is disabled, then the checksum is 0
+            udpHeader->setChecksum(0x0000);
             break;
-        case CRC_DECLARED_CORRECT:
-            // if the CRC mode is declared to be correct, then set the CRC to an easily recognizable value
-            udpHeader->setCrc(0xC00D);
+        case CHECKSUM_DECLARED_CORRECT:
+            // if the checksum mode is declared to be correct, then set the checksum to an easily recognizable value
+            udpHeader->setChecksum(0xC00D);
             break;
-        case CRC_DECLARED_INCORRECT:
-            // if the CRC mode is declared to be incorrect, then set the CRC to an easily recognizable value
-            udpHeader->setCrc(0xBAAD);
+        case CHECKSUM_DECLARED_INCORRECT:
+            // if the checksum mode is declared to be incorrect, then set the checksum to an easily recognizable value
+            udpHeader->setChecksum(0xBAAD);
             break;
-        case CRC_COMPUTED: {
-            // if the CRC mode is computed, then compute the CRC and set it
+        case CHECKSUM_COMPUTED: {
+            auto length = udpHeader->getTotalLengthField();
+            // if the checksum mode is computed, then compute the checksum and set it
             // this computation is delayed after the routing decision, see INetfilter hook
-            udpHeader->setCrc(0x0000); // make sure that the CRC is 0 in the Udp header before computing the CRC
-            udpHeader->setCrcMode(CRC_DISABLED); // for serializer/deserializer checks only: deserializer sets the crcMode to disabled when crc is 0
-            auto udpData = packet->peekData(Chunk::PF_ALLOW_EMPTY);
-            auto crc = computeCrc(networkProtocol, srcAddress, destAddress, udpHeader, udpData);
-            udpHeader->setCrc(crc);
-            udpHeader->setCrcMode(CRC_COMPUTED);
+            udpHeader->setChecksum(0x0000); // make sure that the checksum is 0 in the Udp header before computing the checksum
+            udpHeader->setChecksumMode(CHECKSUM_DISABLED); // for serializer/deserializer checks only: deserializer sets the checksumMode to disabled when checksum is 0
+            auto udpData = packet->peekDataAt(b(0), length - udpHeader->getChunkLength(), Chunk::PF_ALLOW_EMPTY);
+            auto checksum = computeChecksum(networkProtocol, srcAddress, destAddress, udpHeader, udpData);
+            udpHeader->setChecksum(checksum);
+            udpHeader->setChecksumMode(CHECKSUM_COMPUTED);
             break;
         }
         default:
-            throw cRuntimeError("Unknown CRC mode: %d", (int)crcMode);
+            throw cRuntimeError("Unknown checksum mode: %d", (int)checksumMode);
     }
 }
 
-uint16_t Udp::computeCrc(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<const UdpHeader>& udpHeader, const Ptr<const Chunk>& udpData)
+uint16_t Udp::computeChecksum(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<const UdpHeader>& udpHeader, const Ptr<const Chunk>& udpData)
 {
     auto pseudoHeader = makeShared<TransportPseudoHeader>();
     pseudoHeader->setSrcAddress(srcAddress);
@@ -851,14 +853,14 @@ uint16_t Udp::computeCrc(const Protocol *networkProtocol, const L3Address& srcAd
     Chunk::serialize(stream, pseudoHeader);
     Chunk::serialize(stream, udpHeader);
     Chunk::serialize(stream, udpData);
-    uint16_t crc = TcpIpChecksum::checksum(stream.getData());
+    uint16_t checksum = internetChecksum(stream.getData());
 
     // Excerpt from RFC 768:
     // If the computed  checksum  is zero,  it is transmitted  as all ones (the
     // equivalent  in one's complement  arithmetic).   An all zero  transmitted
     // checksum  value means that the transmitter  generated  no checksum  (for
     // debugging or for higher level protocols that don't care).
-    return crc == 0x0000 ? 0xFFFF : crc;
+    return checksum == 0x0000 ? 0xFFFF : checksum;
 }
 
 void Udp::close(int sockId)
@@ -929,7 +931,7 @@ void Udp::processUDPPacket(Packet *udpPacket)
     auto hasIncorrectLength = totalLength<udpHeader->getChunkLength() || totalLength> udpHeader->getChunkLength() + udpPacket->getDataLength();
     auto networkProtocol = udpPacket->getTag<NetworkProtocolInd>()->getProtocol();
 
-    if (hasIncorrectLength || !verifyCrc(networkProtocol, udpHeader, udpPacket)) {
+    if (hasIncorrectLength || !verifyChecksum(networkProtocol, udpHeader, udpPacket)) {
         EV_WARN << "Packet has bit error, discarding\n";
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
@@ -977,39 +979,43 @@ void Udp::processUDPPacket(Packet *udpPacket)
     }
 }
 
-bool Udp::verifyCrc(const Protocol *networkProtocol, const Ptr<const UdpHeader>& udpHeader, Packet *packet)
+bool Udp::verifyChecksum(const Protocol *networkProtocol, const Ptr<const UdpHeader>& udpHeader, Packet *packet)
 {
-    switch (udpHeader->getCrcMode()) {
-        case CRC_DISABLED:
-            // if the CRC mode is disabled, then the check passes if the CRC is 0
-            return udpHeader->getCrc() == 0x0000;
-        case CRC_DECLARED_CORRECT: {
-            // if the CRC mode is declared to be correct, then the check passes if and only if the chunks are correct
+    switch (udpHeader->getChecksumMode()) {
+        case CHECKSUM_DISABLED:
+            // if the checksum mode is disabled, then the check passes if the checksum is 0
+            return udpHeader->getChecksum() == 0x0000;
+        case CHECKSUM_DECLARED_CORRECT: {
+            // if the checksum mode is declared to be correct, then the check passes if and only if the chunks are correct
             auto totalLength = udpHeader->getTotalLengthField();
-            auto udpDataBytes = packet->peekDataAt(B(0), totalLength - udpHeader->getChunkLength(), Chunk::PF_ALLOW_INCORRECT);
+            auto udpDataBytes = packet->peekDataAt(B(0), totalLength - udpHeader->getChunkLength(), Chunk::PF_ALLOW_EMPTY | Chunk::PF_ALLOW_INCORRECT);
             return udpHeader->isCorrect() && udpDataBytes->isCorrect();
         }
-        case CRC_DECLARED_INCORRECT:
-            // if the CRC mode is declared to be incorrect, then the check fails
+        case CHECKSUM_DECLARED_INCORRECT:
+            // if the checksum mode is declared to be incorrect, then the check fails
             return false;
-        case CRC_COMPUTED: {
-            if (udpHeader->getCrc() == 0x0000)
-                // if the CRC mode is computed and the CRC is 0 (disabled), then the check passes
+        case CHECKSUM_COMPUTED: {
+            if (udpHeader->getChecksum() == 0x0000) {
+                // on udp under Ipv6, the checksum 0000 is invalid
+                if (networkProtocol == &Protocol::ipv6)
+                    return false;
+                // on udp under Ipv4, if the checksum mode is computed and the checksum is 0 (disabled), then the check passes
                 return true;
+            }
             else {
-                // otherwise compute the CRC, the check passes if the result is 0xFFFF (includes the received CRC) and the chunks are correct
+                // otherwise compute the checksum, the check passes if the result is 0xFFFF (includes the received checksum) and the chunks are correct
                 auto l3AddressInd = packet->getTag<L3AddressInd>();
                 auto srcAddress = l3AddressInd->getSrcAddress();
                 auto destAddress = l3AddressInd->getDestAddress();
                 auto totalLength = udpHeader->getTotalLengthField();
-                auto udpData = packet->peekDataAt<BytesChunk>(B(0), totalLength - udpHeader->getChunkLength(), Chunk::PF_ALLOW_INCORRECT);
-                auto computedCrc = computeCrc(networkProtocol, srcAddress, destAddress, udpHeader, udpData);
-                // TODO delete these isCorrect calls, rely on CRC only
-                return computedCrc == 0xFFFF && udpHeader->isCorrect() && udpData->isCorrect();
+                auto udpData = packet->peekDataAt(B(0), totalLength - udpHeader->getChunkLength(), Chunk::PF_ALLOW_EMPTY | Chunk::PF_ALLOW_INCORRECT);
+                auto computedChecksum = computeChecksum(networkProtocol, srcAddress, destAddress, udpHeader, udpData);
+                // TODO delete these isCorrect calls, rely on checksum only
+                return computedChecksum == 0xFFFF && udpHeader->isCorrect() && udpData->isCorrect();
             }
         }
         default:
-            throw cRuntimeError("Unknown CRC mode");
+            throw cRuntimeError("Unknown checksum mode");
     }
 }
 
@@ -1126,7 +1132,7 @@ void Udp::sendUp(Ptr<const UdpHeader>& header, Packet *payload, SockDesc *sd, us
 {
     EV_INFO << "Sending payload up to socket sockId=" << sd->sockId << "\n";
 
-    // send payload with UdpControlInfo up to the application
+    // send payload up to the application
     payload->setKind(UDP_I_DATA);
     payload->removeTagIfPresent<PacketProtocolTag>();
     payload->removeTagIfPresent<DispatchProtocolReq>();
@@ -1149,8 +1155,8 @@ void Udp::processICMPv4Error(Packet *packet)
     if (!icmp)
         // TODO move to initialize?
         icmp = getModuleFromPar<Icmp>(par("icmpModule"), this);
-    if (!icmp->verifyCrc(packet)) {
-        EV_WARN << "incoming ICMP packet has wrong CRC, dropped\n";
+    if (!icmp->verifyChecksum(packet)) {
+        EV_WARN << "incoming ICMP packet has wrong checksum, dropped\n";
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, packet, &details);
@@ -1185,7 +1191,9 @@ void Udp::processICMPv4Error(Packet *packet)
         if (sd) {
             // send UDP_I_ERROR to socket
             EV_DETAIL << "Source socket is sockId=" << sd->sockId << ", notifying.\n";
-            sendUpErrorIndication(sd, localAddr, localPort, remoteAddr, remotePort);
+            Packet *packetQuote = packet->dup();
+            packetQuote->setFrontOffset(packetQuote->getFrontOffset() - ipv4Header->getChunkLength() - icmpHeader->getChunkLength());
+            sendUpErrorIndication(sd, localAddr, localPort, remoteAddr, remotePort, packetQuote);
         }
         else {
             EV_WARN << "No socket on that local port, ignoring ICMP error\n";
@@ -1204,8 +1212,8 @@ void Udp::processICMPv6Error(Packet *packet)
     if (!icmpv6)
         // TODO move to initialize?
         icmpv6 = getModuleFromPar<Icmpv6>(par("icmpv6Module"), this);
-    if (!icmpv6->verifyCrc(packet)) {
-        EV_WARN << "incoming ICMPv6 packet has wrong CRC, dropped\n";
+    if (!icmpv6->verifyChecksum(packet)) {
+        EV_WARN << "incoming ICMPv6 packet has wrong checksum, dropped\n";
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, packet, &details);
@@ -1246,7 +1254,9 @@ void Udp::processICMPv6Error(Packet *packet)
         if (sd) {
             // send UDP_I_ERROR to socket
             EV_DETAIL << "Source socket is sockId=" << sd->sockId << ", notifying.\n";
-            sendUpErrorIndication(sd, localAddr, localPort, remoteAddr, remotePort);
+            Packet *packetQuote = packet->dup();
+            packetQuote->setFrontOffset(packetQuote->getFrontOffset() - ipv6Header->getChunkLength() - icmpHeader->getChunkLength());
+            sendUpErrorIndication(sd, localAddr, localPort, remoteAddr, remotePort, packetQuote);
         }
         else {
             EV_WARN << "No socket on that local port, ignoring ICMPv6 error\n";
@@ -1260,7 +1270,7 @@ void Udp::processICMPv6Error(Packet *packet)
     delete packet;
 }
 
-void Udp::sendUpErrorIndication(SockDesc *sd, const L3Address& localAddr, ushort localPort, const L3Address& remoteAddr, ushort remotePort)
+void Udp::sendUpErrorIndication(SockDesc *sd, const L3Address& localAddr, ushort localPort, const L3Address& remoteAddr, ushort remotePort, Packet *quotedPacket)
 {
     auto indication = new Indication("ERROR", UDP_I_ERROR);
     UdpErrorIndication *udpCtrl = new UdpErrorIndication();
@@ -1273,6 +1283,7 @@ void Udp::sendUpErrorIndication(SockDesc *sd, const L3Address& localAddr, ushort
     auto ports = indication->addTag<L4PortInd>();
     ports->setSrcPort(sd->localPort);
     ports->setDestPort(remotePort);
+    indication->addTag<IcmpErrorInd>()->setQuotedPacket(quotedPacket);
 
     send(indication, "appOut");
 }
@@ -1332,13 +1343,12 @@ void Udp::refreshDisplay() const
 {
     OperationalBase::refreshDisplay();
 
-    char buf[80];
-    sprintf(buf, "passed up: %d pks\nsent: %d pks", numPassedUp, numSent);
+    std::string buf = "passed up: " + std::to_string(numPassedUp) + " pks\nsent: " + std::to_string(numSent) + " pks";
     if (numDroppedWrongPort > 0) {
-        sprintf(buf + strlen(buf), "\ndropped (no app): %d pks", numDroppedWrongPort);
+        buf += "\ndropped (no app): " + std::to_string(numDroppedWrongPort) + " pks";
         getDisplayString().setTagArg("i", 1, "red");
     }
-    getDisplayString().setTagArg("t", 0, buf);
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 // used in UdpProtocolDissector
@@ -1354,9 +1364,9 @@ bool Udp::isCorrectPacket(Packet *packet, const Ptr<const UdpHeader>& udpHeader)
         const auto& l3AddressInd = packet->findTag<L3AddressInd>();
         const auto& networkProtocolInd = packet->findTag<NetworkProtocolInd>();
         if (l3AddressInd != nullptr && networkProtocolInd != nullptr)
-            return verifyCrc(networkProtocolInd->getProtocol(), udpHeader, packet);
+            return verifyChecksum(networkProtocolInd->getProtocol(), udpHeader, packet);
         else
-            return udpHeader->getCrcMode() != CrcMode::CRC_DECLARED_INCORRECT;
+            return udpHeader->getChecksumMode() != ChecksumMode::CHECKSUM_DECLARED_INCORRECT;
     }
 }
 
@@ -1458,7 +1468,7 @@ std::ostream& operator<<(std::ostream& os, const Udp::SockDescList& list)
 // other methods
 // ######################
 
-INetfilter::IHook::Result UdpCrcInsertionHook::datagramPostRoutingHook(Packet *packet)
+INetfilter::IHook::Result UdpChecksumInsertionHook::datagramPostRoutingHook(Packet *packet)
 {
     Enter_Method("datagramPostRoutingHook");
 
@@ -1471,14 +1481,13 @@ INetfilter::IHook::Result UdpCrcInsertionHook::datagramPostRoutingHook(Packet *p
         ASSERT(!networkHeader->isFragment());
         packet->eraseAtFront(networkHeader->getChunkLength());
         auto udpHeader = packet->removeAtFront<UdpHeader>();
-        ASSERT(udpHeader->getCrcMode() == CRC_COMPUTED);
+        ASSERT(udpHeader->getChecksumMode() == CHECKSUM_COMPUTED);
         const L3Address& srcAddress = networkHeader->getSourceAddress();
         const L3Address& destAddress = networkHeader->getDestinationAddress();
-        Udp::insertCrc(networkProtocol, srcAddress, destAddress, udpHeader, packet);
+        Udp::insertChecksum(networkProtocol, srcAddress, destAddress, udpHeader, packet);
         packet->insertAtFront(udpHeader);
         packet->insertAtFront(networkHeader);
     }
-
     return ACCEPT;
 }
 

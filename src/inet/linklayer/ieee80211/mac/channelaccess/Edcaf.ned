@@ -7,6 +7,7 @@
 
 package inet.linklayer.ieee80211.mac.channelaccess;
 
+import inet.common.Module;
 import inet.queueing.contract.IPacketQueue;
 import inet.linklayer.ieee80211.mac.contract.IContention;
 import inet.linklayer.ieee80211.mac.originator.QosAckHandler;
@@ -18,7 +19,7 @@ import inet.linklayer.ieee80211.mac.queue.InProgressFrames;
 // Implements EDCAF (Enhanced Distributed Channel Access Function) for IEEE 802.11.
 // EDCAF represents one access category within EDCA.
 //
-module Edcaf
+module Edcaf extends Module
 {
     parameters:
         string rxModule;
@@ -55,7 +56,7 @@ module Edcaf
             parameters:
                 @display("p=100,300");
         }
-        // TODO consider moving QosRecoveryProcedure and QosAckHandler from Edcaf to Hcf, because they seem to be prepared to handle all ACs?
+        // TODO consider moving QosRecoveryProcedure and QosAckHandler from Edcaf to Hcf, as they seem to be prepared to handle all ACs?
         ackHandler: QosAckHandler {
             parameters:
                 @display("p=100,400");
@@ -64,7 +65,7 @@ module Edcaf
             parameters:
                 @display("p=100,500");
         }
-        // TODO consider moving QosRecoveryProcedure and QosAckHandler from Edcaf to Hcf, because they seem to be prepared to handle all ACs?
+        // TODO consider moving QosRecoveryProcedure and QosAckHandler from Edcaf to Hcf, as they seem to be prepared to handle all ACs?
         recoveryProcedure: QosRecoveryProcedure {
             parameters:
                 cwCalculatorModule = "^";

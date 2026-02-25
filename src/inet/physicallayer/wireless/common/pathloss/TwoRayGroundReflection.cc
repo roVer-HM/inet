@@ -15,6 +15,7 @@
 #include "inet/physicallayer/wireless/common/pathloss/TwoRayGroundReflection.h"
 
 #include "inet/common/ModuleAccess.h"
+#include "inet/physicallayer/wireless/common/contract/packetlevel/INarrowbandSignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IRadioMedium.h"
 
 namespace inet {
@@ -44,7 +45,7 @@ std::ostream& TwoRayGroundReflection::printToStream(std::ostream& stream, int le
 double TwoRayGroundReflection::computePathLoss(const ITransmission *transmission, const IArrival *arrival) const
 {
     auto radioMedium = transmission->getMedium();
-    auto narrowbandSignalAnalogModel = check_and_cast<const INarrowbandSignal *>(transmission->getAnalogModel());
+    auto narrowbandSignalAnalogModel = check_and_cast<const INarrowbandSignalAnalogModel *>(transmission->getAnalogModel());
     auto transmitterPosition = transmission->getStartPosition();
     auto recepiverPosition = arrival->getStartPosition();
     mps propagationSpeed = radioMedium->getPropagation()->getPropagationSpeed();
@@ -74,7 +75,7 @@ double TwoRayGroundReflection::computePathLoss(const ITransmission *transmission
          * To be consistent with the free space equation, L is added here.
          * The original equation in Rappaport's book assumes L = 1.
          */
-        return unit((transmitterAltitude * transmitterAltitude * receiverAltitude * receiverAltitude) / (distance * distance * distance * distance * systemLoss)).get();
+        return ((transmitterAltitude * transmitterAltitude * receiverAltitude * receiverAltitude) / (distance * distance * distance * distance * systemLoss)).get<unit>();
 }
 
 } // namespace physicallayer

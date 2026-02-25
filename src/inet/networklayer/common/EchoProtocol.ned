@@ -7,13 +7,16 @@
 
 package inet.networklayer.common;
 
+import inet.common.SimpleModule;
+
 //
-// This module provides a mechanism to test network layer connectivity
-// using echo request/response messages similar to that of ICMP.
+// Provides a mechanism to test network layer connectivity
+// using echo request/response messages similar to those of ICMP.
 //
-simple EchoProtocol
+simple EchoProtocol extends SimpleModule
 {
     parameters:
+        @class(EchoProtocol);
         @display("i=block/control");
     gates:
         input ipIn;

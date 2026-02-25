@@ -11,7 +11,7 @@ import inet.queueing.base.PacketProcessorBase;
 import inet.queueing.contract.IActivePacketSource;
 
 //
-// This module connects multiple packet producers to one packet consumer. When
+// Connects multiple packet producers to one packet consumer. When
 // a packet is pushed by one of the connected packet producers, then the multiplexer
 // simply pushes the packet to the connected packet consumer.
 //
@@ -20,7 +20,7 @@ simple PacketMultiplexer extends PacketProcessorBase like IActivePacketSource //
     parameters:
         bool forwardServiceRegistration = default(true);
         bool forwardProtocolRegistration = default(true);
-        displayStringTextFormat = default("passed %p pk (%l)"); // %p number of packet, %l total length
+        displayStringTextFormat = default("passed %p pk (%l)"); // %p number of packets, %l total length
         @class(PacketMultiplexer);
         @display("i=-;b=10,10,oval,grey,,1");
         @signal[packetPushed](type=inet::Packet);

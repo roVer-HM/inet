@@ -65,7 +65,7 @@ EigrpIpv6Pdm::~EigrpIpv6Pdm()
 
 void EigrpIpv6Pdm::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
         host = getContainingNode(this);
@@ -154,7 +154,7 @@ void EigrpIpv6Pdm::processIfaceStateChange(NetworkInterface *iface)
     EigrpInterface *eigrpIface;
     int ifaceId = iface->getInterfaceId();
 
-    if (iface->isUp()) { // an interface goes up
+    if (iface->isUp() && iface->hasCarrier()) { // an interface goes up
 
         // add directly-connected routes to RT
         PrefixVector::iterator it;
@@ -1342,30 +1342,30 @@ bool EigrpIpv6Pdm::applyStubToUpdate(EigrpRouteSource<Ipv6Address> *src)
 
 void EigrpIpv6Pdm::flushMsgRequests()
 {
-    RequestVector::iterator it;
-    Ipv6Address destAddress;
-
     // Send Query
-    for (it = reqQueue.begin(); it != reqQueue.end(); it++) {
-        if ((*it)->getOpcode() == EIGRP_QUERY_MSG) {
+    for (auto& item : reqQueue) {
+        if (item->getOpcode() == EIGRP_QUERY_MSG) {
             // Check if interface exists
-            if (eigrpIft->findInterfaceById((*it)->getDestInterface()) == nullptr)
-                continue;
-            else
-                send(*it, RTP_OUTGW);
+            if (eigrpIft->findInterfaceById(item->getDestInterface()) != nullptr) {
+                send(item, RTP_OUTGW);
+                item = nullptr;
+            }
         }
     }
 
     // Send other messages
-    for (it = reqQueue.begin(); it != reqQueue.end(); it++) {
-        // Check if interface exists
-        if (eigrpIft->findInterfaceById((*it)->getDestInterface()) == nullptr) {
-            delete *it; // Discard request
-            continue;
+    for (auto& item : reqQueue) {
+        if (item != nullptr) {
+            // Check if interface exists
+            if (eigrpIft->findInterfaceById(item->getDestInterface()) == nullptr) {
+                delete item; // Discard request
+                item = nullptr;
+            }
+            else if (item->getOpcode() != EIGRP_QUERY_MSG) {
+                send(item, RTP_OUTGW);
+                item = nullptr;
+            }
         }
-
-        if ((*it)->getOpcode() != EIGRP_QUERY_MSG)
-            send(*it, RTP_OUTGW);
     }
 
     reqQueue.clear();
@@ -1386,7 +1386,6 @@ void EigrpIpv6Pdm::disableInterface(NetworkInterface *iface, EigrpInterface *eig
     EigrpTimer *hellot;
     EigrpNeighbor<Ipv6Address> *neigh;
     EigrpRouteSource<Ipv6Address> *source;
-    int neighCount;
     int ifaceId = eigrpIface->getInterfaceId();
 
     EV_DEBUG << "EIGRP disabled on interface " << eigrpIface->getName() << "(" << ifaceId << ")" << endl;
@@ -1426,8 +1425,7 @@ void EigrpIpv6Pdm::disableInterface(NetworkInterface *iface, EigrpInterface *eig
     }
 
     // Delete all neighbors on the interface
-    neighCount = eigrpNt->getNumNeighbors();
-    for (int i = 0; i < neighCount; i++) {
+    for (int i = 0; i < eigrpNt->getNumNeighbors(); i++) {
         neigh = eigrpNt->getNeighbor(i);
         if (neigh->getIfaceId() == ifaceId) {
             removeNeighbor(neigh);

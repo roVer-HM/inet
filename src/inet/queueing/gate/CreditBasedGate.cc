@@ -58,8 +58,6 @@ void CreditBasedGate::initialize(int stage)
         updateCurrentState();
         scheduleChangeTimer();
     }
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
 }
 
 void CreditBasedGate::handleMessage(cMessage *message)
@@ -88,7 +86,7 @@ void CreditBasedGate::refreshDisplay() const
 {
     // NOTE: don't emit current credit and no need to call updateCurrentCreditGainRate
     const_cast<CreditBasedGate *>(this)->updateCurrentCredit();
-    updateDisplayString();
+    PacketGateBase::refreshDisplay();
 }
 
 void CreditBasedGate::scheduleChangeTimer()
@@ -253,7 +251,7 @@ void CreditBasedGate::receiveSignal(cComponent *source, simsignal_t simsignal, c
         throw cRuntimeError("Unknown signal");
 }
 
-void CreditBasedGate::handleCanPullPacketChanged(cGate *gate)
+void CreditBasedGate::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     // 1. update current state because some time may have elapsed since last update
@@ -261,19 +259,6 @@ void CreditBasedGate::handleCanPullPacketChanged(cGate *gate)
     // 2. reschedule change timer when currentCredit reaches transmitCreditLimit
     scheduleChangeTimer();
     PacketGateBase::handleCanPullPacketChanged(gate);
-}
-
-std::string CreditBasedGate::resolveDirective(char directive) const
-{
-    switch (directive) {
-        case 'n': {
-            std::stringstream stream;
-            stream << currentCredit;
-            return stream.str();
-        }
-        default:
-            return PacketGateBase::resolveDirective(directive);
-    }
 }
 
 } // namespace queueing

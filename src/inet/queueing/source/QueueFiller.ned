@@ -10,10 +10,11 @@ package inet.queueing.source;
 import inet.queueing.contract.IActivePacketSource;
 import inet.queueing.contract.IPacketServer;
 import inet.queueing.contract.IPassivePacketSource;
-import inet.queueing.tokengenerator.QueueBasedTokenGenerator;
+import inet.queueing.contract.ITokenGenerator;
+
 
 //
-// This module produces packets in order to prevent a queue from becoming empty.
+// Produces packets in order to prevent a queue from becoming empty.
 //
 module QueueFiller like IActivePacketSource
 {
@@ -31,7 +32,7 @@ module QueueFiller like IActivePacketSource
             parameters:
                 @display("p=250,200");
         }
-        tokenGenerator: QueueBasedTokenGenerator {
+        tokenGenerator: <default("QueueBasedTokenGenerator")> like ITokenGenerator {
             parameters:
                 storageModule = default("^.server");
                 @display("p=100,100");

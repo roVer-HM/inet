@@ -7,8 +7,9 @@
 
 #include "inet/common/ProtocolGroup.h"
 
-#include "inet/networklayer/common/IpProtocolId_m.h"
+#include "inet/common/stlutils.h"
 #include "inet/linklayer/common/EtherType_m.h"
+#include "inet/networklayer/common/IpProtocolId_m.h"
 
 namespace inet {
 
@@ -20,12 +21,6 @@ ProtocolGroup::ProtocolGroup(const char *name, const Protocols& protocolNumberTo
         protocols.push_back(it.second);
         protocolToProtocolNumber[it.second] = it.first;
     }
-}
-
-ProtocolGroup::~ProtocolGroup()
-{
-    for (auto p : dynamicallyAddedProtocols)
-        delete p;
 }
 
 const Protocol *ProtocolGroup::findProtocol(int protocolNumber) const
@@ -58,13 +53,19 @@ int ProtocolGroup::getProtocolNumber(const Protocol *protocol) const
         throw cRuntimeError("Unknown protocol: id = %d, name = %s", protocol->getId(), protocol->getName());
 }
 
-void ProtocolGroup::addProtocol(int protocolId, const Protocol *protocol)
+void ProtocolGroup::addProtocol(int protocolNumber, const Protocol *protocol)
 {
     protocols.push_back(protocol);
-    protocolNumberToProtocol[protocolId] = protocol;
-    protocolToProtocolNumber[protocol] = protocolId;
+    protocolNumberToProtocol[protocolNumber] = protocol;
+    protocolToProtocolNumber[protocol] = protocolNumber;
+}
 
-    dynamicallyAddedProtocols.push_back(protocol);  // assume it was dynamically allocated
+void ProtocolGroup::removeProtocol(int protocolNumber)
+{
+    auto protocol = protocolNumberToProtocol[protocolNumber];
+    remove(protocols, protocol);
+    protocolNumberToProtocol.erase(protocolNumber);
+    protocolToProtocolNumber.erase(protocol);
 }
 
 // FIXME use constants instead of numbers
@@ -93,6 +94,8 @@ static const ProtocolGroup::Protocols ethertypeProtocols {
     { ETHERTYPE_IEEE8021AE, &Protocol::ieee8021ae },
     { ETHERTYPE_TTETH, &Protocol::tteth },
     { ETHERTYPE_IEEE8021_R_TAG, &Protocol::ieee8021rTag },
+    { ETHERTYPE_8021Q_CFM, &Protocol::ieee8021qCFM },
+    { ETHERTYPE_MRP, &Protocol::mrp },
 };
 
 // excerpt from http://www.iana.org/assignments/ppp-numbers/ppp-numbers.xhtml
@@ -119,6 +122,8 @@ static const ProtocolGroup::Protocols ipProtocols {
     { IP_PROT_XTP, &Protocol::xtp },
     { IP_PROT_IPv6, &Protocol::ipv6 },
     { IP_PROT_RSVP, &Protocol::rsvpTe },
+    { IP_PROT_ESP, &Protocol::ipsecEsp },
+    { IP_PROT_AH, &Protocol::ipsecAh },
     { IP_PROT_DSR, &Protocol::dsr },
     { IP_PROT_IPv6_ICMP, &Protocol::icmpv6 },
     { IP_PROT_EIGRP, &Protocol::eigrp },
@@ -164,10 +169,39 @@ static const ProtocolGroup::Protocols tcpProtocols {
     { 11111, &Protocol::unknown }, // INET specific non-standard protocol
 };
 
+static const ProtocolGroup::Protocols inetPhyProtocols {
+    { 1001, &Protocol::bmac },
+    { 1002, &Protocol::ethernetFlowCtrl },
+    { 1003, &Protocol::ethernetMac },
+    { 1004, &Protocol::ieee80211Mac },
+    { 1005, &Protocol::ieee80211Mgmt },
+    { 1006, &Protocol::ieee8022llc },
+    { 1007, &Protocol::ieee8022snap },
+    { 1008, &Protocol::ieee802epd },
+    { 1009, &Protocol::lmac },
+    { 1010, &Protocol::ppp },
+    { 1011, &Protocol::xmac },
+    { 1012, &Protocol::ackingMac },
+    { 1013, &Protocol::csmaCaMac },
+    { 1014, &Protocol::shortcutMac },
+    { 1015, &Protocol::ieee802154 },
+};
+
+static const ProtocolGroup::Protocols ieee80211LlcProtocols {
+    { 0, &Protocol::ieee8022llc },
+    { 1, &Protocol::ieee802epd }
+};
+
 ProtocolGroup *ProtocolGroup::getEthertypeProtocolGroup()
 {
     static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::ProtocolGroup::ethertype");
     return &getSimulationOrSharedDataManager()->getSharedVariable<ProtocolGroup>(handle, "ethertype", ethertypeProtocols);
+}
+
+ProtocolGroup *ProtocolGroup::getInetPhyProtocolGroup()
+{
+    static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::ProtocolGroup::inetPhy");
+    return &getSimulationOrSharedDataManager()->getSharedVariable<ProtocolGroup>(handle, "inetPhy", inetPhyProtocols);
 }
 
 ProtocolGroup *ProtocolGroup::getPppProtocolGroup()
@@ -204,6 +238,12 @@ ProtocolGroup *ProtocolGroup::getUdpProtocolGroup()
 {
     static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::ProtocolGroup::udp");
     return &getSimulationOrSharedDataManager()->getSharedVariable<ProtocolGroup>(handle, "udp", udpProtocols);
+}
+
+ProtocolGroup *ProtocolGroup::getIeee80211LlcProtocolGroup()
+{
+    static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::ProtocolGroup::ieee80211Llc");
+    return &getSimulationOrSharedDataManager()->getSharedVariable<ProtocolGroup>(handle, "ieee80211Llc", ieee80211LlcProtocols);
 }
 
 } // namespace inet

@@ -48,7 +48,6 @@ void PacketServer::handleMessage(cMessage *message)
             startProcessingPacket();
             scheduleProcessingTimer();
         }
-        updateDisplayString();
     }
     else
         throw cRuntimeError("Unknown message");
@@ -58,19 +57,19 @@ void PacketServer::scheduleProcessingTimer()
 {
     clocktime_t processingTime = par("processingTime");
     auto processingBitrate = bps(par("processingBitrate"));
-    processingTime += s(packet->getTotalLength() / processingBitrate).get();
+    processingTime += (packet->getDataLength() / processingBitrate).get<s>();
     scheduleClockEventAfter(processingTime, processingTimer);
 }
 
 bool PacketServer::canStartProcessingPacket()
 {
-    return provider->canPullSomePacket(inputGate->getPathStartGate()) &&
-           consumer->canPushSomePacket(outputGate->getPathEndGate());
+    auto packet = provider.canPullPacket();
+    return packet != nullptr && consumer.canPushPacket(packet);
 }
 
 void PacketServer::startProcessingPacket()
 {
-    packet = provider->pullPacket(inputGate->getPathStartGate());
+    packet = provider.pullPacket();
     take(packet);
     emit(packetPulledSignal, packet);
     EV_INFO << "Processing packet started" << EV_FIELD(packet) << EV_ENDL;
@@ -81,7 +80,7 @@ void PacketServer::endProcessingPacket()
     EV_INFO << "Processing packet ended" << EV_FIELD(packet) << EV_ENDL;
     simtime_t packetProcessingTime = simTime() - processingTimer->getSendingTime();
     simtime_t bitProcessingTime = packetProcessingTime / packet->getBitLength();
-    insertPacketEvent(this, packet, PEK_PROCESSED, bitProcessingTime);
+    insertPacketEvent(this, packet, PEK_PROCESSED, bitProcessingTime, 0);
     increaseTimeTag<ProcessingTimeTag>(packet, bitProcessingTime, packetProcessingTime);
     processedTotalLength += packet->getDataLength();
     emit(packetPushedSignal, packet);
@@ -90,7 +89,17 @@ void PacketServer::endProcessingPacket()
     packet = nullptr;
 }
 
-void PacketServer::handleCanPushPacketChanged(cGate *gate)
+cGate *PacketServer::getRegistrationForwardingGate(cGate *gate)
+{
+    if (gate == outputGate)
+        return inputGate;
+    else if (gate == inputGate)
+        return outputGate;
+    else
+        throw cRuntimeError("Unknown gate");
+}
+
+void PacketServer::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
     if (!processingTimer->isScheduled() && canStartProcessingPacket()) {
@@ -103,7 +112,7 @@ void PacketServer::handleCanPushPacketChanged(cGate *gate)
     }
 }
 
-void PacketServer::handleCanPullPacketChanged(cGate *gate)
+void PacketServer::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     if (!processingTimer->isScheduled() && canStartProcessingPacket()) {

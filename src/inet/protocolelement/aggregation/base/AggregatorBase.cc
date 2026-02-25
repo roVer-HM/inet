@@ -57,7 +57,7 @@ void AggregatorBase::endAggregation(Packet *packet)
         deleteModule();
 }
 
-void AggregatorBase::pushPacket(Packet *subpacket, cGate *gate)
+void AggregatorBase::pushPacket(Packet *subpacket, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(subpacket);
@@ -71,7 +71,6 @@ void AggregatorBase::pushPacket(Packet *subpacket, cGate *gate)
     continueAggregation(subpacket);
     EV_INFO << "Aggregating packet" << EV_FIELD(subpacket) << EV_FIELD(packet, *aggregatedPacket) << EV_ENDL;
     delete subpacket;
-    updateDisplayString();
 }
 
 } // namespace inet

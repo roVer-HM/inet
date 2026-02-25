@@ -7,24 +7,42 @@
 
 #include "inet/clock/base/OscillatorBase.h"
 
-namespace inet {
+#include "inet/common/IPrintableObject.h"
 
-simsignal_t OscillatorBase::driftRateChangedSignal = cComponent::registerSignal("driftRateChanged");
+namespace inet {
 
 void OscillatorBase::initialize(int stage)
 {
-    if (stage == INITSTAGE_LOCAL)
-        displayStringTextFormat = par("displayStringTextFormat");
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
+    if (stage == INITSTAGE_LOCAL) {
+        if (par("emitNumTicksSignal")) {
+            tickTimer = new cMessage("OscillatorTickTimer");
+            tickTimer->setSchedulingPriority(par("oscillatorTickEventSchedulingPriority"));
+        }
+    }
+    else if (stage == INITSTAGE_CLOCK) {
+        if (tickTimer != nullptr) {
+            numTicks = 0;
+            EV_DEBUG << "Initialized oscillator" << EV_FIELD(numTicks) << EV_ENDL;
+            emit(numTicksChangedSignal, numTicks);
+            scheduleTickTimer();
+        }
+    }
 }
 
-void OscillatorBase::updateDisplayString() const
+void OscillatorBase::handleMessage(cMessage *msg)
 {
-    if (getEnvir()->isGUI()) {
-        auto text = StringFormat::formatString(displayStringTextFormat, this);
-        getDisplayString().setTagArg("t", 0, text.c_str());
-    }
+    if (msg == tickTimer)
+        handleTickTimer();
+    else
+        throw cRuntimeError("Unknown message");
+}
+
+void OscillatorBase::handleTickTimer()
+{
+    numTicks++;
+    EV_DEBUG << "Handling oscillator tick event" << EV_FIELD(numTicks) << EV_ENDL;
+    emit(numTicksChangedSignal, numTicks);
+    scheduleTickTimer();
 }
 
 std::string OscillatorBase::resolveDirective(char directive) const
@@ -35,7 +53,7 @@ std::string OscillatorBase::resolveDirective(char directive) const
         case 'o':
             return getComputationOrigin().str() + " s";
         default:
-            throw cRuntimeError("Unknown directive: %c", directive);
+            return SimpleModule::resolveDirective(directive);
     }
 }
 

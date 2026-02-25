@@ -15,27 +15,15 @@ import inet.routing.contract.IPim;
 import inet.routing.contract.IEigrp;
 
 //
-// IPv4 router that supports wireless, Ethernet, PPP and external interfaces.
-// By default, no wireless and external interfaces are added; the number of
-// Ethernet and PPP ports depends on the external connections.
+// A network router device with support for multiple routing protocols
+// and network interfaces. Provides the foundation for simulating various types of
+// routers in both wired and wireless networks.
 //
-// - Can be connected via ethernet interface to other nodes using
-//   the ethg gate. By default full-duplex connections are supported
-//   only (twisted pair). Set **.eth.typename="EthernetInterface" for
-//   a full/half-duplex CSMA/CD implementation (coaxial cable)
-// - By default contains no wireless cards, however it can be configured
-//   by the numWlanInterfaces parameter. Wirless card type is configured by the
-//   **.wlan.typename parameter. see:  inet.linklayer.ieee80211 or other
-//   modules implementing ~IWirelessInterface
-// - Also external interfaces can be configured for HW in the loop simulation
-//   using the numEthInterfaces parameter and setting the type using
-//   **.ext.typename in the INI file. see: ~ExtInterface derived modules and ~IExternalInterface
-// - PPP queueing type can be set using **.ppp.queue.typename see: ~PppInterface
-// - If wireless card is present, node mobility can be set using **.mobility.typename
-//   see: inet.mobility and ~IMobility
+// The Router module extends ApplicationLayerNodeBase with routing protocol support,
+// including OSPF, BGP, RIP, PIM, and EIGRP. It has packet forwarding enabled by default
+// and can be configured with various interface types.
 //
-// By default, dynamic routing is not supported. Specific routing protocols can
-// be added by setting the hasOspf/hasRip/hasBgp parameters.
+// @see ~StandardHost
 //
 module Router extends ApplicationLayerNodeBase
 {

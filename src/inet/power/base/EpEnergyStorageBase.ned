@@ -7,19 +7,20 @@
 
 package inet.power.base;
 
+import inet.common.SimpleModule;
 import inet.power.contract.IEpEnergyStorage;
 
 //
-// This is an abstract base module for power based energy storage models.
+// This is an abstract base module for power-based energy storage models.
 // It defines shared signals and statistics.
 //
 // @see ~EpEnergyConsumerBase, ~EpEnergySourceBase, ~EpEnergyGeneratorBase, ~EpEnergySinkBase
 //
-simple EpEnergyStorageBase like IEpEnergyStorage
+simple EpEnergyStorageBase extends SimpleModule like IEpEnergyStorage
 {
     parameters:
-        @display("i=block/plug");
         @class(EpEnergyStorageBase);
+        @display("i=block/plug");
         @signal[powerConsumptionChanged];
         @signal[powerGenerationChanged];
         @signal[residualEnergyCapacityChanged];

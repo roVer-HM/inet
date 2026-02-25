@@ -42,10 +42,10 @@ const Protocol *popEncapsulationProtocolReq(Packet *packet)
         return nullptr;
 }
 
-INET_API bool hasEncapsulationProtocolReq(Packet *packet, const Protocol *protocol)
+bool hasEncapsulationProtocolReq(Packet *packet, const Protocol *protocol)
 {
-    if (auto encapsulationProtocolReq = packet->addTagIfAbsent<EncapsulationProtocolReq>()) {
-        for (int i = 0; i < encapsulationProtocolReq->getProtocolArraySize(); i++)
+    if (auto encapsulationProtocolReq = packet->findTag<EncapsulationProtocolReq>()) {
+        for (size_t i = 0; i < encapsulationProtocolReq->getProtocolArraySize(); i++)
             if (encapsulationProtocolReq->getProtocol(i) == protocol)
                 return true;
     }
@@ -54,8 +54,8 @@ INET_API bool hasEncapsulationProtocolReq(Packet *packet, const Protocol *protoc
 
 void removeEncapsulationProtocolReq(Packet *packet, const Protocol *protocol)
 {
-    if (auto encapsulationProtocolReq = packet->addTagIfAbsent<EncapsulationProtocolReq>()) {
-        for (int i = 0; i < encapsulationProtocolReq->getProtocolArraySize(); i++) {
+    if (auto encapsulationProtocolReq = packet->findTagForUpdate<EncapsulationProtocolReq>()) {
+        for (size_t i = 0; i < encapsulationProtocolReq->getProtocolArraySize(); i++) {
             if (encapsulationProtocolReq->getProtocol(i) == protocol) {
                 encapsulationProtocolReq->eraseProtocol(i);
                 break;

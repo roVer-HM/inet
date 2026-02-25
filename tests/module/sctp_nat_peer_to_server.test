@@ -8,8 +8,8 @@ Testing SCTP_NAT: One peer sends data over two separate paths and two NATs to a 
 
 [General]
 network = inet.test.moduletest.lib.multinat
-cmdenv-event-banners=false
-cmdenv-express-mode = false
+cmdenv-express-mode = true
+cmdenv-log-finalization = true
 ned-path = .;../../../../src;../../lib
 
 #omnetpp 5.0 - 5.1 compatibility:
@@ -68,8 +68,8 @@ snapshot-file = "${resultdir}/${configname}-${runnumber}.sna"
 **.sctp.packetDrop = false
 **.Peer_1.sctp.natFriendly = true
 
-**.sctp.crcMode = "computed"
-**.ipv4.**.crcMode = "computed"
+**.sctp.checksumMode = "computed"
+**.ipv4.**.checksumMode = "computed"
 
 **.Server.numPcapRecorders = 1
 **.Server.pcapRecorder[0].pcapFile = "Server.pcap"

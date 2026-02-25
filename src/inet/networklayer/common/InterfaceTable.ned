@@ -7,6 +7,8 @@
 
 package inet.networklayer.common;
 
+import inet.common.SimpleModule;
+
 //
 // Keeps the table of network interfaces.
 //
@@ -15,16 +17,17 @@ package inet.networklayer.common;
 // will also be created. This table only contains protocol-independent
 // properties of interfaces -- IPv4 or IPv6 specific per-interface data
 // (addresses etc) are kept in ~Ipv4RoutingTable and ~Ipv6RoutingTable.
-// Must be named as "interfaceTable".
+// Must be named as `interfaceTable`.
 //
 // This module has no gates; all functionality can be accessed via member
 // functions of the C++ module class. For detailed info, please see the C++
 // documentation of the class (Doxygen).
 //
-simple InterfaceTable
+simple InterfaceTable extends SimpleModule
 {
     parameters:
-        bool displayAddresses = default(false);  // whether to display IP addresses on links
+        @class(InterfaceTable);
+        bool displayAddresses = default(false);  // Whether to display IP addresses on links
         @display("i=block/table");
         @signal[interfaceCreated](type=inet::NetworkInterface);
         @signal[interfaceDeleted](type=inet::NetworkInterface);

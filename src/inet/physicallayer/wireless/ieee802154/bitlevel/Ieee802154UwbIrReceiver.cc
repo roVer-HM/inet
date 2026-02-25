@@ -7,8 +7,8 @@
 
 #include "inet/physicallayer/wireless/ieee802154/bitlevel/Ieee802154UwbIrReceiver.h"
 
-#include "inet/physicallayer/wireless/common/analogmodel/packetlevel/DimensionalNoise.h"
-#include "inet/physicallayer/wireless/common/analogmodel/packetlevel/DimensionalReception.h"
+#include "inet/physicallayer/wireless/common/analogmodel/dimensional/DimensionalNoise.h"
+#include "inet/physicallayer/wireless/common/analogmodel/dimensional/DimensionalReceptionAnalogModel.h"
 #include "inet/physicallayer/wireless/common/radio/packetlevel/BandListening.h"
 #include "inet/physicallayer/wireless/common/radio/packetlevel/ListeningDecision.h"
 #include "inet/physicallayer/wireless/common/radio/packetlevel/ReceptionDecision.h"
@@ -48,7 +48,7 @@ bool Ieee802154UwbIrReceiver::computeIsReceptionSuccessful(const IListening *lis
         bool bitValue = bits->at(i);
         EV_INFO << "Received bit at " << i << " is " << (int)bitValue << endl;
     }
-    // KLUDGE check fake CRC
+    // KLUDGE check fake FCS
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j + i < bitLength; j += 8)
             bits->at(bitLength + i) = bits->at(bitLength + i) ^ bits->at(j + i);
@@ -132,17 +132,17 @@ std::pair<double, double> Ieee802154UwbIrReceiver::integrateWindow(simtime_t_cre
         double snir = 0; // burst SNIR estimate
         double vThermalNoise = 0; // thermal noise realization
         // consider signal power
-        const DimensionalReception *dimensionalSignalReception = check_and_cast<const DimensionalReception *>(reception);
+        auto dimensionalSignalReception = check_and_cast<const DimensionalReceptionAnalogModel *>(reception->getAnalogModel());
         const Ptr<const IFunction<WpHz, Domain<simsec, Hz>>>& signalPower = dimensionalSignalReception->getPower();
         Interval<simsec, Hz> interval(Point<simsec, Hz>(simsec(now), Hz(3.1)), Point<simsec, Hz>(simsec(now), Hz(10.6)), 0b10, 0b10, 0b10);
-        double measure = signalPower->getMean(interval).get() * peakPulsePower; // TODO de-normalize (peakPulsePower should be in AirFrame or in Signal, to be set at run-time)
+        double measure = signalPower->getMean(interval).get<WpHz>() * peakPulsePower; // TODO de-normalize (peakPulsePower should be in AirFrame or in Signal, to be set at run-time)
         signalValue = measure * 0.5; // we capture half of the maximum possible pulse energy to account for self  interference
         resPower = resPower + signalValue;
         // consider all interferers at this point in time
         for (const auto& interferingReception : *interferingReceptions) {
-            const DimensionalReception *dimensionalInterferingReception = check_and_cast<const DimensionalReception *>(interferingReception);
+            auto dimensionalInterferingReception = check_and_cast<const DimensionalReceptionAnalogModel *>(interferingReception->getAnalogModel());
             const Ptr<const IFunction<WpHz, Domain<simsec, Hz>>>& interferingPower = dimensionalInterferingReception->getPower();
-            double measure = interferingPower->getMean(interval).get() * peakPulsePower; // TODO de-normalize (peakPulsePower should be in AirFrame or in Signal, to be set at run-time)
+            double measure = interferingPower->getMean(interval).get<WpHz>() * peakPulsePower; // TODO de-normalize (peakPulsePower should be in AirFrame or in Signal, to be set at run-time)
             // measure = measure * uniform(0, +1); // random point of Efield at sampling (due to pulse waveform and self interference)
             // take a random point within pulse envelope for interferer
             resPower = resPower + measure * uniform(-1, +1);
@@ -151,7 +151,7 @@ std::pair<double, double> Ieee802154UwbIrReceiver::integrateWindow(simtime_t_cre
         vEfield = sqrt(50 * resPower); // P=V²/R
         // add thermal noise realization
         const DimensionalNoise *dimensionalBackgroundNoise = check_and_cast<const DimensionalNoise *>(backgroundNoise);
-        vThermalNoise = dimensionalBackgroundNoise->getPower()->getMean(interval).get();
+        vThermalNoise = dimensionalBackgroundNoise->getPower()->getMean(interval).get<WpHz>();
         vmeasured = vEfield + vThermalNoise;
         vmeasured_square = pow(vmeasured, 2);
         // signal + interference + noise

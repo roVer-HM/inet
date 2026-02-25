@@ -20,12 +20,9 @@ class INET_API ProtocolGroup
     std::map<int, const Protocol *> protocolNumberToProtocol;
     std::map<const Protocol *, int> protocolToProtocolNumber;
 
-    std::vector<const Protocol *> dynamicallyAddedProtocols; // the items in protocols[] that need to be deallocated in destructor
-
   public:
     typedef std::map<int, const Protocol *> Protocols;
     ProtocolGroup(const char *name, const Protocols& protocolNumberToProtocol);
-    ~ProtocolGroup();
 
     const char *getName() const { return name; }
     int getNumElements() const { return protocols.size(); }
@@ -35,19 +32,22 @@ class INET_API ProtocolGroup
     const Protocol *getProtocol(int protocolNumber) const;
     int findProtocolNumber(const Protocol *protocol) const;
     int getProtocolNumber(const Protocol *protocol) const;
-    void addProtocol(int protocolId, const Protocol *protocol);
+    void addProtocol(int protocolNumber, const Protocol *protocol);
+    void removeProtocol(int protocolNumber);
 
     std::string str() const { return name; }
 
   public:
     // in alphabetic order
     static ProtocolGroup *getEthertypeProtocolGroup();
+    static ProtocolGroup *getInetPhyProtocolGroup();
     static ProtocolGroup *getIeee8022ProtocolGroup();
     static ProtocolGroup *getIpProtocolGroup();
     static ProtocolGroup *getPppProtocolGroup();
     static ProtocolGroup *getSnapOuiProtocolGroup();
     static ProtocolGroup *getTcpProtocolGroup();
     static ProtocolGroup *getUdpProtocolGroup();
+    static ProtocolGroup *getIeee80211LlcProtocolGroup();
 };
 
 inline std::ostream& operator<<(std::ostream& o, const ProtocolGroup& t) { o << t.str(); return o; }
@@ -55,4 +55,3 @@ inline std::ostream& operator<<(std::ostream& o, const ProtocolGroup& t) { o << 
 } // namespace inet
 
 #endif
-

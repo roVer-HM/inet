@@ -19,7 +19,6 @@ void PacketGateBase::initialize(int stage)
         bitrate = bps(par("bitrate"));
         extraLength = b(par("extraLength"));
         extraDuration = par("extraDuration");
-        getDisplayString().setTagArg("i", 2, 20);
         WATCH(isOpen_);
     }
     else if (stage == INITSTAGE_LAST)
@@ -47,24 +46,62 @@ void PacketGateBase::open()
     EV_DEBUG << "Opening gate" << EV_ENDL;
     isOpen_ = true;
     if (producer != nullptr)
-        producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+        producer.handleCanPushPacketChanged();
     if (collector != nullptr)
-        collector->handleCanPullPacketChanged(outputGate->getPathEndGate());
+        collector.handleCanPullPacketChanged();
     emit(gateStateChangedSignal, isOpen_);
-    updateDisplayString();
 }
 
 void PacketGateBase::close()
 {
     ASSERT(isOpen_);
     EV_DEBUG << "Closing gate" << EV_ENDL;
+    if (isStreamingPacket()) {
+        auto packet = provider.pullPacketEnd();
+        EV_INFO << "Ending packet streaming" << EV_FIELD(packet) << EV_ENDL;
+        take(packet);
+        endPacketStreaming(packet);
+        consumer.pushPacketEnd(packet);
+    }
     isOpen_ = false;
     if (producer != nullptr)
-        producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+        producer.handleCanPushPacketChanged();
     if (collector != nullptr)
-        collector->handleCanPullPacketChanged(outputGate->getPathEndGate());
+        collector.handleCanPullPacketChanged();
     emit(gateStateChangedSignal, isOpen_);
-    updateDisplayString();
+}
+
+int PacketGateBase::getNumPackets() const
+{
+    return isOpen() ? PacketFlowBase::getNumPackets() : 0;
+}
+
+b PacketGateBase::getTotalLength() const
+{
+    return isOpen() ? PacketFlowBase::getTotalLength() : b(0);
+}
+
+Packet *PacketGateBase::getPacket(int index) const
+{
+    ASSERT(isOpen());
+    return PacketFlowBase::getPacket(index);
+}
+
+bool PacketGateBase::isEmpty() const
+{
+    return isOpen() ? PacketFlowBase::isEmpty() : true;
+}
+
+void PacketGateBase::removePacket(Packet *packet)
+{
+    ASSERT(isOpen());
+    PacketFlowBase::removePacket(packet);
+}
+
+void PacketGateBase::removeAllPackets()
+{
+    if (isOpen())
+        PacketFlowBase::removeAllPackets();
 }
 
 void PacketGateBase::processPacket(Packet *packet)
@@ -74,36 +111,36 @@ void PacketGateBase::processPacket(Packet *packet)
     EV_INFO << "Passing through packet" << EV_FIELD(packet) << EV_ENDL;
 }
 
-bool PacketGateBase::canPushSomePacket(cGate *gate) const
+bool PacketGateBase::canPushSomePacket(const cGate *gate) const
 {
     return isOpen_ && canPacketFlowThrough(nullptr) && PacketFlowBase::canPushSomePacket(gate);
 }
 
-bool PacketGateBase::canPushPacket(Packet *packet, cGate *gate) const
+bool PacketGateBase::canPushPacket(Packet *packet, const cGate *gate) const
 {
     return isOpen_ && canPacketFlowThrough(packet) && PacketFlowBase::canPushPacket(packet, gate);
 }
 
-bool PacketGateBase::canPullSomePacket(cGate *gate) const
+bool PacketGateBase::canPullSomePacket(const cGate *gate) const
 {
     auto packet = PacketFlowBase::canPullPacket(gate);
     return isOpen_ && canPacketFlowThrough(packet) && PacketFlowBase::canPullSomePacket(gate);
 }
 
-Packet *PacketGateBase::canPullPacket(cGate *gate) const
+Packet *PacketGateBase::canPullPacket(const cGate *gate) const
 {
     auto packet = PacketFlowBase::canPullPacket(gate);
     return isOpen_ && canPacketFlowThrough(packet) ? packet : nullptr;
 }
 
-void PacketGateBase::handleCanPushPacketChanged(cGate *gate)
+void PacketGateBase::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
     if (isOpen_)
         PacketFlowBase::handleCanPushPacketChanged(gate);
 }
 
-void PacketGateBase::handleCanPullPacketChanged(cGate *gate)
+void PacketGateBase::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     if (isOpen_)
@@ -116,9 +153,9 @@ bool PacketGateBase::canPacketFlowThrough(Packet *packet) const
     return true;
 }
 
-void PacketGateBase::updateDisplayString() const
+void PacketGateBase::refreshDisplay() const
 {
-    PacketFlowBase::updateDisplayString();
+    PacketFlowBase::refreshDisplay();
     getDisplayString().setTagArg("i", 1, isOpen_ ? "green" : "red");
     getDisplayString().setTagArg("i", 2, 50);
 }

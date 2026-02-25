@@ -7,12 +7,15 @@
 
 package inet.transportlayer.rtp;
 
+import inet.common.SimpleModule;
+
 //
 // RTCP end system.
 //
-simple Rtcp
+simple Rtcp extends SimpleModule
 {
     parameters:
+        @class(Rtcp);
         string interfaceTableModule;   // The path to the InterfaceTable module
         @display("i=block/control");
         @signal[packetReceived](type=cPacket);
@@ -21,8 +24,8 @@ simple Rtcp
 
     gates:
         input rtpIn @labels(RtpInnerPacket);
-        input udpIn @labels(UdpControlInfo/up);
+        input udpIn @labels(UdpCommand/up);
         output rtpOut @labels(RtpInnerPacket);
-        output udpOut @labels(UdpControlInfo/down);
+        output udpOut @labels(UdpCommand/down);
 }
 

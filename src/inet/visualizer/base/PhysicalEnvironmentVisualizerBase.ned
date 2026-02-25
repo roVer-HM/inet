@@ -8,7 +8,7 @@
 package inet.visualizer.base;
 
 //
-// This is a base module for physical environment visualizer simple modules. It
+// Base module for physical environment visualizer simple modules. It
 // provides the physical objects through the physical environment module for
 // derived modules. The actual visualization of physical objects is done in
 // derived modules.
@@ -18,7 +18,7 @@ package inet.visualizer.base;
 simple PhysicalEnvironmentVisualizerBase extends VisualizerBase
 {
     parameters:
-        string physicalEnvironmentModule = default("physicalEnvironment"); // the physical environment module that is displayed, refers to a top level submodule by default
+        string physicalEnvironmentModule = default("physicalEnvironment"); // The physical environment module that is displayed, refers to a top-level sub-module by default
 
         bool displayObjects = default(true);
 

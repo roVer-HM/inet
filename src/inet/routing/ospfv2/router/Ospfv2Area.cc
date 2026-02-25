@@ -9,15 +9,15 @@
 
 #include <memory.h>
 
-#include "inet/routing/ospfv2/Ospfv2Crc.h"
+#include "inet/routing/ospfv2/Ospfv2Checksum.h"
 #include "inet/routing/ospfv2/router/Ospfv2Router.h"
 
 namespace inet {
 
 namespace ospfv2 {
 
-Ospfv2Area::Ospfv2Area(CrcMode crcMode, IInterfaceTable *ift, AreaId id) :
-    crcMode(crcMode),
+Ospfv2Area::Ospfv2Area(ChecksumMode checksumMode, IInterfaceTable *ift, AreaId id) :
+    checksumMode(checksumMode),
     ift(ift),
     areaID(id),
     transitCapability(false),
@@ -937,11 +937,11 @@ RouterLsa *Ospfv2Area::originateRouterLSA()
     }
 
     // update the length field in the LSA header
-    lsaHeader.setLsaLength(calculateLSASize(routerLSA).get());
+    lsaHeader.setLsaLength(calculateLSASize(routerLSA).get<B>());
 
     routerLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
-    setLsaCrc(*routerLSA, crcMode);
+    setLsaChecksum(*routerLSA, checksumMode);
     return routerLSA;
 }
 
@@ -976,9 +976,9 @@ NetworkLsa *Ospfv2Area::originateNetworkLSA(const Ospfv2Interface *intf)
         networkLSA->setAttachedRouters(netIndex, Ipv4Address(parentRouter->getRouterID()));
 
         // update the length field in the LSA header
-        lsaHeader.setLsaLength(B(calculateLsaSize(*networkLSA)).get());
+        lsaHeader.setLsaLength(calculateLsaSize(*networkLSA).get<B>());
 
-        setLsaCrc(*networkLSA, crcMode);
+        setLsaChecksum(*networkLSA, checksumMode);
         return networkLSA;
     }
     else {
@@ -1100,9 +1100,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
             summaryLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
             // update the length field in the LSA header
-            lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+            lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-            setLsaCrc(*summaryLSA, crcMode);
+            setLsaChecksum(*summaryLSA, checksumMode);
             return summaryLSA;
         }
     }
@@ -1136,9 +1136,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                     lsaHeader.setLinkStateID(newLinkStateID);
 
                     // update the length field in the LSA header
-                    lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                    lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                    setLsaCrc(*summaryLSA, crcMode);
+                    setLsaChecksum(*summaryLSA, checksumMode);
                     return summaryLSA;
                 }
             }
@@ -1162,9 +1162,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                 summaryLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
                 // update the length field in the LSA header
-                lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                setLsaCrc(*summaryLSA, crcMode);
+                setLsaChecksum(*summaryLSA, checksumMode);
                 return summaryLSA;
             }
         }
@@ -1203,9 +1203,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                         lsaHeader.setLinkStateID(newLinkStateID);
 
                         // update the length field in the LSA header
-                        lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                        lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                        setLsaCrc(*summaryLSA, crcMode);
+                        setLsaChecksum(*summaryLSA, checksumMode);
                         return summaryLSA;
                     }
                 }
@@ -1229,9 +1229,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                     summaryLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
                     // update the length field in the LSA header
-                    lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                    lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                    setLsaCrc(*summaryLSA, crcMode);
+                    setLsaChecksum(*summaryLSA, checksumMode);
                     return summaryLSA;
                 }
             }
@@ -1281,9 +1281,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                         lsaHeader.setLinkStateID(newLinkStateID);
 
                         // update the length field in the LSA header
-                        lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                        lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                        setLsaCrc(*summaryLSA, crcMode);
+                        setLsaChecksum(*summaryLSA, checksumMode);
                         return summaryLSA;
                     }
                     else {
@@ -1315,9 +1315,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA(const Ospfv2RoutingTableEntry *entry
                         summaryLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
                         // update the length field in the LSA header
-                        lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+                        lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-                        setLsaCrc(*summaryLSA, crcMode);
+                        setLsaChecksum(*summaryLSA, checksumMode);
                         return summaryLSA;
                     }
                 }
@@ -1349,9 +1349,9 @@ SummaryLsa *Ospfv2Area::originateSummaryLSA_Stub()
     summaryLSA->setSource(LsaTrackingInfo::ORIGINATED);
 
     // update the length field in the LSA header
-    lsaHeader.setLsaLength(B(calculateLsaSize(*summaryLSA)).get());
+    lsaHeader.setLsaLength(calculateLsaSize(*summaryLSA).get<B>());
 
-    setLsaCrc(*summaryLSA, crcMode);
+    setLsaChecksum(*summaryLSA, checksumMode);
     return summaryLSA;
 }
 
@@ -2609,6 +2609,18 @@ bool Ospfv2Area::isAllZero(Ipv4AddressRange entry) const
     if (entry.address.getInt() == 0 && entry.mask.getInt() == 0)
         return true;
     return false;
+}
+
+std::string Ospfv2Area::getInterfaceInfo() const
+{
+    std::string info;
+    const char *sep = "  ";
+    for (auto item : associatedInterfaces)
+    {
+        info += sep + item->getInterfaceName() + ": " + item->getTypeString() + "|" + item->getStateString() + "|" + item->getModeString() + "|" + item->getNeighbors();
+        sep = "\n  ";
+    }
+    return info;
 }
 
 } // namespace ospfv2

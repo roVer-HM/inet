@@ -7,7 +7,7 @@
 
 #include "inet/queueing/meter/MultiTokenBucketMeter.h"
 
-#include "inet/queueing/common/LabelsTag_m.h"
+#include "inet/common/LabelsTag_m.h"
 
 namespace inet {
 namespace queueing {
@@ -33,7 +33,7 @@ void MultiTokenBucketMeter::meterPacket(Packet *packet)
 {
     emitTokensChangedSignals();
     auto numTokens = getNumPacketTokens(packet);
-    for (int i = 0; i < tokenBuckets.size(); i++) {
+    for (size_t i = 0; i < tokenBuckets.size(); i++) {
         auto& tokenBucket = tokenBuckets[i];
         EV_DEBUG << "Checking tokens for packet" << EV_FIELD(numTokens) << EV_FIELD(tokenBucket) << EV_FIELD(packet) << EV_ENDL;
         if (tokenBucket.getNumTokens() >= numTokens) {

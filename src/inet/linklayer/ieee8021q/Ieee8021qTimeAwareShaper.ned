@@ -16,16 +16,16 @@ import inet.queueing.gate.GateControlList;
 import inet.queueing.queue.CompoundPacketQueueBase;
 
 //
-// This module implements the IEEE 802.1Q time aware shaper.
+// Implements the IEEE 802.1Q time aware shaper.
 //
 module Ieee8021qTimeAwareShaper extends CompoundPacketQueueBase
 {
     parameters:
-        int numTrafficClasses = default(8); // number of traffic categories
+        int numTrafficClasses = default(8); // Number of traffic categories
         double bitrate @unit(bps);
         bool hasGcl = default(false);
         *.bitrate = default(this.bitrate);
-        *.extraLength = default(64b); // overhead for Ethernet PHY header
+        *.extraLength = default(64b); // Overhead for Ethernet PHY header
     submodules:
         buffer: <default("")> like IPacketBuffer if typename != "" {
             parameters:
@@ -33,7 +33,7 @@ module Ieee8021qTimeAwareShaper extends CompoundPacketQueueBase
         }
         gateControlList: GateControlList if hasGcl {
             parameters:
-                @display("p=300,225");
+                @display("p=100,350");
         }
         classifier: <default("PcpTrafficClassClassifier")> like IPacketClassifier {
             parameters:

@@ -94,8 +94,8 @@ void PingApp::initialize(int stage)
         printPing = par("printPing");
         continuous = par("continuous");
 
-        const char *crcModeString = par("crcMode");
-        crcMode = parseCrcMode(crcModeString, false);
+        const char *checksumModeString = par("checksumMode");
+        checksumMode = parseChecksumMode(checksumModeString, false);
 
         // state
         pid = -1;
@@ -111,6 +111,7 @@ void PingApp::initialize(int stage)
         // statistics
         rttStat.setName("pingRTT");
         sentCount = lossCount = outOfOrderArrivalCount = numPongs = 0;
+        WATCH(sentCount);
         WATCH(lossCount);
         WATCH(outOfOrderArrivalCount);
         WATCH(numPongs);
@@ -277,15 +278,6 @@ void PingApp::socketClosed(INetworkSocket *socket)
     delete socketMap.removeSocket(socket);
 }
 
-void PingApp::refreshDisplay() const
-{
-    ApplicationBase::refreshDisplay();
-
-    char buf[40];
-    sprintf(buf, "sent: %ld pks\nrcvd: %ld pks", sentCount, numPongs);
-    getDisplayString().setTagArg("t", 0, buf);
-}
-
 void PingApp::handleStartOperation(LifecycleOperation *operation)
 {
     if (isEnabled())
@@ -367,12 +359,11 @@ bool PingApp::isEnabled()
 
 void PingApp::sendPingRequest()
 {
-    char name[32];
-    sprintf(name, "ping%ld", sendSeqNo);
+    std::string name = "ping" + std::to_string(sendSeqNo);
 
     ASSERT(pid != -1);
 
-    Packet *outPacket = new Packet(name);
+    Packet *outPacket = new Packet(name.c_str());
     auto payload = makeShared<ByteCountChunk>(B(packetSize));
 
     switch (destAddr.getType()) {
@@ -382,7 +373,7 @@ void PingApp::sendPingRequest()
             request->setIdentifier(pid);
             request->setSeqNumber(sendSeqNo);
             outPacket->insertAtBack(payload);
-            Icmp::insertCrc(crcMode, request, outPacket);
+            Icmp::insertChecksum(checksumMode, request, outPacket);
             outPacket->insertAtFront(request);
             outPacket->addTag<PacketProtocolTag>()->setProtocol(&Protocol::icmpv4);
             break;
@@ -396,7 +387,7 @@ void PingApp::sendPingRequest()
             request->setIdentifier(pid);
             request->setSeqNumber(sendSeqNo);
             outPacket->insertAtBack(payload);
-            Icmpv6::insertCrc(crcMode, request, outPacket);
+            Icmpv6::insertChecksum(checksumMode, request, outPacket);
             outPacket->insertAtFront(request);
             outPacket->addTag<PacketProtocolTag>()->setProtocol(&Protocol::icmpv6);
             break;
@@ -413,7 +404,7 @@ void PingApp::sendPingRequest()
             request->setIdentifier(pid);
             request->setSeqNumber(sendSeqNo);
             outPacket->insertAtBack(payload);
-//            insertCrc(crcMode, request, outPacket);
+//            insertChecksum(checksumMode, request, outPacket);
             outPacket->insertAtFront(request);
             outPacket->addTag<PacketProtocolTag>()->setProtocol(&Protocol::echo);
             break;
@@ -478,7 +469,7 @@ void PingApp::processPingResponse(int originatorId, int seqNo, Packet *packet)
     }
 
     // update statistics
-    countPingResponse(B(pingPayload->getChunkLength()).get(), seqNo, rtt, isDup);
+    countPingResponse(pingPayload->getChunkLength().get<B>(), seqNo, rtt, isDup);
 }
 
 void PingApp::countPingResponse(int bytes, long seqNo, simtime_t rtt, bool isDup)

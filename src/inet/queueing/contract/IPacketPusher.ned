@@ -8,9 +8,9 @@
 package inet.queueing.contract;
 
 //
-// This module interface is implemented by packet pushers. A packet pusher
+// Interface for packet pushers. A packet pusher
 // connects one input to one output. Packets can be pushed into its input
-// and it pushed packets into its output.
+// and it pushes packets into its output.
 //
 moduleinterface IPacketPusher extends IPassivePacketSink, IActivePacketSource
 {

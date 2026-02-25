@@ -52,7 +52,7 @@ void LMac::initialize(int stage)
         slotChange = new cOutVector("slotChange");
 
         // how long does it take to send/receive a control packet
-        controlDuration = (double)(b(headerLength).get() + numSlots + 16) / (double)bitrate; // FIXME replace 16 to a constant
+        controlDuration = (double)(headerLength.get<b>() + numSlots + 16) / (double)bitrate; // FIXME replace 16 to a constant
         EV << "Control packets take : " << controlDuration << " seconds to transmit\n";
 
         txQueue = getQueue(gate(upperLayerInGateId));
@@ -647,18 +647,18 @@ void LMac::attachSignal(Packet *macPkt)
     macPkt->setDuration(duration);
 }
 
-queueing::IPassivePacketSource *LMac::getProvider(cGate *gate)
+queueing::IPassivePacketSource *LMac::getProvider(const cGate *gate)
 {
     return (gate->getId() == upperLayerInGateId) ? txQueue.get() : nullptr;
 }
 
-void LMac::handleCanPullPacketChanged(cGate *gate)
+void LMac::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     // packed arrived from upper layer
 }
 
-void LMac::handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void LMac::handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePullPacketProcessed");
     throw cRuntimeError("Not supported callback");

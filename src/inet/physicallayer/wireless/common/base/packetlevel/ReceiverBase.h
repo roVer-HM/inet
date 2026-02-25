@@ -8,7 +8,9 @@
 #ifndef __INET_RECEIVERBASE_H
 #define __INET_RECEIVERBASE_H
 
+#include "inet/common/Module.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IReceiver.h"
+#include "inet/physicallayer/wireless/common/contract/packetlevel/IReceiverAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IReception.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/ITransmission.h"
 
@@ -16,9 +18,13 @@ namespace inet {
 
 namespace physicallayer {
 
-class INET_API ReceiverBase : public cModule, public virtual IReceiver
+class INET_API ReceiverBase : public Module, public virtual IReceiver
 {
   protected:
+    bool ignoreInterference = false;
+
+  protected:
+    virtual void initialize(int stage) override;
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
 
     virtual W computeSignalPower(const IListening *listening, const ISnir *snir, const IInterference *interference) const;
@@ -27,6 +33,10 @@ class INET_API ReceiverBase : public cModule, public virtual IReceiver
 
   public:
     ReceiverBase() {}
+
+    virtual IReceiverAnalogModel *getAnalogModel() const { return check_and_cast<IReceiverAnalogModel *>(getSubmodule("analogModel")); }
+
+    virtual std::ostream& printToStream(std::ostream& stream, int level, int evFlags = 0) const override;
 
     virtual W getMinInterferencePower() const override { return W(NaN); }
     virtual W getMinReceptionPower() const override { return W(NaN); }

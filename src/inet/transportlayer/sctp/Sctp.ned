@@ -8,17 +8,19 @@
 
 package inet.transportlayer.sctp;
 
+import inet.common.SimpleModule;
 import inet.transportlayer.contract.ISctp;
 
 //
 // Implements the SCTP protocol.
 //
-simple Sctp like ISctp
+simple Sctp extends SimpleModule like ISctp
 {
     parameters:
+        @class(Sctp);
         string interfaceTableModule;
         string routingTableModule;
-        string crcMode @enum("declared", "computed") = default("declared");
+        string checksumMode @enum("declared", "computed") = default("declared");
 
         //#====== SCTP Association Parameters =================================
         int numGapReports = default(3);
@@ -51,7 +53,7 @@ simple Sctp like ISctp
         int naglePoint = default(1468);
 
         //#====== Fragmentation =============================================
-        int fragPoint = default(1452);    // size of a message that has to be fragmented, i.e. maximum size of a fragment
+        int fragPoint = default(1452);    // Size of a message that has to be fragmented, i.e. maximum size of a fragment
 
         //#====== Congestion Control ==========================================
         bool fastRecoverySupported = default(true);
@@ -66,10 +68,10 @@ simple Sctp like ISctp
         int swsLimit = default(3000);        // Limit for SWS
         bool udpEncapsEnabled = default(false);
         bool natFriendly = default(false);
-        int bytesToAddPerRcvdChunk = default(0);        // for flowcontrol
-        int bytesToAddPerPeerChunk = default(0);        // for flowcontrol
-        bool tellArwnd = default(false);            // for flowcontrol
-        int messageAcceptLimit = default(0);        // for flowcontrol
+        int bytesToAddPerRcvdChunk = default(0);        // For flow control
+        int bytesToAddPerPeerChunk = default(0);        // For flow control
+        bool tellArwnd = default(false);            // For flow control
+        int messageAcceptLimit = default(0);        // For flow control
         double fairStart @unit(s) = default(0s);
         double fairStop @unit(s) = default(0s);
         string streamsToPaths = default("");

@@ -38,7 +38,7 @@ ExtIpv4TunDevice::~ExtIpv4TunDevice()
 
 void ExtIpv4TunDevice::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         device = par("device").stdstringValue();
         packetNameFormat = par("packetNameFormat");
@@ -68,7 +68,7 @@ void ExtIpv4TunDevice::handleMessage(cMessage *msg)
     ssize_t nwrite = write(fd, buffer, packetLength);
     if ((size_t)nwrite == packetLength) {
         emit(packetSentSignal, packet);
-        EV_INFO << "Sent a " << packet->getTotalLength() << " packet from " << ipv4Header->getSrcAddress() << " to " << ipv4Header->getDestAddress() << " to TUN device '" << device << "'.\n";
+        EV_INFO << "Sent a " << packet->getDataLength() << " packet from " << ipv4Header->getSrcAddress() << " to " << ipv4Header->getDestAddress() << " to TUN device '" << device << "'.\n";
         numSent++;
     }
     else
@@ -79,9 +79,8 @@ void ExtIpv4TunDevice::handleMessage(cMessage *msg)
 
 void ExtIpv4TunDevice::refreshDisplay() const
 {
-    char buf[180];
-    sprintf(buf, "TUN device: %s\nrcv:%d snt:%d", device.c_str(), numReceived, numSent);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = "TUN device: " + device + "\nrcv:" + std::to_string(numReceived) + " snt:" + std::to_string(numSent);
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void ExtIpv4TunDevice::finish()
@@ -145,7 +144,7 @@ bool ExtIpv4TunDevice::notify(int fd)
         packet->setName(packetPrinter.printPacketToString(packet, packetNameFormat).c_str());
         emit(packetReceivedSignal, packet);
         const auto& ipv4Header = packet->peekAtFront<Ipv4Header>();
-        EV_INFO << "Received a " << packet->getTotalLength() << " packet from " << ipv4Header->getSrcAddress() << " to " << ipv4Header->getDestAddress() << ".\n";
+        EV_INFO << "Received a " << packet->getDataLength() << " packet from " << ipv4Header->getSrcAddress() << " to " << ipv4Header->getDestAddress() << ".\n";
         send(packet, "lowerLayerOut");
         emit(packetSentToLowerSignal, packet);
         numReceived++;

@@ -7,6 +7,7 @@
 
 package inet.physicallayer.wireless.common.backgroundnoise;
 
+import inet.common.Module;
 import inet.physicallayer.wireless.common.contract.packetlevel.IBackgroundNoise;
 
 //
@@ -14,12 +15,12 @@ import inet.physicallayer.wireless.common.contract.packetlevel.IBackgroundNoise;
 // time and frequency. It produces dimensional noise signals that can be further
 // used in dimensional computations.
 //
-module IsotropicDimensionalBackgroundNoise like IBackgroundNoise
+module IsotropicDimensionalBackgroundNoise extends Module like IBackgroundNoise
 {
     parameters:
-        double powerSpectralDensity @unit(dBmWpMHz) = default(nan dBmWpMHz); // when specified, the power and bandwidth parameters are not used
-        double power @unit(dBm) = default(nan dBm); // when specified, the bandwidth can be determined automatically by matching the signal's bandwidth
-        double bandwidth @unit(Hz) = default(nan Hz); // determined automatically if the value is NaN, otherwise must match the signal's bandwidth
+        double powerSpectralDensity @unit(dBmWpMHz) = default(nan dBmWpMHz); // When specified, the power and bandwidth parameters are not used
+        double power @unit(dBm) = default(nan dBm); // When specified, the bandwidth can be determined automatically by matching the signal's bandwidth
+        double bandwidth @unit(Hz) = default(nan Hz); // Determined automatically if the value is NaN, otherwise must match the signal's bandwidth
         @class(IsotropicDimensionalBackgroundNoise);
         @display("i=block/mac");
 }

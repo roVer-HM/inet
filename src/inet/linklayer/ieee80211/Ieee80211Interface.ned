@@ -17,7 +17,7 @@ import inet.networklayer.common.NetworkInterface;
 import inet.physicallayer.wireless.common.contract.packetlevel.IRadio;
 
 //
-// This module implements an IEEE 802.11 network interface. It implements
+// Implements an IEEE 802.11 network interface. It implements
 // a large subset of the IEEE 802.11 standard, and may use radio models
 // and wireless signal representations of varying levels of detail.
 // It is also extremely configurable, and its component structure makes
@@ -38,7 +38,7 @@ import inet.physicallayer.wireless.common.contract.packetlevel.IRadio;
 // The INET User Guide elaborates on the possibilities.
 //
 // The type of the management submodule is also configurable. The type of this
-// submodule decides whether the interfaces acts an AP, a STA, or is in ad hoc mode.
+// submodule decides whether the interfaces acts as an AP, a STA, or is in ad hoc mode.
 // Use ~Ieee80211MgmtSta or ~Ieee80211MgmtStaSimplified for STA,
 // ~Ieee80211MgmtAp or ~Ieee80211MgmtApSimplified for AP, and
 // ~Ieee80211MgmtAdhoc for ad hoc mode.
@@ -49,14 +49,14 @@ import inet.physicallayer.wireless.common.contract.packetlevel.IRadio;
 // The LLC submodule is responsible for adding/removing the LLC header on packets.
 //
 // A classifier is responsible for assigning a 802.1d User Priority (UP) to
-// packets, and is only needed if QoS is involved.
+// packets and is only needed if QoS is involved.
 //
 // The clock submodule would allow clock skew modeling -- this is currently not used.
 //
 // Note about the implementation:
 //
 // Despite its appearance, Ieee80211Interface is not a plain compound module.
-// It has an underlying custom C++ class that inherits from cModule.
+// It has an underlying custom C++ class that inherits from `cModule`.
 //
 module Ieee80211Interface extends NetworkInterface like IWirelessInterface
 {
@@ -73,6 +73,7 @@ module Ieee80211Interface extends NetworkInterface like IWirelessInterface
         **.bitrate = this.bitrate;
         mac.modeSet = default(this.opMode);
         mac.*.rateSelection.dataFrameBitrate = default(this.bitrate);
+        radio.signalAnalogRepresentation = default("scalar");
         *.macModule = default(absPath(".mac"));
         *.mibModule = default(absPath(".mib"));
         *.interfaceTableModule = default(absPath(this.interfaceTableModule));
@@ -106,7 +107,7 @@ module Ieee80211Interface extends NetworkInterface like IWirelessInterface
             parameters:
                 @display("p=300,300");
         }
-        radio: <default("Ieee80211ScalarRadio")> like IRadio {
+        radio: <default("Ieee80211Radio")> like IRadio {
             parameters:
                 @display("p=300,400");
         }

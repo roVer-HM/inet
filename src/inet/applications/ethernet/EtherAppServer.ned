@@ -6,19 +6,22 @@
 
 package inet.applications.ethernet;
 
+import inet.common.SimpleModule;
+
 //
 // Server side of the ~EtherAppClient model -- generates packets containing
 // ~EtherAppResp chunks with the number of bytes requested by the client in
 // corresponding ~EtherAppReq. It should be connected directly to ~Ieee8022Llc
 // module.
 //
-simple EtherAppServer
+simple EtherAppServer extends SimpleModule
 {
     parameters:
+        @class(EtherAppServer);
         int localSAP = default(0xf1);
         @lifecycleSupport;
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation is finished
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
         @display("i=block/app");
         @signal[packetSent](type=inet::Packet);
         @signal[packetReceived](type=inet::Packet);

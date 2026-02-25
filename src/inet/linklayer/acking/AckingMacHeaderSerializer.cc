@@ -23,14 +23,14 @@ void AckingMacHeaderSerializer::serialize(MemoryOutputStream& stream, const Ptr<
 {
     auto startPosition = stream.getLength();
     auto macHeader = staticPtrCast<const AckingMacHeader>(chunk);
-    stream.writeUint8(B(macHeader->getChunkLength()).get());
+    stream.writeUint8(macHeader->getChunkLength().get<B>());
     stream.writeMacAddress(macHeader->getSrc());
     stream.writeMacAddress(macHeader->getDest());
     stream.writeUint16Be(macHeader->getNetworkProtocol());
     stream.writeUint64Be(macHeader->getSrcModuleId());
-    int64_t remainders = B(macHeader->getChunkLength() - (stream.getLength() - startPosition)).get();
+    int64_t remainders = (macHeader->getChunkLength() - (stream.getLength() - startPosition)).get<B>();
     if (remainders < 0)
-        throw cRuntimeError("AckingMacHeader length = %d smaller than required %d bytes", (int)B(macHeader->getChunkLength()).get(), (int)B(stream.getLength() - startPosition).get());
+        throw cRuntimeError("AckingMacHeader length = %d smaller than required %d bytes", (int)macHeader->getChunkLength().get<B>(), (int)(stream.getLength() - startPosition).get<B>());
     stream.writeByteRepeatedly('?', remainders);
 }
 
@@ -46,7 +46,7 @@ const Ptr<Chunk> AckingMacHeaderSerializer::deserialize(MemoryInputStream& strea
     macHeader->setSrcModuleId(stream.readUint64Be());
     B remainders = B(length) - (stream.getPosition() - startPosition);
     ASSERT(remainders >= B(0));
-    stream.readByteRepeatedly('?', B(remainders).get());
+    stream.readByteRepeatedly('?', remainders.get<B>());
     return macHeader;
 }
 
@@ -66,11 +66,12 @@ PcapLinkType AckingMacToEthernetPcapRecorderHelper::protocolToLinkType(const Pro
     return LINKTYPE_INVALID;
 }
 
-Packet *AckingMacToEthernetPcapRecorderHelper::tryConvertToLinkType(const Packet *packet, PcapLinkType pcapLinkType, const Protocol *protocol) const
+Packet *AckingMacToEthernetPcapRecorderHelper::tryConvertToLinkType(const Packet *packet, b frontOffset, b backOffset, PcapLinkType pcapLinkType, const Protocol *protocol) const
 {
 #if defined(INET_WITH_ETHERNET)
     if (*protocol == Protocol::ackingMac && pcapLinkType == LINKTYPE_ETHERNET) {
         auto newPacket = packet->dup();
+        const auto& frontPart = frontOffset != b(0) ? newPacket->removeAtFront(frontOffset) : nullptr;
         auto ackingHdr = newPacket->popAtFront<AckingMacHeader>();
         newPacket->trimFront();
         auto ethHeader = makeShared<EthernetMacHeader>();
@@ -79,6 +80,8 @@ Packet *AckingMacToEthernetPcapRecorderHelper::tryConvertToLinkType(const Packet
         ethHeader->setTypeOrLength(ackingHdr->getNetworkProtocol());
         newPacket->insertAtFront(ethHeader);
         newPacket->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
+        if (frontPart != nullptr)
+            newPacket->insertAtFront(frontPart);
         return newPacket;
     }
 #endif // defined(INET_WITH_ETHERNET)

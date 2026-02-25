@@ -26,7 +26,6 @@ void StreamThroughTransmitter::handleMessageWhenUp(cMessage *message)
         throw cRuntimeError("Buffer underrun during transmission");
     else
         StreamingTransmitterBase::handleMessageWhenUp(message);
-    updateDisplayString();
 }
 
 void StreamThroughTransmitter::handleStopOperation(LifecycleOperation *operation)
@@ -74,7 +73,7 @@ void StreamThroughTransmitter::progressTx(Packet *packet, bps datarate, b positi
     // 2. store input progress
     b inputProgressPosition = lastInputProgressPosition + b(std::floor((simTime() - lastInputProgressTime).dbl() * lastInputDatarate.get()));
     auto txPacket = check_and_cast<Packet *>(txSignal->getEncapsulatedPacket());
-    bool isInputProgressAtEnd = inputProgressPosition == packet->getTotalLength() && packet->getTotalLength() == txPacket->getTotalLength();
+    bool isInputProgressAtEnd = inputProgressPosition == packet->getDataLength() && packet->getDataLength() == txPacket->getDataLength();
     bool isPacketUnchangedSinceLastProgress = isInputProgressAtEnd || packet->peekAll()->containsSameData(*txPacket->peekAll().get());
     lastInputDatarate = datarate;
     lastInputProgressTime = simTime();
@@ -122,10 +121,9 @@ void StreamThroughTransmitter::endTx(Packet *packet)
     lastInputProgressTime = -1;
     lastInputProgressPosition = b(-1);
     // 4. notify producer
-    auto gate = inputGate->getPathStartGate();
     if (producer != nullptr) {
-        producer->handlePushPacketProcessed(packet, gate, true);
-        producer->handleCanPushPacketChanged(gate);
+        producer.handlePushPacketProcessed(packet, true);
+        producer.handleCanPushPacketChanged();
     }
     delete signal;
 }
@@ -139,7 +137,7 @@ void StreamThroughTransmitter::abortTx()
     // TODO we can't just simply cut the packet proportionally with time because it's not always the case (modulation, scrambling, etc.)
     simtime_t timePosition = simTime() - txStartTime;
     b dataPosition = b(std::floor(txDatarate.get() * timePosition.dbl()));
-    packet->eraseAtBack(packet->getTotalLength() - dataPosition);
+    packet->eraseAtBack(packet->getDataLength() - dataPosition);
     packet->setBitError(true);
     auto signal = encodePacket(packet);
     signal->setDuration(timePosition);
@@ -161,10 +159,9 @@ void StreamThroughTransmitter::abortTx()
     lastInputProgressTime = -1;
     lastInputProgressPosition = b(-1);
     // 6. notify producer
-    auto gate = inputGate->getPathStartGate();
     if (producer != nullptr) {
-        producer->handlePushPacketProcessed(packet, gate, true);
-        producer->handleCanPushPacketChanged(gate);
+        producer.handlePushPacketProcessed(packet, true);
+        producer.handleCanPushPacketChanged();
     }
 }
 
@@ -175,21 +172,20 @@ void StreamThroughTransmitter::scheduleBufferUnderrunTimer()
         // Underrun occurs when the following two values become equal:
         // inputProgressPosition = lastInputProgressPosition + inputDatarate * (simTime() - lastInputProgressTime)
         // txProgressPosition = lastTxProgressPosition + txDatarate * (simTime() - lastTxProgressTime)
-        simtime_t bufferUnderrunTime = s((-lastInputProgressPosition + lastInputDatarate * s(lastInputProgressTime.dbl()) + lastTxProgressPosition - txDatarate * s(lastTxProgressTime.dbl())) / (lastInputDatarate - txDatarate)).get();
+        simtime_t bufferUnderrunTime = ((-lastInputProgressPosition + lastInputDatarate * s(lastInputProgressTime.dbl()) + lastTxProgressPosition - txDatarate * s(lastTxProgressTime.dbl())) / (lastInputDatarate - txDatarate)).get<s>();
         EV_INFO << "Scheduling buffer underrun timer" << EV_FIELD(at, bufferUnderrunTime.ustr()) << EV_ENDL;
         scheduleAt(bufferUnderrunTime, bufferUnderrunTimer);
     }
 }
 
-void StreamThroughTransmitter::pushPacketStart(Packet *packet, cGate *gate, bps datarate)
+void StreamThroughTransmitter::pushPacketStart(Packet *packet, const cGate *gate, bps datarate)
 {
     Enter_Method("pushPacketStart");
     take(packet);
     startTx(packet, datarate, b(0));
-    updateDisplayString();
 }
 
-void StreamThroughTransmitter::pushPacketEnd(Packet *packet, cGate *gate)
+void StreamThroughTransmitter::pushPacketEnd(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacketEnd");
     take(packet);
@@ -199,10 +195,9 @@ void StreamThroughTransmitter::pushPacketEnd(Packet *packet, cGate *gate)
     }
     else
         progressTx(packet, txDatarate, packet->getDataLength());
-    updateDisplayString();
 }
 
-void StreamThroughTransmitter::pushPacketProgress(Packet *packet, cGate *gate, bps datarate, b position, b extraProcessableLength)
+void StreamThroughTransmitter::pushPacketProgress(Packet *packet, const cGate *gate, bps datarate, b position, b extraProcessableLength)
 {
     Enter_Method("pushPacketProgress");
     take(packet);
@@ -210,7 +205,6 @@ void StreamThroughTransmitter::pushPacketProgress(Packet *packet, cGate *gate, b
         progressTx(packet, datarate, position);
     else
         startTx(packet, datarate, position);
-    updateDisplayString();
 }
 
 } // namespace inet

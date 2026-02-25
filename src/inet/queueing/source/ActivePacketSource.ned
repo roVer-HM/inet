@@ -11,7 +11,7 @@ import inet.queueing.base.ActivePacketSourceBase;
 import inet.queueing.contract.IActivePacketSource;
 
 //
-// This module is an active packet source which pushes packets into the connected
+// An active packet source which pushes packets into the connected
 // module. It pushes whole packets through the out gate at every production
 // interval. It pushes the first packet after the initial production offset.
 //
@@ -20,16 +20,16 @@ import inet.queueing.contract.IActivePacketSource;
 // interval timer always starts after the module pushes a packet out.
 //
 // Invariants:
-//  - two subsequent packets are always pushed out at least productionInterval time apart
-//  - backpressure prevents packets from being pushed out
+//  - Two subsequent packets are always pushed out at least `productionInterval` time apart
+//  - Backpressure prevents packets from being pushed out
 //
 simple ActivePacketSource extends ActivePacketSourceBase like IActivePacketSource
 {
     parameters:
-        string clockModule = default(""); // relative path of a module that implements IClock; optional
-        double initialProductionOffset @mutable @unit(s) = default(-1s); // initial duration before which packets are not produced. When negative, then produce packet in initialize()
-        volatile double productionInterval @unit(s); // elapsed time between subsequent packets pushed to the connected packet consumer
-        bool scheduleForAbsoluteTime = default(true); // when a clock is used relative means that setting the clock will not affect the simulation time of the event
+        string clockModule = default(""); // Relative path of a module that implements IClock; optional
+        double initialProductionOffset @mutable @unit(s) = default(-1s); // Initial duration before which packets are not produced. When negative, then produce packet in initialize()
+        volatile double productionInterval @unit(s); // Elapsed time between subsequent packets pushed to the connected packet consumer
+        bool scheduleForAbsoluteTime = default(true); // When a clock is used, "relative" means that setting the clock will not affect the simulation time of the event
         @class(ActivePacketSource);
     gates:
         output out @labels(push);

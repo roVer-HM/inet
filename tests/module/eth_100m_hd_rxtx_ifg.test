@@ -1,5 +1,5 @@
 %description:
-EthernetCsmaMac module: tests IFG in half duplex mode
+EthernetCsmaMacPhy module: tests IFG in half duplex mode
 
 At 20s we try to transmit a packet but there is an incoming packet at that time.
 Transmission starts at the end of reception plus IFG.
@@ -8,8 +8,6 @@ Transmission starts at the end of reception plus IFG.
 [General]
 ned-path = .;../../../../src;../../lib
 network = inet.test.moduletest.lib.EthTestNetwork
-
-record-eventlog = true
 
 #omnetpp 5.0 - 5.1 compatibility:
 eventlog-file = "${resultdir}/${configname}-${runnumber}.elog"

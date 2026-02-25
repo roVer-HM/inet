@@ -10,36 +10,43 @@ package inet.node.wireless;
 import inet.common.MessageDispatcher;
 import inet.common.lifecycle.NodeStatus;
 import inet.linklayer.contract.IEthernetInterface;
+import inet.linklayer.contract.IEthernetLayer;
 import inet.linklayer.contract.IMacForwardingTable;
 import inet.linklayer.contract.IMacRelayUnit;
 import inet.linklayer.contract.IWirelessInterface;
-import inet.linklayer.ethernet.contract.IEthernetLayer;
 import inet.mobility.contract.IMobility;
 import inet.networklayer.common.InterfaceTable;
+import inet.node.contract.INetworkNode;
 
-
 //
-// A generic access point supporting multiple wireless radios, and
-// multiple ethernet ports. The type of the ethernet MAC, relay unit
-// and wireless card can be specified as parameters.
+// A wireless access point device that connects wireless stations (like WirelessHost)
+// to a wired network. Supports multiple wireless radios and multiple Ethernet ports.
 //
-// By default, the access point is stationary (~StationaryMobility),
-// but that can also be configured by a parameter.
+// The access point relays frames between the wireless and wired interfaces using
+// a built-in MAC relay unit (bridging). It implements the IEEE 802.11 AP functionality
+// including association, authentication, and frame forwarding between network segments.
 //
-// The wlan[*].mgmt.typename can be configured for different management types
-// currently it can be: ~Ieee80211MgmtApSimplified and ~Ieee80211MgmtAp.
-// By default it is ~Ieee80211MgmtAp. The Simplified version does not
-// support channel scanning, authentication and association .
-// In this case, nodes must explicitly specify the hardware address
-// of the wlan card they want to be associated with.
+// Key features:
+// - Configurable number of wireless interfaces (radios)
+// - Configurable number of Ethernet ports
+// - IEEE 802.11 management functionality
+// - MAC-layer bridging between interfaces
+// - Customizable wireless management type (simplified or full-featured)
+// - Stationary by default, but mobility can be added
 //
-module AccessPoint
+// The wireless management can be configured to use either the full IEEE 802.11 management
+// protocol (~Ieee80211MgmtAp) or a simplified version (~Ieee80211MgmtApSimplified) that
+// doesn't support scanning, authentication, and association processes.
+//
+// @see ~WirelessHost, ~EthernetSwitch, ~StandardHost
+//
+module AccessPoint like INetworkNode
 {
     parameters:
         @networkNode();
         @labels(node,ethernet-node,wireless-node);
         @display("i=device/accesspoint");
-        int numWlanInterfaces = default(1);               // the number of radios in the access point
+        int numWlanInterfaces = default(1);               // The number of radios in the access point
         bool hasStatus = default(false);
         string fcsMode @enum("declared","computed") = default("declared");
         wlan[*].protocol = default("ethernetmac");

@@ -10,7 +10,7 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolGroup.h"
 #include "inet/common/ProtocolTag_m.h"
-#include "inet/common/checksum/EthernetCRC.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/common/packet/chunk/ByteCountChunk.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
 #include "inet/linklayer/common/MacAddressTag_m.h"
@@ -77,6 +77,7 @@ void CsmaCaMac::initialize(int stage)
         txQueue = getQueue(gate(upperLayerInGateId));
 
         // state variables
+        fsm.setState(IDLE, "IDLE");
         fsm.setName("CsmaCaMac State Machine");
         backoffPeriod = -1;
         retryCounter = 0;
@@ -174,8 +175,7 @@ void CsmaCaMac::handleLowerPacket(Packet *packet)
 void CsmaCaMac::handleWithFsm(cMessage *msg)
 {
     Packet *frame = dynamic_cast<Packet *>(msg);
-    FSMA_Switch(fsm)
-    {
+    { FSMA_Switch(fsm) {
         FSMA_State(IDLE)
         {
             FSMA_Event_Transition(Defer-Transmit,
@@ -251,7 +251,7 @@ void CsmaCaMac::handleWithFsm(cMessage *msg)
         }
         FSMA_State(TRANSMIT)
         {
-            FSMA_Enter(sendDataFrame(getCurrentTransmission()));
+            FSMA_Enter(FSMA_Delay_Action(sendDataFrame(getCurrentTransmission())));
             FSMA_Event_Transition(Transmit-Broadcast,
                                   msg == endData && isBroadcast(getCurrentTransmission()),
                                   IDLE,
@@ -337,10 +337,11 @@ void CsmaCaMac::handleWithFsm(cMessage *msg)
             FSMA_Event_Transition(Transmit-Ack,
                                   msg == endSifs,
                                   IDLE,
-                sendAckFrame();
+                FSMA_Delay_Action(sendAckFrame());
             );
         }
-    }
+    } }
+    fsm.executeDelayedActions();
     if (fsm.getState() == IDLE) {
         if (isReceiving())
             handleWithFsm(mediumStateChange);
@@ -375,7 +376,7 @@ void CsmaCaMac::encapsulate(Packet *frame)
 {
     auto macHeader = makeShared<CsmaCaMacDataHeader>();
     macHeader->setChunkLength(headerLength);
-    macHeader->setHeaderLengthField(B(headerLength).get());
+    macHeader->setHeaderLengthField(headerLength.get<B>());
     auto transportProtocol = frame->getTag<PacketProtocolTag>()->getProtocol();
     auto networkProtocol = ProtocolGroup::getEthertypeProtocolGroup()->getProtocolNumber(transportProtocol);
     macHeader->setNetworkProtocol(networkProtocol);
@@ -510,7 +511,7 @@ void CsmaCaMac::sendAckFrame()
     endSifs->setContextPointer(nullptr);
     auto macHeader = makeShared<CsmaCaMacAckHeader>();
     macHeader->setChunkLength(ackLength);
-    macHeader->setHeaderLengthField(B(ackLength).get());
+    macHeader->setHeaderLengthField(ackLength.get<B>());
     macHeader->setReceiverAddress(frameToAck->peekAtFront<CsmaCaMacHeader>()->getTransmitterAddress());
     auto frame = new Packet("CsmaAck");
     frame->insertAtFront(macHeader);
@@ -616,10 +617,10 @@ bool CsmaCaMac::isFcsOk(Packet *frame)
                 return true;
             case FCS_COMPUTED: {
                 const auto& fcsBytes = frame->peekDataAt<BytesChunk>(B(0), frame->getDataLength() - trailer->getChunkLength());
-                auto bufferLength = B(fcsBytes->getChunkLength()).get();
+                auto bufferLength = fcsBytes->getChunkLength().get<B>();
                 auto buffer = new uint8_t[bufferLength];
                 fcsBytes->copyToBuffer(buffer, bufferLength);
-                auto computedFcs = ethernetCRC(buffer, bufferLength);
+                auto computedFcs = ethernetFcs(buffer, bufferLength);
                 delete[] buffer;
                 return computedFcs == trailer->getFcs();
             }
@@ -631,10 +632,10 @@ bool CsmaCaMac::isFcsOk(Packet *frame)
 
 uint32_t CsmaCaMac::computeFcs(const Ptr<const BytesChunk>& bytes)
 {
-    auto bufferLength = B(bytes->getChunkLength()).get();
+    auto bufferLength = bytes->getChunkLength().get<B>();
     auto buffer = new uint8_t[bufferLength];
     bytes->copyToBuffer(buffer, bufferLength);
-    auto computedFcs = ethernetCRC(buffer, bufferLength);
+    auto computedFcs = ethernetFcs(buffer, bufferLength);
     delete[] buffer;
     return computedFcs;
 }
@@ -657,12 +658,12 @@ void CsmaCaMac::processUpperPacket()
     handleUpperPacket(packet);
 }
 
-queueing::IPassivePacketSource *CsmaCaMac::getProvider(cGate *gate)
+queueing::IPassivePacketSource *CsmaCaMac::getProvider(const cGate *gate)
 {
     return (gate->getId() == upperLayerInGateId) ? txQueue.get() : nullptr;
 }
 
-void CsmaCaMac::handleCanPullPacketChanged(cGate *gate)
+void CsmaCaMac::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     if (fsm.getState() == IDLE && !txQueue->isEmpty()) {
@@ -670,7 +671,7 @@ void CsmaCaMac::handleCanPullPacketChanged(cGate *gate)
     }
 }
 
-void CsmaCaMac::handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void CsmaCaMac::handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePullPacketProcessed");
     throw cRuntimeError("Not supported callback");

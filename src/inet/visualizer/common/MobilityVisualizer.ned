@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.IMobilityVisualizer;
 
 //
-// This module integrates canvas and osg mobility visualizers into a single module.
+// Integrates canvas and osg mobility visualizers into a single module.
 //
 // @see ~MobilityCanvasVisualizer, ~MobilityOsgVisualizer, ~MobilityVisualizerBase, ~IMobilityVisualizer
 //
@@ -18,8 +18,10 @@ module MobilityVisualizer like IMobilityVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("MobilityCanvasVisualizer"))> like IMobilityVisualizer if typename != "" {
             parameters:

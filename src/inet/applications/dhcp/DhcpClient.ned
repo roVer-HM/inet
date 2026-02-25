@@ -8,6 +8,7 @@
 
 package inet.applications.dhcp;
 
+import inet.common.SimpleModule;
 import inet.applications.contract.IApp;
 
 //
@@ -17,20 +18,21 @@ import inet.applications.contract.IApp;
 //
 // @see ~DhcpServer, ~DhcpMessage
 //
-simple DhcpClient like IApp
+simple DhcpClient extends SimpleModule like IApp
 {
     parameters:
-        string interfaceTableModule; // path to the InterfaceTable module
-        string routingTableModule; // path to the Ipv4RoutingTable module
-        string interface = default(""); // which NIC should be configured (i.e. wlan0, eth1 etc.)
-        double startTime @unit(s) = default(0s); // starting time of DHCP initialization
+        @class(DhcpClient);
+        string interfaceTableModule; // Path to the InterfaceTable module
+        string routingTableModule; // Path to the Ipv4RoutingTable module
+        string interface = default(""); // Which NIC should be configured (i.e. wlan0, eth1 etc.)
+        double startTime @unit(s) = default(0s); // Starting time of DHCP initialization
         @display("i=block/app2");
         @lifecycleSupport;
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation finished
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
         @selfMessageKinds(inet::DhcpTimerType);
     gates:
-        input socketIn @labels(UdpControlInfo/up);
-        output socketOut @labels(UdpControlInfo/down);
+        input socketIn @labels(UdpCommand/up);
+        output socketOut @labels(UdpCommand/down);
 }
 

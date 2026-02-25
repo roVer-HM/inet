@@ -51,7 +51,7 @@ class INET_API PacketDissector
         virtual void endProtocolDataUnit(const Protocol *protocol) = 0;
 
         /**
-         * Marks the current protocol data unit as incorrect (e.g. bad CRC/FCS, incorrect length field, bit error).
+         * Marks the current protocol data unit as incorrect (e.g. bad FCS, incorrect length field, bit error).
          */
         virtual void markIncorrect() = 0;
 
@@ -104,6 +104,23 @@ class INET_API PacketDissector
 
       public:
         const Ptr<const Chunk> getContent() { return content; }
+
+        virtual bool shouldDissectProtocolDataUnit(const Protocol *protocol) override { return true; }
+        virtual void startProtocolDataUnit(const Protocol *protocol) override {}
+        virtual void endProtocolDataUnit(const Protocol *protocol) override {}
+        virtual void markIncorrect() override {}
+        virtual void visitChunk(const Ptr<const Chunk>& chunk, const Protocol *protocol) override;
+    };
+
+    class INET_API ChunkFinder : public PacketDissector::ICallback {
+      protected:
+        const Protocol *protocol;
+        Ptr<const Chunk> chunk;
+
+      public:
+        ChunkFinder(const Protocol *protocol) : protocol(protocol) { }
+
+        const Ptr<const Chunk> getChunk() { return chunk; }
 
         virtual bool shouldDissectProtocolDataUnit(const Protocol *protocol) override { return true; }
         virtual void startProtocolDataUnit(const Protocol *protocol) override {}

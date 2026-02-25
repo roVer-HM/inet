@@ -19,7 +19,7 @@ import inet.linklayer.ieee80211.mib.Ieee80211Mib;
 import inet.physicallayer.wireless.common.contract.packetlevel.IRadio;
 
 //
-// This module provides an IEEE 802.11 network interface suitable for emulation.
+// Provides an IEEE 802.11 network interface suitable for emulation.
 // The upper part of the network interface is realized in the real world using
 // a real TAP device of the host computer which is running the simulation.
 //
@@ -33,12 +33,13 @@ module ExtUpperIeee80211Interface extends ExtInterface like IWirelessInterface
         **.bitrate = this.bitrate;
         mac.modeSet = default(this.opMode);
         mac.*.rateSelection.dataFrameBitrate = default(this.bitrate);
+        radio.signalAnalogRepresentation = default("scalar");
         *.macModule = default(absPath(".mac"));
         *.mibModule = default(absPath(".mib"));
         *.interfaceTableModule = default(absPath(this.interfaceTableModule));
         *.energySourceModule = default(absPath(this.energySourceModule));
     gates:
-        input radioIn @labels(IWirelessSignal); // to receive signals
+        input radioIn @labels(IWirelessSignal); // To receive signals
     submodules:
         mib: Ieee80211Mib {
             parameters:
@@ -68,7 +69,7 @@ module ExtUpperIeee80211Interface extends ExtInterface like IWirelessInterface
             parameters:
                 @display("p=300,300");
         }
-        radio: <default("Ieee80211ScalarRadio")> like IRadio {
+        radio: <default("Ieee80211Radio")> like IRadio {
             parameters:
                 @display("p=300,400");
         }

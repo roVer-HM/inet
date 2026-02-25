@@ -11,7 +11,7 @@ import inet.queueing.base.PacketPusherBase;
 import inet.queueing.contract.IPacketFlow;
 
 //
-// This module selects the outgoing interface for the packet passing through
+// Selects the outgoing interface for the packet passing through
 // from the MAC address table (forwarding information database) based on the
 // destination MAC address. The selected interface is attached to the packet
 // in an ~InterfaceReq. The packet may be duplicated if multiple interfaces
@@ -20,8 +20,8 @@ import inet.queueing.contract.IPacketFlow;
 simple RelayInterfaceSelector extends PacketPusherBase like IPacketFlow
 {
     parameters:
-        string macTableModule; // relative module path of MAC table
-        string interfaceTableModule; // relative module path of interface table
+        string macTableModule; // Relative module path of MAC table
+        string interfaceTableModule; // Relative module path of interface table
         @class(RelayInterfaceSelector);
         @display("i=block/fork");
         @signal[packetDropped](type=inet::Packet);

@@ -7,16 +7,18 @@
 
 package inet.physicallayer.wireless.common.energyconsumer;
 
+import inet.common.SimpleModule;
 import inet.power.contract.IEpEnergyConsumer;
 
 //
-// This module provides a radio power consumer model. The power consumption is
-// determined by the radio mode, the transmitter state and the receiver state
+// Provides a radio power consumer model. The power consumption is
+// determined by the radio mode, the transmitter state, and the receiver state
 // using constant parameters.
 //
-simple StateBasedEpEnergyConsumer like IEpEnergyConsumer
+simple StateBasedEpEnergyConsumer extends SimpleModule like IEpEnergyConsumer
 {
     parameters:
+        @class(StateBasedEpEnergyConsumer);
         string energySourceModule;
         double offPowerConsumption @unit(W) = default(0mW);
         double sleepPowerConsumption @unit(W) = default(1mW);

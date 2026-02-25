@@ -8,6 +8,8 @@
 #include "inet/queueing/sink/PcapFilePacketConsumer.h"
 
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/packet/recorder/PcapWriter.h"
+#include "inet/common/packet/recorder/PcapngWriter.h"
 
 namespace inet {
 namespace queueing {
@@ -18,8 +20,15 @@ void PcapFilePacketConsumer::initialize(int stage)
 {
     PassivePacketSinkBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
-        pcapWriter.setFlush(par("alwaysFlush"));
-        pcapWriter.open(par("filename"), par("snaplen"));
+        const char *fileFormat = par("fileFormat");
+        if (!strcmp(fileFormat, "pcap"))
+            pcapWriter = new PcapWriter();
+        else if (!strcmp(fileFormat, "pcapng"))
+            pcapWriter = new PcapngWriter();
+        else
+            throw cRuntimeError("Unknown fileFormat parameter");
+        pcapWriter->setFlush(par("alwaysFlush"));
+        pcapWriter->open(getEnvir()->getConfig()->substituteVariables(par("filename")), par("snaplen"), par("timePrecision"));
         networkType = static_cast<PcapLinkType>(par("networkType").intValue());
         const char *dirString = par("direction");
         if (*dirString == 0)
@@ -34,21 +43,21 @@ void PcapFilePacketConsumer::initialize(int stage)
     else if (stage == INITSTAGE_QUEUEING) {
         checkPacketOperationSupport(inputGate);
         if (producer != nullptr)
-            producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+            producer.handleCanPushPacketChanged();
     }
 }
 
 void PcapFilePacketConsumer::finish()
 {
-    pcapWriter.close();
+    pcapWriter->close();
 }
 
-void PcapFilePacketConsumer::pushPacket(Packet *packet, cGate *gate)
+void PcapFilePacketConsumer::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
     emit(packetPushedSignal, packet);
-    pcapWriter.writePacket(simTime(), packet, direction, getContainingNicModule(this), networkType);
+    pcapWriter->writePacket(simTime(), packet, b(0), b(0), direction, getContainingNicModule(this), networkType);
     numProcessedPackets++;
     processedTotalLength += packet->getDataLength();
     delete packet;

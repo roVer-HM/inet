@@ -7,19 +7,20 @@
 
 package inet.physicallayer.wireless.apsk.bitlevel;
 
+import inet.common.Module;
 import inet.physicallayer.wireless.common.contract.bitlevel.IEncoder;
 import inet.physicallayer.wireless.common.contract.bitlevel.IFecCoder;
 import inet.physicallayer.wireless.common.contract.bitlevel.IInterleaver;
 import inet.physicallayer.wireless.common.contract.bitlevel.IScrambler;
 
 //
-// This module is part of a simple hypothetical layered transmitter. It computes
+// Part of a simple hypothetical layered transmitter. It computes
 // the bit domain representation from the packet domain representation by applying
-// the configured scrambling, forward errror correction encoding, and interleaving.
+// the configured scrambling, forward error correction encoding, and interleaving.
 //
 // @see ~ApskDecoder, ~ApskLayeredReceiver.
 //
-module ApskEncoder like IEncoder
+module ApskEncoder extends Module like IEncoder
 {
     parameters:
         @display("i=block/blackboard");

@@ -7,9 +7,9 @@
 
 #include "inet/physicallayer/wireless/ieee80211/packetlevel/errormodel/Ieee80211BerTableErrorModel.h"
 
-#include "inet/physicallayer/wireless/common/base/packetlevel/FlatTransmissionBase.h"
-#include "inet/physicallayer/wireless/ieee80211/packetlevel/Ieee80211TransmissionBase.h"
+#include "inet/physicallayer/wireless/ieee80211/mode/IIeee80211Mode.h"
 #include "inet/physicallayer/wireless/ieee80211/packetlevel/errormodel/Ieee80211NistErrorModel.h"
+#include "inet/physicallayer/wireless/ieee80211/packetlevel/Ieee80211Transmission.h"
 
 namespace inet {
 
@@ -30,8 +30,8 @@ Ieee80211BerTableErrorModel::~Ieee80211BerTableErrorModel()
 void Ieee80211BerTableErrorModel::initialize(int stage)
 {
     if (stage == INITSTAGE_LOCAL) {
-        const char *fname = par("berTableFile");
-        if (fname == nullptr)
+        std::string fname = getEnvir()->getConfig()->substituteVariables(par("berTableFile"));
+        if (fname.empty())
             throw cRuntimeError("BER file parameter is mandatory");
         // TODO remove and cleanup opMode from here and also from BerParseFile, this should depend on the received signal
         char opMode;
@@ -47,20 +47,20 @@ void Ieee80211BerTableErrorModel::initialize(int stage)
         else if (!strcmp("p", opModeString))
             opMode = 'p';
         else
-            throw cRuntimeError("Unknown opMode");
+            throw cRuntimeError("Unknown opMode: '%s'", opModeString);
         berTableFile = new BerParseFile(opMode);
-        berTableFile->parseFile(fname);
+        berTableFile->parseFile(fname.c_str());
     }
 }
 
 double Ieee80211BerTableErrorModel::computePacketErrorRate(const ISnir *snir, IRadioSignal::SignalPart part) const
 {
     Enter_Method("computePacketErrorRate");
-    const ITransmission *transmission = snir->getReception()->getTransmission();
-    const FlatTransmissionBase *flatTransmission = check_and_cast<const FlatTransmissionBase *>(transmission);
-    double bitrate = flatTransmission->getBitrate().get();
-    b dataLength = flatTransmission->getDataLength();
-    return berTableFile->getPer(bitrate, getScalarSnir(snir), B(dataLength).get());
+    auto transmission = check_and_cast<const Ieee80211Transmission *>(snir->getReception()->getTransmission());
+    auto bitModel = transmission->getBitModel();
+    bps bitrate = transmission->getMode()->getDataMode()->getNetBitrate();
+    b dataLength = bitModel->getDataLength();
+    return berTableFile->getPer(bitrate.get<bps>(), getScalarSnir(snir), dataLength.get<B>());
 }
 
 double Ieee80211BerTableErrorModel::computeBitErrorRate(const ISnir *snir, IRadioSignal::SignalPart part) const

@@ -12,8 +12,7 @@
 #include "inet/common/INETUtils.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
-#include "inet/common/StringFormat.h"
-#include "inet/common/checksum/EthernetCRC.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/packet/chunk/BytesChunk.h"
 #include "inet/linklayer/common/EtherType_m.h"
@@ -26,132 +25,6 @@
 #include "inet/queueing/function/PacketComparatorFunction.h"
 
 namespace inet {
-
-const double EthernetMacBase::SPEED_OF_LIGHT_IN_CABLE = 200000000.0;
-
-const EthernetMacBase::EtherDescr EthernetMacBase::nullEtherDescr = {
-    0.0,
-    0.0,
-    0,
-    B(0),
-    B(0),
-    B(0),
-    0.0,
-    0.0
-};
-
-const EthernetMacBase::EtherDescr EthernetMacBase::etherDescrs[NUM_OF_ETHERDESCRS] = {
-    {
-        ETHERNET_TXRATE,
-        0.5 / ETHERNET_TXRATE,
-        0,
-        B(0),
-        MIN_ETHERNET_FRAME_BYTES,
-        MIN_ETHERNET_FRAME_BYTES,
-        512 / ETHERNET_TXRATE,
-        2500 /*m*/ / SPEED_OF_LIGHT_IN_CABLE
-    },
-    {
-        FAST_ETHERNET_TXRATE,
-        0.5 / FAST_ETHERNET_TXRATE,
-        0,
-        B(0),
-        MIN_ETHERNET_FRAME_BYTES,
-        MIN_ETHERNET_FRAME_BYTES,
-        512 / FAST_ETHERNET_TXRATE,
-        250 /*m*/ / SPEED_OF_LIGHT_IN_CABLE
-    },
-    {
-        GIGABIT_ETHERNET_TXRATE,
-        0.5 / GIGABIT_ETHERNET_TXRATE,
-        MAX_PACKETBURST,
-        GIGABIT_MAX_BURST_BYTES,
-        GIGABIT_MIN_FRAME_BYTES_WITH_EXT,
-        MIN_ETHERNET_FRAME_BYTES,
-        4096 / GIGABIT_ETHERNET_TXRATE,
-        250 /*m*/ / SPEED_OF_LIGHT_IN_CABLE
-    },
-    {
-        TWOANDHALFGIGABIT_ETHERNET_TXRATE,
-        0.5 / TWOANDHALFGIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        FIVEGIGABIT_ETHERNET_TXRATE,
-        0.5 / FIVEGIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        FAST_GIGABIT_ETHERNET_TXRATE,
-        0.5 / FAST_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        TWENTYFIVE_GIGABIT_ETHERNET_TXRATE,
-        0.5 / TWENTYFIVE_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        FOURTY_GIGABIT_ETHERNET_TXRATE,
-        0.5 / FOURTY_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        HUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0.5 / HUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        TWOHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0.5 / TWOHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    },
-    {
-        FOURHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0.5 / FOURHUNDRED_GIGABIT_ETHERNET_TXRATE,
-        0,
-        B(0),
-        B(-1), // half-duplex is not supported
-        B(0),
-        0.0,
-        0.0
-    }
-};
 
 static int compareEthernetFrameType(Packet *a, Packet *b)
 {
@@ -174,7 +47,6 @@ simsignal_t EthernetMacBase::receptionStateChangedSignal = registerSignal("recep
 EthernetMacBase::EthernetMacBase()
 {
     lastTxFinishTime = -1.0; // never equals to current simtime
-    curEtherDescr = &nullEtherDescr;
 }
 
 EthernetMacBase::~EthernetMacBase()
@@ -190,6 +62,7 @@ void EthernetMacBase::initialize(int stage)
     MacProtocolBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         fcsMode = parseFcsMode(par("fcsMode"));
+        allowNonstandardBitrate = par("allowNonstandardBitrate");
         physInGate = gate("phys$i");
         physOutGate = gate("phys$o");
         lowerLayerInGateId = physInGate->getId();
@@ -224,11 +97,14 @@ void EthernetMacBase::initialize(int stage)
         WATCH(promiscuous);
         WATCH(pauseUnitsRequested);
     }
+    else if (stage == INITSTAGE_LINK_LAYER) {
+        emit(transmissionStateChangedSignal, transmitState);
+        emit(receptionStateChangedSignal, receiveState);
+    }
 }
 
 void EthernetMacBase::initializeFlags()
 {
-    displayStringTextFormat = par("displayStringTextFormat");
     sendRawBytes = par("sendRawBytes");
     duplexMode = true;
 
@@ -293,6 +169,7 @@ void EthernetMacBase::handleStopOperation(LifecycleOperation *operation)
     else {
         networkInterface->setCarrier(false);
         networkInterface->setState(NetworkInterface::State::DOWN);
+        connected = false;
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
     }
 }
@@ -316,6 +193,7 @@ void EthernetMacBase::processAtHandleMessageFinished()
             networkInterface->setCarrier(false);
             processConnectDisconnect();
             networkInterface->setState(NetworkInterface::State::DOWN);
+            connected = false;
             startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
         }
     }
@@ -363,8 +241,10 @@ void EthernetMacBase::processConnectDisconnect()
                 emit(transmissionEndedSignal, curTxSignal);
                 send(curTxSignal, SendOptions().finishTx(curTxSignal->getId()), physOutGate);
             }
-            else
+            else {
+                emit(transmissionEndedSignal, curTxSignal);
                 delete curTxSignal;
+            }
             curTxSignal = nullptr;
             cancelEvent(endTxTimer);
         }
@@ -406,12 +286,11 @@ void EthernetMacBase::encapsulate(Packet *frame)
 void EthernetMacBase::decapsulate(Packet *packet)
 {
     auto phyHeader = packet->popAtFront<EthernetPhyHeader>();
-    ASSERT(packet->getDataLength() >= MIN_ETHERNET_FRAME_BYTES);
     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
 }
 
-// FIXME should use it in EthernetCsmaMac, EthernetMac, etc. modules. But should not use it in EtherBus, EthernetHub.
-bool EthernetMacBase::verifyCrcAndLength(Packet *packet)
+// FIXME should use it in EthernetCsmaMacPhy, EthernetMacPhy, etc. modules. But should not use it in EtherBus, EthernetHub.
+bool EthernetMacBase::verifyFcsAndLength(Packet *packet)
 {
     EV_STATICCONTEXT;
 
@@ -428,12 +307,12 @@ bool EthernetMacBase::verifyCrcAndLength(Packet *packet)
             bool isFcsBad = false;
             // check the FCS
             auto ethBytes = packet->peekDataAt<BytesChunk>(B(0), packet->getDataLength() - ethTrailer->getChunkLength());
-            auto bufferLength = B(ethBytes->getChunkLength()).get();
+            auto bufferLength = ethBytes->getChunkLength().get<B>();
             auto buffer = new uint8_t[bufferLength];
             // 1. fill in the data
             ethBytes->copyToBuffer(buffer, bufferLength);
             // 2. compute the FCS
-            auto computedFcs = ethernetCRC(buffer, bufferLength);
+            auto computedFcs = ethernetFcs(buffer, bufferLength);
             delete[] buffer;
             isFcsBad = (computedFcs != ethTrailer->getFcs()); // FIXME how to check fcs?
             if (isFcsBad)
@@ -517,8 +396,8 @@ void EthernetMacBase::readChannelParameters(bool errorWhenAsymmetric)
     if (connected && ((!outTrChannel) || (!inTrChannel)))
         throw cRuntimeError("Ethernet phys gate must be connected using a transmission channel");
 
-    double txRate = outTrChannel ? outTrChannel->getNominalDatarate() : 0.0;
-    double rxRate = inTrChannel ? inTrChannel->getNominalDatarate() : 0.0;
+    double txRate = 0.0;
+    double rxRate = 0.0;
 
     bool rxDisabled = !inTrChannel || inTrChannel->isDisabled();
     bool txDisabled = !outTrChannel || outTrChannel->isDisabled();
@@ -531,7 +410,8 @@ void EthernetMacBase::readChannelParameters(bool errorWhenAsymmetric)
 
     bool dataratesDiffer;
     if (!connected) {
-        curEtherDescr = &nullEtherDescr;
+        curEtherDescr = EthernetModes::nullEthernetMode;
+        halfBitTime = SIMTIME_ZERO;
         dataratesDiffer = false;
         if (!outTrChannel)
             transmissionChannel = nullptr;
@@ -543,6 +423,18 @@ void EthernetMacBase::readChannelParameters(bool errorWhenAsymmetric)
     else {
         if (outTrChannel && !transmissionChannel)
             outTrChannel->subscribe(POST_MODEL_CHANGE, this);
+
+        // TODO The NetworkInterface::computeDatarate() function does something similar to the following code:
+        if (networkInterface && networkInterface->hasPar("bitrate"))
+            txRate = rxRate = networkInterface->par("bitrate");
+        double channelTxRate = outTrChannel->getNominalDatarate();
+        if (txRate == 0.0) {
+            txRate = channelTxRate;
+            rxRate = inTrChannel ? inTrChannel->getNominalDatarate() : 0.0;
+        }
+        else if (channelTxRate != 0 && txRate != channelTxRate)
+            throw cRuntimeError("Wired network interface datarate is set on both the network interface module and on the corresponding transmission channel and the two values are different");
+
         transmissionChannel = outTrChannel;
         dataratesDiffer = (txRate != rxRate);
     }
@@ -554,18 +446,12 @@ void EthernetMacBase::readChannelParameters(bool errorWhenAsymmetric)
 
     if (connected) {
         // Check valid speeds
-        for (auto& etherDescr : etherDescrs) {
-            if (txRate == etherDescr.txrate) {
-                curEtherDescr = &(etherDescr);
-                if (networkInterface) {
-                    networkInterface->setCarrier(true);
-                    networkInterface->setDatarate(txRate);
-                }
-                return;
-            }
+        curEtherDescr = EthernetModes::getEthernetMode(txRate, allowNonstandardBitrate);
+        halfBitTime = 0.5 / txRate;
+        if (networkInterface) {
+            networkInterface->setCarrier(true);
+            networkInterface->setDatarate(txRate);
         }
-        throw cRuntimeError("Invalid transmission rate %g bps on channel %s at module %s",
-                txRate, transmissionChannel->getFullPath().c_str(), getFullPath().c_str());
     }
 }
 
@@ -573,12 +459,12 @@ void EthernetMacBase::printParameters()
 {
     // Dump parameters
     EV_DETAIL << "MAC address: " << getMacAddress() << (promiscuous ? ", promiscuous mode" : "") << endl
-              << "txrate: " << curEtherDescr->txrate << " bps, "
+              << "txrate: " << curEtherDescr.bitrate << " bps, "
               << (duplexMode ? "full-duplex" : "half-duplex") << endl
-              << "bitTime: " << 1e9 / curEtherDescr->txrate << " ns" << endl
+              << "bitTime: " << 1e9 / curEtherDescr.bitrate << " ns" << endl
               << "frameBursting: " << (frameBursting ? "on" : "off") << endl
-              << "slotTime: " << curEtherDescr->slotTime << endl
-              << "interFrameGap: " << INTERFRAME_GAP_BITS / curEtherDescr->txrate << endl
+              << "slotBitLength: " << curEtherDescr.slotBitLength << endl
+              << "interFrameGap: " << INTERFRAME_GAP_BITS / curEtherDescr.bitrate << endl
               << endl;
 }
 
@@ -624,50 +510,54 @@ void EthernetMacBase::refreshDisplay() const
 
     if (!strcmp(getParentModule()->getNedTypeName(), "inet.linklayer.ethernet.EthernetInterface"))
         getParentModule()->getDisplayString().setTagArg("i", 1, color);
+}
 
-    auto text = StringFormat::formatString(displayStringTextFormat, [&] (char directive) -> std::string {
-         switch (directive) {
-            case 's':
-                return std::to_string(numFramesSent);
-            case 'r':
-                return std::to_string(numFramesReceivedOK);
-            case 'd':
-                return std::to_string(numDroppedPkFromHLIfaceDown + numDroppedIfaceDown + numDroppedBitError + numDroppedNotForUs);
-            case 'q':
-                return txQueue != nullptr ? std::to_string(txQueue->getNumPackets()) : "";
-            case 'b':
-                if (transmissionChannel == nullptr)
-                    return "not connected";
-                else {
-                    char datarateText[40];
-                    double datarate = transmissionChannel->getNominalDatarate();
-                    if (datarate >= 1e9)
-                        sprintf(datarateText, "%gGbps", datarate / 1e9);
-                    else if (datarate >= 1e6)
-                        sprintf(datarateText, "%gMbps", datarate / 1e6);
-                    else if (datarate >= 1e3)
-                        sprintf(datarateText, "%gkbps", datarate / 1e3);
-                    else
-                        sprintf(datarateText, "%gbps", datarate);
-                    return datarateText;
-                }
-            default:
-                throw cRuntimeError("Unknown directive: %c", directive);
-        }
-        });
-    getDisplayString().setTagArg("t", 0, text.c_str());
+std::string EthernetMacBase::resolveDirective(char directive) const 
+{
+    switch (directive) {
+        case 's':
+            return std::to_string(numFramesSent);
+        case 'r':
+            return std::to_string(numFramesReceivedOK);
+        case 'd':
+            return std::to_string(numDroppedPkFromHLIfaceDown + numDroppedIfaceDown + numDroppedBitError + numDroppedNotForUs);
+        case 'q':
+            return txQueue != nullptr ? std::to_string(txQueue->getNumPackets()) : "";
+        case 'b':
+            if (transmissionChannel == nullptr)
+                return "not connected";
+            else {
+                char datarateText[40];
+                double datarate = transmissionChannel->getNominalDatarate();
+                if (datarate >= 1e9)
+                    sprintf(datarateText, "%gGbps", datarate / 1e9);
+                else if (datarate >= 1e6)
+                    sprintf(datarateText, "%gMbps", datarate / 1e6);
+                else if (datarate >= 1e3)
+                    sprintf(datarateText, "%gkbps", datarate / 1e3);
+                else
+                    sprintf(datarateText, "%gbps", datarate);
+                return datarateText;
+            }
+        default:
+            return MacProtocolBase::resolveDirective(directive);
+    }
 }
 
 void EthernetMacBase::changeTransmissionState(MacTransmitState newState)
 {
-    transmitState = newState;
-    emit(transmissionStateChangedSignal, newState);
+    if (transmitState != newState) {
+        transmitState = newState;
+        emit(transmissionStateChangedSignal, newState);
+    }
 }
 
 void EthernetMacBase::changeReceptionState(MacReceiveState newState)
 {
-    receiveState = newState;
-    emit(receptionStateChangedSignal, newState);
+    if (receiveState != newState) {
+        receiveState = newState;
+        emit(receptionStateChangedSignal, newState);
+    }
 }
 
 void EthernetMacBase::addPaddingAndSetFcs(Packet *packet, B requiredMinBytes) const
@@ -681,30 +571,7 @@ void EthernetMacBase::addPaddingAndSetFcs(Packet *packet, B requiredMinBytes) co
         ethPadding->setChunkLength(paddingLength);
         packet->insertAtBack(ethPadding);
     }
-
-    switch (ethFcs->getFcsMode()) {
-        case FCS_DECLARED_CORRECT:
-            ethFcs->setFcs(0xC00DC00DL);
-            break;
-        case FCS_DECLARED_INCORRECT:
-            ethFcs->setFcs(0xBAADBAADL);
-            break;
-        case FCS_COMPUTED: { // calculate FCS
-            auto ethBytes = packet->peekDataAsBytes();
-            auto bufferLength = B(ethBytes->getChunkLength()).get();
-            auto buffer = new uint8_t[bufferLength];
-            // 1. fill in the data
-            ethBytes->copyToBuffer(buffer, bufferLength);
-            // 2. compute the FCS
-            auto computedFcs = ethernetCRC(buffer, bufferLength);
-            delete[] buffer;
-            ethFcs->setFcs(computedFcs);
-            break;
-        }
-        default:
-            throw cRuntimeError("Unknown FCS mode: %d", (int)(ethFcs->getFcsMode()));
-    }
-
+    ethFcs->setFcs(computeEthernetFcs(packet, fcsMode));
     packet->insertAtBack(ethFcs);
 }
 
@@ -736,12 +603,12 @@ void EthernetMacBase::txFinished()
     curTxSignal = nullptr;
 }
 
-queueing::IPassivePacketSource *EthernetMacBase::getProvider(cGate *gate)
+queueing::IPassivePacketSource *EthernetMacBase::getProvider(const cGate *gate)
 {
     return (gate->getId() == upperLayerInGateId) ? txQueue.get() : nullptr;
 }
 
-void EthernetMacBase::handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void EthernetMacBase::handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePullPacketProcessed");
     throw cRuntimeError("Not supported callback");

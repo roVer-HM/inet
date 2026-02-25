@@ -7,6 +7,7 @@
 
 package inet.linklayer.ieee8021d.stp;
 
+import inet.common.SimpleModule;
 import inet.linklayer.contract.ISpanningTree;
 
 //
@@ -15,7 +16,7 @@ import inet.linklayer.contract.ISpanningTree;
 // is to prevent bridge loops and the broadcast radiation that results from them.
 // Spanning tree also allows a network design to include spare (redundant) links to
 // provide automatic backup paths if an active link fails, without the danger of
-// bridge loops, or the need for manual enabling/disabling of these backup links.
+// bridge loops or the need for manually enabling/disabling these backup links.
 //
 // There are various versions of Spanning Tree algorithm and protocol. This module
 // implements it according to the IEEE 802.1D-1998 specification.
@@ -26,9 +27,10 @@ import inet.linklayer.contract.ISpanningTree;
 //
 // @see ~L2NetworkConfigurator, ~InterfaceTable
 //
-simple Stp like ISpanningTree
+simple Stp extends SimpleModule like ISpanningTree
 {
     parameters:
+        @class(Stp);
 
         // The hello time is the time between each bridge protocol data unit (BPDU) that is sent on a port.
         // This time is equal to 2 seconds (sec) by default, but you can tune the time to be between 1 and 10 sec.

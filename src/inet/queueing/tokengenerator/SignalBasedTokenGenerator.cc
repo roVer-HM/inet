@@ -18,6 +18,8 @@ void SignalBasedTokenGenerator::initialize(int stage)
 {
     TokenGeneratorBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
+        intSignalValue = par("intSignalValue");
+        doubleSignalValue = par("doubleSignalValue");
         numTokensParameter = &par("numTokens");
         auto subscriptionModule = getModuleFromPar<cModule>(par("subscriptionModule"), this);
         cStringTokenizer tokenizer(par("signals"));
@@ -34,21 +36,20 @@ void SignalBasedTokenGenerator::generateTokens()
     numTokensGenerated += numTokens;
     emit(tokensCreatedSignal, numTokens);
     storage->addTokens(numTokens);
-    updateDisplayString();
 }
 
 void SignalBasedTokenGenerator::receiveSignal(cComponent *source, simsignal_t signal, intval_t value, cObject *details)
 {
     Enter_Method("%s", cComponent::getSignalName(signal));
-
-    generateTokens();
+    if (intSignalValue == -1 || intSignalValue == value)
+        generateTokens();
 }
 
 void SignalBasedTokenGenerator::receiveSignal(cComponent *source, simsignal_t signal, double value, cObject *details)
 {
     Enter_Method("%s", cComponent::getSignalName(signal));
-
-    generateTokens();
+    if (std::isnan(doubleSignalValue) || doubleSignalValue == value)
+        generateTokens();
 }
 
 void SignalBasedTokenGenerator::receiveSignal(cComponent *source, simsignal_t signal, cObject *object, cObject *details)

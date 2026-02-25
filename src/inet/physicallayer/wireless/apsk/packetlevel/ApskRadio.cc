@@ -7,10 +7,10 @@
 
 #include "inet/physicallayer/wireless/apsk/packetlevel/ApskRadio.h"
 
+#include "inet/common/packet/chunk/BitCountChunk.h"
+#include "inet/common/packet/Packet.h"
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/Simsignals.h"
-#include "inet/common/packet/Packet.h"
-#include "inet/common/packet/chunk/BitCountChunk.h"
 #include "inet/physicallayer/wireless/apsk/bitlevel/ApskEncoder.h"
 #include "inet/physicallayer/wireless/apsk/bitlevel/ApskLayeredTransmitter.h"
 #include "inet/physicallayer/wireless/apsk/packetlevel/ApskPhyHeader_m.h"
@@ -22,7 +22,7 @@ namespace physicallayer {
 Define_Module(ApskRadio);
 
 ApskRadio::ApskRadio() :
-    FlatRadioBase()
+    NarrowbandRadioBase()
 {
 }
 
@@ -41,7 +41,7 @@ void ApskRadio::handleUpperPacket(Packet *packet)
     if (protocol != nullptr && protocol != packet->getTag<PacketProtocolTag>()->getProtocol())
         throw cRuntimeError("Packet received with incorrect protocol");
     else
-        FlatRadioBase::handleUpperPacket(packet);
+        NarrowbandRadioBase::handleUpperPacket(packet);
 }
 
 void ApskRadio::sendUp(Packet *packet)
@@ -53,14 +53,14 @@ void ApskRadio::sendUp(Packet *packet)
         delete packet;
     }
     else
-        FlatRadioBase::sendUp(packet);
+        NarrowbandRadioBase::sendUp(packet);
 }
 
 b ApskRadio::computePaddingLength(b length, const ConvolutionalCode *forwardErrorCorrection, const ApskModulationBase *modulation) const
 {
     int modulationCodeWordSize = modulation->getCodeWordSize();
     int encodedCodeWordSize = forwardErrorCorrection == nullptr ? modulationCodeWordSize : modulationCodeWordSize *forwardErrorCorrection->getCodeRatePuncturingK();
-    return b((encodedCodeWordSize - b(length).get() % encodedCodeWordSize) % encodedCodeWordSize);
+    return b((encodedCodeWordSize - length.get<b>() % encodedCodeWordSize) % encodedCodeWordSize);
 }
 
 const ApskModulationBase *ApskRadio::getModulation() const
@@ -92,8 +92,8 @@ const ApskModulationBase *ApskRadio::getModulation() const
 void ApskRadio::encapsulate(Packet *packet) const
 {
     auto phyHeader = makeShared<ApskPhyHeader>();
-    phyHeader->setCrc(0);
-    phyHeader->setCrcMode(CRC_DISABLED);
+    phyHeader->setFcs(0);
+    phyHeader->setFcsMode(FCS_DISABLED);
     phyHeader->setPayloadLengthField(packet->getDataLength());
     phyHeader->setPayloadProtocol(packet->getTag<PacketProtocolTag>()->getProtocol());
     b headerLength = phyHeader->getChunkLength();

@@ -60,7 +60,7 @@ class INET_API CsmaCaMac : public MacProtocolBase, public IMacProtocol, public q
     ModuleRefByPar<physicallayer::IRadio> radio;
     physicallayer::IRadio::TransmissionState transmissionState = physicallayer::IRadio::TRANSMISSION_STATE_UNDEFINED;
 
-    cFSM fsm;
+    Fsm fsm;
 
     /** Remaining backoff period in seconds */
     simtime_t backoffPeriod = -1;
@@ -195,9 +195,9 @@ class INET_API CsmaCaMac : public MacProtocolBase, public IMacProtocol, public q
 
   public:
     // IActivePacketSink:
-    virtual queueing::IPassivePacketSource *getProvider(cGate *gate) override;
-    virtual void handleCanPullPacketChanged(cGate *gate) override;
-    virtual void handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful) override;
+    virtual queueing::IPassivePacketSource *getProvider(const cGate *gate) override;
+    virtual void handleCanPullPacketChanged(const cGate *gate) override;
+    virtual void handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful) override;
 };
 
 } // namespace inet

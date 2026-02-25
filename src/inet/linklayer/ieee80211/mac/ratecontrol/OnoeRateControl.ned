@@ -7,16 +7,18 @@
 
 package inet.linklayer.ieee80211.mac.ratecontrol;
 
+import inet.common.SimpleModule;
 import inet.linklayer.ieee80211.mac.contract.IRateControl;
 
 //
 // Implements ONOE, a credit-based rate control algorithm originally
 // developed by Atheros.
 //
-simple OnoeRateControl like IRateControl
+simple OnoeRateControl extends SimpleModule like IRateControl
 {
     parameters:
-        double initialRate @unit(bps) = default(-1bps); // -1 means fastest mandatory rate
+        @class(OnoeRateControl);
+        double initialRate @unit(bps) = default(-1bps); // -1 means the fastest mandatory rate
         double interval @unit(s) = default(1s);
         @display("i=block/cogwheel");
         @signal[datarateChanged];

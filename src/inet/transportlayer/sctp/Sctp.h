@@ -21,7 +21,7 @@
 #include "inet/networklayer/ipv4/IIpv4RoutingTable.h"
 #include "inet/transportlayer/contract/sctp/SctpSocket.h"
 #include "inet/transportlayer/contract/udp/UdpSocket.h"
-#include "inet/transportlayer/sctp/SctpCrcInsertionHook.h"
+#include "inet/transportlayer/sctp/SctpChecksumInsertionHook.h"
 #include "inet/transportlayer/sctp/SctpHeader.h"
 #include "inet/transportlayer/sctp/SctpUdpHook.h"
 
@@ -60,7 +60,7 @@ class SctpHeader;
  * SctpAssociation internally relies on 3 objects. The first two are subclassed
  * from SctpSendQueue and SctpReceiveQueue. They manage the actual data stream,
  * so SctpAssociation itself only works with sequence number variables.
- * This makes it possible to easily accomodate need for various types of
+ * This makes it possible to easily accommodate need for various types of
  * simulated data transfer: real byte stream, "virtual" bytes (byte counts
  * only), and sequence of cMessage objects (where every message object is
  * mapped to a SCTP sequence number range).
@@ -77,7 +77,7 @@ class SctpHeader;
  * The concrete SctpAlgorithm class to use can be chosen per association (in OPEN)
  * or in a module parameter.
  */
-class INET_API Sctp : public cSimpleModule
+class INET_API Sctp : public SimpleModule
 {
   public:
     struct AppAssocKey {
@@ -119,45 +119,6 @@ class INET_API Sctp : public cSimpleModule
         uint16_t remotePort;
     };
 
-    struct AssocStat {
-        int32_t assocId;
-        simtime_t start;
-        simtime_t stop;
-        uint64_t rcvdBytes;
-        uint64_t sentBytes;
-        uint64_t transmittedBytes;
-        uint64_t ackedBytes;
-        uint32_t numFastRtx;
-        uint32_t numDups;
-        uint32_t numT3Rtx;
-        uint32_t numPathFailures;
-        uint32_t numForwardTsn;
-        double throughput;
-        simtime_t lifeTime;
-        uint32_t numOverfullSACKs;
-        uint64_t sumRGapRanges; // Total sum of RGap ranges (Last RGapStop - CumAck)
-        uint64_t sumNRGapRanges; // Total sum of NRGap ranges (Last NRGapStop - CumAck)
-        uint32_t numDropsBecauseNewTsnGreaterThanHighestTsn;
-        uint32_t numDropsBecauseNoRoomInBuffer;
-        uint32_t numChunksReneged;
-        uint32_t numAuthChunksSent;
-        uint32_t numAuthChunksAccepted;
-        uint32_t numAuthChunksRejected;
-        uint32_t numResetRequestsSent;
-        uint32_t numResetRequestsPerformed;
-        simtime_t fairStart;
-        simtime_t fairStop;
-        uint64_t fairAckedBytes;
-        double fairThroughput;
-        simtime_t fairLifeTime;
-        uint64_t numEndToEndMessages;
-        SimTime cumEndToEndDelay;
-        uint64_t startEndToEndDelay;
-        uint64_t stopEndToEndDelay;
-    };
-
-    typedef std::map<int32_t, AssocStat> AssocStatMap;
-    AssocStatMap assocStatMap;
     typedef std::map<int32_t, VTagPair> SctpVTagMap;
     SctpVTagMap sctpVTagMap;
 
@@ -203,7 +164,7 @@ class INET_API Sctp : public cSimpleModule
     bool sackNow;
     uint64_t numPktDropReports;
     int interfaceId = -1;
-    CrcMode crcMode = CRC_MODE_UNDEFINED;
+    ChecksumMode checksumMode = CHECKSUM_MODE_UNDEFINED;
 
   public:
     virtual ~Sctp();
@@ -212,12 +173,6 @@ class INET_API Sctp : public cSimpleModule
     virtual void handleMessage(cMessage *msg) override;
     virtual void finish() override;
     virtual void send_to_ip(Packet *msg);
-
-    AssocStat *getAssocStat(uint32_t assocId)
-    {
-        auto found = assocStatMap.find(assocId);
-        return (found != assocStatMap.end()) ? &found->second : nullptr;
-    }
 
     /**
      * To be called from SctpAssociation when socket pair    changes
@@ -271,6 +226,9 @@ class INET_API Sctp : public cSimpleModule
     void setRtoMax(double rtoMax) { socketOptions->rtoMax = rtoMax; }
     void setInterfaceId(int id) { interfaceId = id; }
     int getInterfaceId() { return interfaceId; };
+
+    void sendToIp(cMessage *msg);
+    void sendToApp(cMessage *msg);
 };
 
 } // namespace sctp

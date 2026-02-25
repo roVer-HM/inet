@@ -25,10 +25,11 @@ void MarkovScheduler::initialize(int stage)
         ClockUserModuleMixin::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         for (int i = 0; i < gateSize("in"); i++) {
-            auto input = findConnectedModule<IActivePacketSource>(inputGates[i]);
-            producers.push_back(input);
+            ActivePacketSourceRef producer;
+            producer.reference(inputGates[i], false);
+            producers.push_back(producer);
         }
-        consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+        consumer.reference(outputGate, false);
         state = par("initialState");
         int numStates = gateSize("in");
         cStringTokenizer transitionProbabilitiesTokenizer(par("transitionProbabilities"));
@@ -51,7 +52,7 @@ void MarkovScheduler::initialize(int stage)
             checkPacketOperationSupport(inputGate);
         checkPacketOperationSupport(outputGate);
         if (producers[state] != nullptr)
-            producers[state]->handleCanPushPacketChanged(inputGates[state]->getPathStartGate());
+            producers[state].handleCanPushPacketChanged();
         scheduleWaitTimer();
     }
 }
@@ -70,7 +71,7 @@ void MarkovScheduler::handleMessage(cMessage *message)
             }
         }
         if (producers[state] != nullptr)
-            producers[state]->handleCanPushPacketChanged(inputGates[state]->getPathStartGate());
+            producers[state].handleCanPushPacketChanged();
         scheduleWaitTimer();
     }
     else
@@ -87,17 +88,17 @@ void MarkovScheduler::scheduleWaitTimer()
     scheduleClockEventAfter(waitIntervals[state].doubleValue(this), waitTimer);
 }
 
-bool MarkovScheduler::canPushSomePacket(cGate *gate) const
+bool MarkovScheduler::canPushSomePacket(const cGate *gate) const
 {
     return gate->getIndex() == state;
 }
 
-bool MarkovScheduler::canPushPacket(Packet *packet, cGate *gate) const
+bool MarkovScheduler::canPushPacket(Packet *packet, const cGate *gate) const
 {
     return canPushSomePacket(gate);
 }
 
-void MarkovScheduler::pushPacket(Packet *packet, cGate *gate)
+void MarkovScheduler::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -106,7 +107,6 @@ void MarkovScheduler::pushPacket(Packet *packet, cGate *gate)
     processedTotalLength += packet->getDataLength();
     pushOrSendPacket(packet, outputGate, consumer);
     numProcessedPackets++;
-    updateDisplayString();
 }
 
 std::string MarkovScheduler::resolveDirective(char directive) const
@@ -119,18 +119,18 @@ std::string MarkovScheduler::resolveDirective(char directive) const
     }
 }
 
-void MarkovScheduler::handleCanPushPacketChanged(cGate *gate)
+void MarkovScheduler::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
     if (producers[state] != nullptr)
-        producers[state]->handleCanPushPacketChanged(inputGates[state]->getPathStartGate());
+        producers[state].handleCanPushPacketChanged();
 }
 
-void MarkovScheduler::handlePushPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void MarkovScheduler::handlePushPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePushPacketProcessed");
     if (producers[state] != nullptr)
-        producers[state]->handlePushPacketProcessed(packet, inputGates[state]->getPathStartGate(), successful);
+        producers[state].handlePushPacketProcessed(packet, successful);
 }
 
 } // namespace queueing

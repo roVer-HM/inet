@@ -26,22 +26,20 @@ void TokenBasedServer::initialize(int stage)
         maxNumTokens = par("maxNumTokens");
         WATCH(numTokens);
     }
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
 }
 
 void TokenBasedServer::processPackets()
 {
     while (true) {
-        auto packet = provider->canPullPacket(inputGate->getPathStartGate());
+        auto packet = provider.canPullPacket();
         if (packet == nullptr)
             break;
         else {
             auto tokenConsumptionPerPacket = tokenConsumptionPerPacketParameter->doubleValue();
             auto tokenConsumptionPerBit = tokenConsumptionPerBitParameter->doubleValue();
-            int numRequiredTokens = tokenConsumptionPerPacket + tokenConsumptionPerBit * packet->getTotalLength().get();
+            int numRequiredTokens = tokenConsumptionPerPacket + tokenConsumptionPerBit * packet->getDataLength().get<b>();
             if (numTokens >= numRequiredTokens) {
-                packet = provider->pullPacket(inputGate->getPathStartGate());
+                packet = provider.pullPacket();
                 take(packet);
                 emit(packetPulledSignal, packet);
                 EV_INFO << "Processing packet" << EV_FIELD(packet) << EV_ENDL;
@@ -51,7 +49,6 @@ void TokenBasedServer::processPackets()
                 numProcessedPackets++;
                 numTokens -= numRequiredTokens;
                 emit(tokensRemovedSignal, numTokens);
-                updateDisplayString();
             }
             else {
                 if (!tokensDepletedSignaled) {
@@ -64,16 +61,15 @@ void TokenBasedServer::processPackets()
     }
 }
 
-void TokenBasedServer::handleCanPushPacketChanged(cGate *gate)
+void TokenBasedServer::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
 }
 
-void TokenBasedServer::handleCanPullPacketChanged(cGate *gate)
+void TokenBasedServer::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     processPackets();
-    updateDisplayString();
 }
 
 void TokenBasedServer::addTokens(double tokens)
@@ -85,7 +81,6 @@ void TokenBasedServer::addTokens(double tokens)
     emit(tokensAddedSignal, numTokens);
     tokensDepletedSignaled = false;
     processPackets();
-    updateDisplayString();
 }
 
 std::string TokenBasedServer::resolveDirective(char directive) const

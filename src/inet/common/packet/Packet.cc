@@ -6,7 +6,7 @@
 
 
 #include "inet/common/packet/Packet.h"
-#include "inet/common/packet/tag/SharingTagSet.h"
+
 #include "inet/common/ProtocolTag_m.h"
 #include "inet/common/packet/Message.h"
 #include "inet/common/packet/chunk/SequenceChunk.h"
@@ -136,9 +136,9 @@ void Packet::parsimPack(cCommBuffer *buffer) const
     cPacket::parsimPack(buffer);
     buffer->packObject(const_cast<Chunk *>(content.get()));
     buffer->pack(frontIterator.getIndex());
-    buffer->pack(frontIterator.getPosition().get());
+    buffer->pack(frontIterator.getPosition().get<b>());
     buffer->pack(backIterator.getIndex());
-    buffer->pack(backIterator.getPosition().get());
+    buffer->pack(backIterator.getPosition().get<b>());
     tags.parsimPack(buffer);
     regionTags.parsimPack(buffer);
 }
@@ -341,7 +341,7 @@ std::ostream& Packet::printToStream(std::ostream& stream, int level, int evFlags
     if (level <= PRINT_LEVEL_DETAIL)
         stream << EV_FAINT << "(" << className << ")" << EV_NORMAL;
     stream << EV_ITALIC << getName() << EV_NORMAL << " (" << getDataLength() << ") ";
-    content->printToStream(stream, level + 1, evFlags);
+    peekData(Chunk::PF_ALLOW_EMPTY)->printToStream(stream, level + 1, evFlags);
     return stream;
 }
 
@@ -350,26 +350,6 @@ std::string Packet::str() const
     std::stringstream stream;
     stream << "(" << getDataLength() << ") " << content;
     return stream.str();
-}
-
-std::string Packet::tagStr() const {
-    int numTags = tags.getNumTags();
-    std::stringstream out;
-    out << "TagSet:{";
-    for(int i=0; i < numTags - 1; i++){
-        out <<  tags.getTag(i)->getClassName() << ", ";
-    }
-    out << tags.getTag(numTags-1)->getClassName() << "}";
-    return out.str();
-}
-
-// TODO: move?
-SharingTagSet& getTags(cMessage *msg)
-{
-    if (msg->isPacket())
-        return check_and_cast<Packet *>(msg)->getTags();
-    else
-        return check_and_cast<Message *>(msg)->getTags();
 }
 
 } // namespace

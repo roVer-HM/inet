@@ -7,18 +7,20 @@
 
 package inet.routing.gpsr;
 
+import inet.common.SimpleModule;
 import inet.routing.contract.IManetRouting;
 
 //
-// This module provides Greedy Perimeter Stateless Routing for Wireless Networks.
+// Provides Greedy Perimeter Stateless Routing for Wireless Networks.
 // The implementation supports both GG and RNG planarization algorithms.
 //
 // For more information on the routing algorithm, see the GPSR paper
 // http://www.eecs.harvard.edu/~~htk/publication/2000-mobi-karp-kung.pdf
 //
-simple Gpsr like IManetRouting
+simple Gpsr extends SimpleModule like IManetRouting
 {
     parameters:
+        @class(Gpsr);
         // properties
         @display("i=block/routing");
 
@@ -26,7 +28,6 @@ simple Gpsr like IManetRouting
         string interfaceTableModule;   // The path to the InterfaceTable module
         string routingTableModule = default("^.ipv4.routingTable");
         string networkProtocolModule = default("^.ipv4.ip");
-        string outputInterface = default("wlan0");
 
         // GPSR parameters
         string planarizationMode @enum("", "GG", "RNG") = default("GG");
@@ -37,7 +38,7 @@ simple Gpsr like IManetRouting
         int positionByteLength @unit(B) = default(2 * 4B);
 
         // visualization parameters
-        bool displayBubbles = default(false);   // display bubble messages about changes in routing state for packets
+        bool displayBubbles = default(false);   // Display bubble messages about changes in routing state for packets
     gates:
         input ipIn;
         output ipOut;

@@ -71,10 +71,10 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
     for (auto flow : input.flows) {
         for (int packetIndex = 0; packetIndex < getPacketCount(flow); packetIndex++) {
             for (auto pathFragment : flow->pathFragments) {
-                for (int nodeIndex = 0; nodeIndex < pathFragment->networkNodes.size() - 1; nodeIndex++) {
+                for (size_t nodeIndex = 0; nodeIndex + 1 < pathFragment->networkNodes.size(); nodeIndex++) {
                     auto transmissionPort = pathFragment->outputPorts[nodeIndex];
                     auto transmissionDurationVariable = getTransmissionDurationVariable(flow, transmissionPort);
-                    simtime_t transmissionDuration = s(flow->startApplication->packetLength / transmissionPort->datarate).get();
+                    simtime_t transmissionDuration = (flow->startApplication->packetLength / transmissionPort->datarate).get<s>();
                     addAssert(transmissionDurationVariable == z3Context->real_val(transmissionDuration.str().c_str()));
                     auto transmissionStartTimeVariable = getTransmissionStartTimeVariable(flow, packetIndex, transmissionPort, flow->gateIndex);
                     auto transmissionEndTimeVariable = getTransmissionEndTimeVariable(flow, packetIndex, transmissionPort, flow->gateIndex);
@@ -105,7 +105,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
             std::shared_ptr<expr> previousReceptionEndTimeVariable;
             std::shared_ptr<expr> previousReceptionStartTimeVariable;
             for (auto pathFragment : flow->pathFragments) {
-                for (int nodeIndex = 0; nodeIndex < pathFragment->networkNodes.size() - 1; nodeIndex++) {
+                for (size_t nodeIndex = 0; nodeIndex + 1 < pathFragment->networkNodes.size(); nodeIndex++) {
                     auto transmissionPort = pathFragment->outputPorts[nodeIndex];
                     auto transmissionStartTimeVariable = getTransmissionStartTimeVariable(flow, packetIndex, transmissionPort, flow->gateIndex);
                     if (firstTransmissionStartTimeVariable == nullptr)
@@ -117,7 +117,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
                         addAssert(applicationStartTimeVariable + packetIntervalVariable * z3Context->real_val(packetIndex) == transmissionStartTimeVariable);
                     else if (previousReceptionEndTimeVariable) {
                         if (transmissionPort->cutthroughSwitchingEnabled && receptionPort->cutthroughSwitchingEnabled && flow->cutthroughSwitchingHeaderSize != b(0)) {
-                            simtime_t cutthroughDelay = s(flow->cutthroughSwitchingHeaderSize / receptionPort->datarate).get();
+                            simtime_t cutthroughDelay = (flow->cutthroughSwitchingHeaderSize / receptionPort->datarate).get<s>();
                             addAssert(transmissionStartTimeVariable >= previousReceptionStartTimeVariable + z3Context->real_val(cutthroughDelay.str().c_str()));
                         }
                         else
@@ -158,15 +158,15 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
 
     // 5. add one transmission per port at a time constraints
     for (auto port : input.ports) {
-        simtime_t interframeGap = s(b(96) / port->datarate).get();
+        simtime_t interframeGap = (b(96) / port->datarate).get<s>();
         auto interframeGapVariable = getInterframeGapVariable(port);
         addAssert(interframeGapVariable == z3Context->real_val(interframeGap.str().c_str()));
         auto transmissionStartTimeVariables = getTransmissionStartTimeVariables(port);
         auto transmissionEndTimeVariables = getTransmissionEndTimeVariables(port);
-        for (int i = 0; i < transmissionStartTimeVariables.size(); i++) {
+        for (size_t i = 0; i < transmissionStartTimeVariables.size(); i++) {
             auto transmissionStartTimeVariableI = transmissionStartTimeVariables[i];
             auto transmissionEndTimeVariableI = transmissionEndTimeVariables[i];
-            for (int j = i + 1; j < transmissionStartTimeVariables.size(); j++) {
+            for (size_t j = i + 1; j < transmissionStartTimeVariables.size(); j++) {
                 auto transmissionStartTimeVariableJ = transmissionStartTimeVariables[j];
                 auto transmissionEndTimeVariableJ = transmissionEndTimeVariables[j];
                 addAssert(transmissionEndTimeVariableI + interframeGapVariable <= transmissionStartTimeVariableJ ||
@@ -180,15 +180,15 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
         for (int gateIndex = 0; gateIndex < port->numGates; gateIndex++) {
             auto transmissionEndTimeVariables = getTransmissionEndTimeVariables(port, gateIndex);
             auto receptionEndTimeVariables = getReceptionEndTimeVariables(port, gateIndex);
-            for (int i = 0; i < transmissionEndTimeVariables.size(); i++) {
+            for (size_t i = 0; i < transmissionEndTimeVariables.size(); i++) {
                 auto transmissionEndTimeVariableI = transmissionEndTimeVariables[i];
                 if (i < receptionEndTimeVariables.size()) {
                     auto receptionEndTimeVariableI = receptionEndTimeVariables[i];
-                    for (int j = i + 1; j < transmissionEndTimeVariables.size(); j++) {
+                    for (size_t j = i + 1; j < transmissionEndTimeVariables.size(); j++) {
                         auto transmissionEndTimeVariableJ = transmissionEndTimeVariables[j];
                         if (j < receptionEndTimeVariables.size()) {
                             auto receptionEndTimeVariableJ = receptionEndTimeVariables[j];
-                            addAssert(receptionEndTimeVariableI < receptionEndTimeVariableJ == transmissionEndTimeVariableI < transmissionEndTimeVariableJ);
+                            addAssert((receptionEndTimeVariableI < receptionEndTimeVariableJ) == (transmissionEndTimeVariableI < transmissionEndTimeVariableJ));
                         }
                     }
                 }
@@ -203,11 +203,11 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
             auto receptionEndTimeVariablesI = getReceptionEndTimeVariables(port, gateIndexI);
             for (int gateIndexJ = gateIndexI + 1; gateIndexJ < port->numGates; gateIndexJ++) {
                 auto transmissionStartTimeVariablesJ = getTransmissionStartTimeVariables(port, gateIndexJ);
-                for (int i = 0; i < receptionEndTimeVariablesI.size(); i++) {
+                for (size_t i = 0; i < receptionEndTimeVariablesI.size(); i++) {
                     auto receptionEndTimeVariableI = receptionEndTimeVariablesI[i];
                     if (i < transmissionStartTimeVariablesI.size()) {
                         auto transmissionStartTimeVariableI = transmissionStartTimeVariablesI[i];
-                        for (int j = 0; j < transmissionStartTimeVariablesJ.size(); j++) {
+                        for (size_t j = 0; j < transmissionStartTimeVariablesJ.size(); j++) {
                             auto transmissionStartTimeVariableJ = transmissionStartTimeVariablesJ[j];
                             addAssert(transmissionStartTimeVariableJ <= receptionEndTimeVariableI || transmissionStartTimeVariableJ >= transmissionStartTimeVariableI);
                         }
@@ -243,7 +243,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
         for (auto flow : input.flows) {
             for (int packetIndex = 0; packetIndex < getPacketCount(flow); packetIndex++) {
                 for (auto pathFragment : flow->pathFragments) {
-                    for (int nodeIndex = 0; nodeIndex < pathFragment->networkNodes.size() - 1; nodeIndex++) {
+                    for (size_t nodeIndex = 0; nodeIndex + 1 < pathFragment->networkNodes.size(); nodeIndex++) {
                         auto transmissionPort = pathFragment->outputPorts[nodeIndex];
                         double transmissionStartTime = getVariableValue(model, getTransmissionStartTimeVariable(flow, packetIndex, transmissionPort, flow->gateIndex));
                         double transmissionEndTime = getVariableValue(model, getTransmissionEndTimeVariable(flow, packetIndex, transmissionPort, flow->gateIndex));
@@ -266,7 +266,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
                 schedule->cycleDuration = gateCycleDuration;
                 auto transmissionStartTimeVariables = getTransmissionStartTimeVariables(port, gateIndex);
                 auto transmissionEndTimeVariables = getTransmissionEndTimeVariables(port, gateIndex);
-                for (int i = 0; i < transmissionStartTimeVariables.size(); i++) {
+                for (size_t i = 0; i < transmissionStartTimeVariables.size(); i++) {
                     simtime_t slotStart = getVariableValue(model, transmissionStartTimeVariables[i]);
                     simtime_t slotEnd = getVariableValue(model, transmissionEndTimeVariables[i]);
                     simtime_t slotDuration = slotEnd - slotStart;
@@ -308,7 +308,7 @@ Z3GateScheduleConfigurator::Output *Z3GateScheduleConfigurator::computeGateSched
 double Z3GateScheduleConfigurator::getVariableValue(const model& model, const std::shared_ptr<expr> expr) const
 {
     auto str = model.eval(*expr.get(), false).to_string();
-    int index = str.find('/');
+    auto index = str.find('/');
     if (index != std::string::npos) {
         str = str.substr(3, str.length() - 1);
         index = str.find(' ');

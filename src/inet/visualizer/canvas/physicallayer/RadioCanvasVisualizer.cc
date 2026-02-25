@@ -118,11 +118,11 @@ void RadioCanvasVisualizer::addRadioVisualization(const RadioVisualization *radi
     RadioVisualizerBase::addRadioVisualization(radioVisualization);
     auto radioCanvasVisualization = static_cast<const RadioCanvasVisualization *>(radioVisualization);
     if (displayRadioMode)
-        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->radioModeFigure, radioCanvasVisualization->radioModeFigure->getSize(), placementHint, placementPriority);
+        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->radioModeFigure, radioCanvasVisualization->radioModeFigure->getBounds(), placementHint, placementPriority);
     if (displayReceptionState)
-        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->receptionStateFigure, radioCanvasVisualization->receptionStateFigure->getSize(), placementHint, placementPriority);
+        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->receptionStateFigure, radioCanvasVisualization->receptionStateFigure->getBounds(), placementHint, placementPriority);
     if (displayTransmissionState)
-        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->transmissionStateFigure, radioCanvasVisualization->transmissionStateFigure->getSize(), placementHint, placementPriority);
+        radioCanvasVisualization->networkNodeVisualization->addAnnotation(radioCanvasVisualization->transmissionStateFigure, radioCanvasVisualization->transmissionStateFigure->getBounds(), placementHint, placementPriority);
     if (displayAntennaLobes) {
         radioCanvasVisualization->networkNodeVisualization->addFigure(radioCanvasVisualization->antennaLobeFigure);
         radioCanvasVisualization->networkNodeVisualization->addFigure(radioCanvasVisualization->antennaLobeUnitGainFigure);
@@ -178,9 +178,9 @@ void RadioCanvasVisualizer::refreshAntennaLobe(const IAntenna *antenna, cPolygon
     double maxGain = antenna->getGain()->getMaxGain();
     auto antennaCanvasPosition = canvasProjection->computeCanvasPoint(antennaPosition, antennaCanvasDepth);
     auto antennaDirection = Quaternion(antenna->getMobility()->getCurrentAngularPosition()).inverse();
-    for (double i = 0; i < unit(deg(360) / antennaLobeStep).get(); i++) {
+    for (double i = 0; i < (deg(360) / antennaLobeStep).get<unit>(); i++) {
         deg angle = i * antennaLobeStep;
-        cFigure::Point lobeCanvasOffset(cos(rad(angle).get()), sin(rad(angle).get()));
+        cFigure::Point lobeCanvasOffset(cos(angle.get<rad>()), sin(angle.get<rad>()));
         if (!strcmp(antennaLobePlane, "view")) {
             auto lobePosition = canvasProjection->computeCanvasPointInverse(antennaCanvasPosition + lobeCanvasOffset, antennaCanvasDepth);
             auto lobeDirection = Quaternion::rotationFromTo(Coord::X_AXIS, lobePosition - antennaPosition);

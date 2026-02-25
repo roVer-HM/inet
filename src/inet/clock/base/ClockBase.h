@@ -11,22 +11,22 @@
 #include "inet/clock/common/ClockTime.h"
 #include "inet/clock/common/ClockEvent.h"
 #include "inet/clock/contract/IClock.h"
-#include "inet/common/StringFormat.h"
+#include "inet/common/DebugDefs.h"
 #include "inet/common/ModuleRefByPar.h"
+#include "inet/common/SimpleModule.h"
 
 namespace inet {
 
-class INET_API ClockBase : public cSimpleModule, public IClock, public StringFormat::IDirectiveResolver
+class INET_API ClockBase : public SimpleModule, public IClock
 {
   public:
     static simsignal_t timeChangedSignal;
 
   protected:
-    clocktime_t clockEventTime = -1;
-    const char *displayStringTextFormat = nullptr;
     ModuleRefByPar<IClock> referenceClockModule;
     simtime_t emitClockTimeInterval;
     cMessage *timer = nullptr;
+    mutable clocktime_t lastClockTime;
 
   protected:
     virtual ~ClockBase() { cancelAndDelete(timer); }
@@ -34,15 +34,16 @@ class INET_API ClockBase : public cSimpleModule, public IClock, public StringFor
     virtual void initialize(int stage) override;
     virtual void handleMessage(cMessage *msg) override;
     virtual void finish() override;
-    virtual void refreshDisplay() const override;
-    virtual void updateDisplayString() const;
 
-    cSimpleModule *getTargetModule() const {
-        cSimpleModule *target = getSimulation()->getContextSimpleModule();
-        if (target == nullptr)
-            throw cRuntimeError("scheduleAt()/cancelEvent() must be called with a simple module in context");
-        return target;
-    }
+    virtual void checkScheduledClockEvent(const ClockEvent *event) const;
+
+    cSimpleModule* getTargetModule() const;
+
+    virtual void scheduleTargetModuleClockEventAt(simtime_t time, ClockEvent *event);
+    virtual void scheduleTargetModuleClockEventAfter(simtime_t time, ClockEvent *event);
+    virtual ClockEvent *cancelTargetModuleClockEvent(ClockEvent *event);
+
+    virtual simtime_t computeScheduleTime(clocktime_t time) const;
 
   public:
     virtual clocktime_t getClockTime() const override;
@@ -51,6 +52,7 @@ class INET_API ClockBase : public cSimpleModule, public IClock, public StringFor
     virtual void scheduleClockEventAfter(clocktime_t time, ClockEvent *event) override;
     virtual ClockEvent *cancelClockEvent(ClockEvent *event) override;
     virtual void handleClockEvent(ClockEvent *event) override;
+    virtual bool isScheduledClockEvent(ClockEvent *event) const override { return event->isScheduled(); }
 
     virtual std::string resolveDirective(char directive) const override;
 };

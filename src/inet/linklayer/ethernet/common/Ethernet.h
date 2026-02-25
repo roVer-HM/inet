@@ -7,7 +7,9 @@
 #ifndef __INET_ETHERNET_H
 #define __INET_ETHERNET_H
 
+#include "inet/common/packet/Packet.h"
 #include "inet/common/Units.h"
+#include "inet/linklayer/common/FcsMode_m.h"
 
 namespace inet {
 
@@ -15,6 +17,8 @@ using namespace inet::units::values;
 
 // Constants from the 802.3 spec
 #define MAX_PACKETBURST    13
+
+const double SPEED_OF_LIGHT_IN_CABLE = 200000000.0;
 
 const B GIGABIT_MAX_BURST_BYTES          = B(8192); /* don't start new frame after 8192 or more bytes already transmitted */
 const B MAX_ETHERNET_DATA_BYTES          = B(1500); /* including LLC, SNAP etc headers */
@@ -34,6 +38,7 @@ const b INTERFRAME_GAP_BITS              = b(96);
 #define HUNDRED_GIGABIT_ETHERNET_TXRATE        100000000000.0   /* 100 Gbit/sec (in bit/s) */
 #define TWOHUNDRED_GIGABIT_ETHERNET_TXRATE     200000000000.0   /* 200 Gbit/sec (in bit/s) */
 #define FOURHUNDRED_GIGABIT_ETHERNET_TXRATE    400000000000.0   /* 400 Gbit/sec (in bit/s) */
+#define EIGHTHUNDRED_GIGABIT_ETHERNET_TXRATE   800000000000.0   /* 800 Gbit/sec (in bit/s) */
 
 #define MAX_ATTEMPTS                           16
 #define BACKOFF_RANGE_LIMIT                    10
@@ -54,7 +59,7 @@ const B ETHER_ADDR_LEN = B(6);
 const B ETHER_TYPE_LEN = B(2);
 
 /*
- * The number of bytes in the trailing CRC field.
+ * The number of bytes in the trailing FCS field.
  */
 const B ETHER_FCS_BYTES                  = B(4);
 const B ETHER_MAC_HEADER_BYTES           = ETHER_ADDR_LEN + ETHER_ADDR_LEN + ETHER_TYPE_LEN; /* src(6)+dest(6)+length/type(2) */
@@ -68,6 +73,8 @@ const B ETHER_PAUSE_COMMAND_PADDED_BYTES = std::max(MIN_ETHERNET_FRAME_BYTES, ET
  * A macro to validate a length with
  */
 #define ETHER_IS_VALID_LEN(foo)    ((foo) >= MIN_ETHERNET_FRAME_BYTES && (foo) <= ETHER_MAX_LEN)
+
+extern uint32_t computeEthernetFcs(const Packet *packet, FcsMode fcsMode);
 
 } // namespace inet
 

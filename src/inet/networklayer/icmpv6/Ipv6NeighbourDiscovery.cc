@@ -76,11 +76,11 @@ Ipv6NeighbourDiscovery::~Ipv6NeighbourDiscovery()
 
 void Ipv6NeighbourDiscovery::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
-        const char *crcModeString = par("crcMode");
-        crcMode = parseCrcMode(crcModeString, false);
+        const char *checksumModeString = par("checksumMode");
+        checksumMode = parseChecksumMode(checksumModeString, false);
     }
     else if (stage == INITSTAGE_NETWORK_LAYER_PROTOCOLS) {
         cModule *node = findContainingNode(this);
@@ -188,23 +188,29 @@ void Ipv6NeighbourDiscovery::handleMessage(cMessage *msg)
 
 void Ipv6NeighbourDiscovery::processNDMessage(Packet *packet, const Icmpv6Header *icmpv6Header)
 {
-    if (auto rs = dynamic_cast<const Ipv6RouterSolicitation *>(icmpv6Header)) {
-        processRsPacket(packet, rs);
-    }
-    else if (auto ra = dynamic_cast<const Ipv6RouterAdvertisement *>(icmpv6Header)) {
-        processRaPacket(packet, ra);
-    }
-    else if (auto ns = dynamic_cast<const Ipv6NeighbourSolicitation *>(icmpv6Header)) {
-        processNsPacket(packet, ns);
-    }
-    else if (auto na = dynamic_cast<const Ipv6NeighbourAdvertisement *>(icmpv6Header)) {
-        processNaPacket(packet, na);
-    }
-    else if (auto redirect = dynamic_cast<const Ipv6Redirect *>(icmpv6Header)) {
-        processRedirectPacket(redirect);
-    }
-    else {
-        throw cRuntimeError("Unrecognized ND message!");
+    switch(icmpv6Header->getType()) {
+        case ICMPv6_ROUTER_SOL:
+            processRsPacket(packet, check_and_cast<const Ipv6RouterSolicitation *>(icmpv6Header));
+            break;
+
+        case ICMPv6_ROUTER_AD:
+            processRaPacket(packet, check_and_cast<const Ipv6RouterAdvertisement *>(icmpv6Header));
+            break;
+
+        case ICMPv6_NEIGHBOUR_SOL:
+            processNsPacket(packet, check_and_cast<const Ipv6NeighbourSolicitation *>(icmpv6Header));
+            break;
+
+        case ICMPv6_NEIGHBOUR_AD:
+            processNaPacket(packet, check_and_cast<const Ipv6NeighbourAdvertisement *>(icmpv6Header));
+            break;
+
+        case ICMPv6_REDIRECT:
+            processRedirectPacket(check_and_cast<const Ipv6Redirect *>(icmpv6Header));
+            break;
+
+        default:
+            throw cRuntimeError("Unrecognized ND message!");
     }
 }
 
@@ -973,7 +979,7 @@ void Ipv6NeighbourDiscovery::createAndSendRsPacket(NetworkInterface *ie)
 
     // Construct a Router Solicitation message
     auto packet = new Packet("RSpacket");
-    Icmpv6::insertCrc(crcMode, rs, packet);
+    Icmpv6::insertChecksum(checksumMode, rs, packet);
     packet->insertAtFront(rs);
     sendPacketToIpv6Module(packet, destAddr, myIPv6Address, ie->getInterfaceId());
 }
@@ -1278,7 +1284,7 @@ void Ipv6NeighbourDiscovery::createAndSendRaPacket(const Ipv6Address& destAddr, 
         }
 
         auto packet = new Packet("RApacket");
-        Icmpv6::insertCrc(crcMode, ra, packet);
+        Icmpv6::insertChecksum(checksumMode, ra, packet);
         packet->insertAtFront(ra);
         sendPacketToIpv6Module(packet, destAddr, sourceAddr, ie->getInterfaceId());
     }
@@ -1316,7 +1322,7 @@ void Ipv6NeighbourDiscovery::processRaPacket(Packet *packet, const Ipv6RouterAdv
         // Possible options
 //        MacAddress macAddress = ra->getSourceLinkLayerAddress();
 //        uint mtu = ra->getMTU();
-        for (int i = 0; i < (int)ra->getOptions().getOptionArraySize(); i++) {
+        for (size_t i = 0; i < ra->getOptions().getOptionArraySize(); i++) {
             auto option = ra->getOptions().getOption(i);
             if (option->getType() != IPv6ND_PREFIX_INFORMATION)
                 continue;
@@ -1493,7 +1499,7 @@ void Ipv6NeighbourDiscovery::processRaPrefixInfo(const Ipv6RouterAdvertisement *
        the autonomous flag set and be used by [ADDRCONF].*/
     Ipv6NdPrefixInformation prefixInfo;
     // For each Prefix Information option
-    for (int i = 0; i < (int)ra->getOptions().getOptionArraySize(); i++) {
+    for (size_t i = 0; i < ra->getOptions().getOptionArraySize(); i++) {
         auto option = ra->getOptions().getOption(i);
         if (option->getType() != IPv6ND_PREFIX_INFORMATION)
             continue;
@@ -1790,7 +1796,7 @@ bool Ipv6NeighbourDiscovery::validateRaPacket(Packet *packet, const Ipv6RouterAd
     // - All included options have a length that is greater than zero.
     // CB
     bool prefixInfoFound = false;
-    for (int i = 0; i < (int)ra->getOptions().getOptionArraySize(); i++) {
+    for (size_t i = 0; i < ra->getOptions().getOptionArraySize(); i++) {
         auto option = ra->getOptions().getOption(i);
         if (option->getType() == IPv6ND_PREFIX_INFORMATION) {
             prefixInfoFound = true;
@@ -1833,7 +1839,7 @@ void Ipv6NeighbourDiscovery::createAndSendNsPacket(const Ipv6Address& nsTargetAd
         ns->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
     }
     auto packet = new Packet("NSpacket");
-    Icmpv6::insertCrc(crcMode, ns, packet);
+    Icmpv6::insertChecksum(checksumMode, ns, packet);
     packet->insertAtFront(ns);
     sendPacketToIpv6Module(packet, dgDestAddr, dgSrcAddr, ie->getInterfaceId());
 
@@ -2083,7 +2089,7 @@ void Ipv6NeighbourDiscovery::sendSolicitedNa(Packet *packet, const Ipv6Neighbour
     Ipv6Address myIPv6Addr = ie->getProtocolData<Ipv6InterfaceData>()->getPreferredAddress();
 
     auto naPacket = new Packet("NApacket");
-    Icmpv6::insertCrc(crcMode, na, packet);
+    Icmpv6::insertChecksum(checksumMode, na, packet);
     naPacket->insertAtFront(na);
     sendPacketToIpv6Module(naPacket, naDestAddr, myIPv6Addr, ie->getInterfaceId());
 }
@@ -2094,9 +2100,7 @@ void Ipv6NeighbourDiscovery::sendUnsolicitedNa(NetworkInterface *ie)
     // Section 7.2.6: Sending Unsolicited Neighbor Advertisements
 #ifdef INET_WITH_xMIPv6
     Enter_Method("sendUnsolicitedNa");
-#endif /* INET_WITH_xMIPv6 */
 
-#ifndef INET_WITH_xMIPv6
     // In some cases a node may be able to determine that its link-layer
     // address has changed (e.g., hot-swap of an interface card) and may
     // wish to inform its neighbors of the new link-layer address quickly.
@@ -2104,33 +2108,25 @@ void Ipv6NeighbourDiscovery::sendUnsolicitedNa(NetworkInterface *ie)
     // unsolicited Neighbor Advertisement messages to the all-nodes
     // multicast address.  These advertisements MUST be separated by at
     // least RetransTimer seconds.
-#else /* INET_WITH_xMIPv6 */
     auto na = makeShared<Ipv6NeighbourAdvertisement>();
     Ipv6Address myIPv6Addr = ie->getProtocolData<Ipv6InterfaceData>()->getPreferredAddress();
-#endif /* INET_WITH_xMIPv6 */
 
     // The Target Address field in the unsolicited advertisement is set to
     // an IP address of the interface, and the Target Link-Layer Address
     // option is filled with the new link-layer address.
-#ifdef INET_WITH_xMIPv6
     na->setTargetAddress(myIPv6Addr);
     auto sla = new Ipv6NdTargetLinkLayerAddress();
     sla->setLinkLayerAddress(ie->getMacAddress());
     na->getOptionsForUpdate().appendOption(sla);
     na->addChunkLength(IPv6ND_LINK_LAYER_ADDRESS_OPTION_LENGTH);
-#endif /* INET_WITH_xMIPv6 */
 
     // The Solicited flag MUST be set to zero, in order to avoid confusing
     // the Neighbor Unreachability Detection algorithm.
-#ifdef INET_WITH_xMIPv6
     na->setSolicitedFlag(false);
-#endif /* INET_WITH_xMIPv6 */
 
     // If the node is a router, it MUST set the Router flag to one;
     // otherwise it MUST set it to zero.
-#ifdef INET_WITH_xMIPv6
     na->setRouterFlag(rt6->isRouter());
-#endif /* INET_WITH_xMIPv6 */
 
     // The Override flag MAY be set to either zero or one.  In either case,
     // neighboring nodes will immediately change the state of their Neighbor
@@ -2139,9 +2135,7 @@ void Ipv6NeighbourDiscovery::sendUnsolicitedNa(NetworkInterface *ie)
     // one, neighboring nodes will install the new link-layer address in
     // their caches.  Otherwise, they will ignore the new link-layer
     // address, choosing instead to probe the cached address.
-#ifdef INET_WITH_xMIPv6
     na->setOverrideFlag(true);
-#endif /* INET_WITH_xMIPv6 */
 
     // A node that has multiple IP addresses assigned to an interface MAY
     // multicast a separate Neighbor Advertisement for each address.  In
@@ -2168,9 +2162,8 @@ void Ipv6NeighbourDiscovery::sendUnsolicitedNa(NetworkInterface *ie)
     // Neighbor Unreachability Detection algorithm ensures that all nodes
     // obtain a reachable link-layer address, though the delay may be
     // slightly longer.
-#ifdef INET_WITH_xMIPv6
     auto packet = new Packet("NApacket");
-    Icmpv6::insertCrc(crcMode, na, packet);
+    Icmpv6::insertChecksum(checksumMode, na, packet);
     packet->insertAtFront(na);
     sendPacketToIpv6Module(packet, Ipv6Address::ALL_NODES_2, myIPv6Addr, ie->getInterfaceId());
 #endif /* INET_WITH_xMIPv6 */

@@ -14,7 +14,7 @@ import inet.queueing.contract.IPacketQueue;
 import inet.queueing.contract.IPacketScheduler;
 
 //
-// This module implements a priority queue with multiple inner queues each having
+// Implements a priority queue with multiple inner queues each having
 // its own periodic gate for packet selection and an optional shared memory buffer.
 //
 module GatingPriorityQueue extends CompoundPacketQueueBase
@@ -23,7 +23,7 @@ module GatingPriorityQueue extends CompoundPacketQueueBase
         int numQueues;
         double bitrate @unit(bps);
         *.bitrate = default(this.bitrate);
-        *.extraLength = default(64b); // overhead for Ethernet PHY header
+        *.extraLength = default(64b); // Overhead for Ethernet PHY header
     submodules:
         buffer: <default("")> like IPacketBuffer if typename != "" {
             parameters:

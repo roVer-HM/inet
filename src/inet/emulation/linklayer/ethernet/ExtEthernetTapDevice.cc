@@ -37,21 +37,23 @@ ExtEthernetTapDevice::~ExtEthernetTapDevice()
 
 void ExtEthernetTapDevice::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         device = par("device").stdstringValue();
         packetNameFormat = par("packetNameFormat");
         rtScheduler = check_and_cast<RealTimeScheduler *>(getSimulation()->getScheduler());
-        openTap(device);
         numSent = numReceived = 0;
         WATCH(numSent);
         WATCH(numReceived);
     }
+    else if (stage == INITSTAGE_EXTERNAL)
+        openTap(device);
 }
 
 void ExtEthernetTapDevice::handleMessage(cMessage *msg)
 {
     auto packet = check_and_cast<Packet *>(msg);
+    auto incomingPacketLength = packet->getDataLength();
     emit(packetReceivedFromLowerSignal, packet);
     auto protocol = packet->getTag<PacketProtocolTag>()->getProtocol();
     if (protocol != &Protocol::ethernetMac)
@@ -70,7 +72,7 @@ void ExtEthernetTapDevice::handleMessage(cMessage *msg)
     ssize_t nwrite = write(fd, buffer, packetLength);
     if ((size_t)nwrite == packetLength) {
         emit(packetSentSignal, packet);
-        EV_INFO << "Sent a " << packet->getTotalLength() << " packet from " << ethHeader->getSrc() << " to " << ethHeader->getDest() << " to TAP device '" << device << "'.\n";
+        EV_INFO << "Sent a " << incomingPacketLength << " packet from " << ethHeader->getSrc() << " to " << ethHeader->getDest() << " to TAP device '" << device << "'.\n";
         numSent++;
     }
     else
@@ -81,9 +83,9 @@ void ExtEthernetTapDevice::handleMessage(cMessage *msg)
 
 void ExtEthernetTapDevice::refreshDisplay() const
 {
-    char buf[180];
-    sprintf(buf, "TAP device: %s\nrcv:%d snt:%d", device.c_str(), numReceived, numSent);
-    getDisplayString().setTagArg("t", 0, buf);
+    SimpleModule::refreshDisplay();
+    std::string buf = "TAP device: " + device + "\nrcv:" + std::to_string(numReceived) + " snt:" + std::to_string(numSent);
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void ExtEthernetTapDevice::finish()
@@ -145,13 +147,14 @@ bool ExtEthernetTapDevice::notify(int fd)
         Packet *packet = new Packet(nullptr, makeShared<BytesChunk>(buffer + 4, nread - 4));
         auto ethernetFcs = makeShared<EthernetFcs>();
         ethernetFcs->setFcsMode(FCS_COMPUTED); // TODO get fcsMode from NED parameter
+        ethernetFcs->setFcs(computeEthernetFcs(packet, FCS_COMPUTED));
         packet->insertAtBack(ethernetFcs);
         packet->addTag<DispatchProtocolReq>()->setProtocol(&Protocol::ethernetMac);
         packet->addTag<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
         packet->setName(packetPrinter.printPacketToString(packet, packetNameFormat).c_str());
         emit(packetReceivedSignal, packet);
         const auto& macHeader = packet->peekAtFront<EthernetMacHeader>();
-        EV_INFO << "Received a " << packet->getTotalLength() << " packet from " << macHeader->getSrc() << " to " << macHeader->getDest() << ".\n";
+        EV_INFO << "Received a " << packet->getDataLength() << " packet from " << macHeader->getSrc() << " to " << macHeader->getDest() << ".\n";
         send(packet, "lowerLayerOut");
         emit(packetSentToLowerSignal, packet);
         numReceived++;

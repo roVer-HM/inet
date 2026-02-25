@@ -10,7 +10,8 @@ package inet.linklayer.ieee8021q;
 import inet.protocolelement.shaper.EligibilityTimeGate;
 
 //
-// This module implements the IEEE 802.1Q asynchronous shaper.
+// Implements the IEEE 802.1Q asynchronous shaper.
+// An alias for the EligibilityTimeGate module.
 //
 module Ieee8021qAsynchronousShaper extends EligibilityTimeGate
 {

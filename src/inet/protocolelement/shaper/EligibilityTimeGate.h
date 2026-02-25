@@ -37,12 +37,18 @@ class INET_API EligibilityTimeGate : public ClockUserModuleMixin<PacketGateBase>
     virtual void updateOpen();
     virtual void emitEligibilityTimeChangedSignal();
 
+    virtual simtime_t getRemainingEligibilityTime() const;
+
   public:
     virtual ~EligibilityTimeGate() { cancelAndDelete(eligibilityTimer); }
 
-    virtual Packet *pullPacket(cGate *gate) override;
+    virtual Packet *pullPacket(const cGate *gate) override;
 
-    virtual void handleCanPullPacketChanged(cGate *gate) override;
+    virtual void handleCanPullPacketChanged(const cGate *gate) override;
+
+#if OMNETPP_VERSION < 0x0602
+    virtual std::string resolveExpression(const char *expression) const override;
+#endif
 };
 
 } // namespace inet

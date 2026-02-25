@@ -20,8 +20,8 @@
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/queueing/base/PacketProcessorBase.h"
+#include "inet/queueing/common/PassivePacketSinkRef.h"
 #include "inet/queueing/contract/IPacketProcessor.h"
-#include "inet/queueing/contract/IPassivePacketSink.h"
 
 namespace inet {
 
@@ -100,8 +100,10 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     cGate *txOut = nullptr;
     cChannel *rxTransmissionChannel = nullptr;
     cChannel *txTransmissionChannel = nullptr;
-    queueing::IPassivePacketSink *upperLayerInConsumer = nullptr;
-    queueing::IPassivePacketSink *upperLayerOutConsumer = nullptr;
+    cGate *upperLayerInConsumerGate = nullptr;
+    cGate *upperLayerOutConsumerGate = nullptr;
+    queueing::PassivePacketSinkRef upperLayerInConsumer;
+    queueing::PassivePacketSinkRef upperLayerOutConsumer;
 
     const Protocol *protocol = nullptr;
     ModuleRefByPar<IInterfaceTable> interfaceTable; ///< IInterfaceTable that contains this interface, or nullptr
@@ -150,7 +152,7 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
         F_NAME, F_NODE_IN_GATEID, F_NODE_OUT_GATEID, F_NETW_GATEIDX,
         F_LOOPBACK, F_BROADCAST, F_MULTICAST, F_POINTTOPOINT,
         F_DATARATE, F_MTU, F_MACADDRESS, F_TOKEN,
-        F_IPV4_DATA, F_IPV6_DATA, F_NEXTHOP_DATA, F_ISIS_DATA, F_TRILL_DATA, F_IEEE8021D_DATA, F_CLNS_DATA
+        F_IPV4_DATA, F_IPV6_DATA, F_NEXTHOP_DATA, F_ISIS_DATA, F_TRILL_DATA, F_IEEE8021D_DATA, F_CLNS_DATA, F_MRP_DATA
     };
 
   protected:
@@ -162,8 +164,6 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
     virtual void initialize(int stage) override;
     virtual void handleParameterChange(const char *name) override;
-    virtual void refreshDisplay() const override;
-    virtual void updateDisplayString() const override;
     virtual std::string resolveDirective(char directive) const override;
     virtual void receiveSignal(cComponent *source, simsignal_t signal, cObject *obj, cObject *details) override;
     virtual cGate *createGateObject(cGate::Type type) override {
@@ -190,17 +190,17 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     virtual std::string str() const override;
     virtual std::string getInterfaceFullPath() const;
 
-    virtual bool supportsPacketSending(cGate *gate) const override { return true; }
-    virtual bool supportsPacketPushing(cGate *gate) const override { return true; }
-    virtual bool supportsPacketPulling(cGate *gate) const override { return false; }
-    virtual bool supportsPacketPassing(cGate *gate) const override { return true; }
-    virtual bool supportsPacketStreaming(cGate *gate) const override { return false; }
-    virtual bool canPushSomePacket(cGate *gate) const override;
-    virtual bool canPushPacket(Packet *packet, cGate *gate) const override;
-    virtual void pushPacket(Packet *packet, cGate *gate) override;
-    virtual void pushPacketStart(Packet *packet, cGate *gate, bps datarate) override;
-    virtual void pushPacketEnd(Packet *packet, cGate *gate) override;
-    virtual void pushPacketProgress(Packet *packet, cGate *gate, bps datarate, b position, b extraProcessableLength = b(0)) override { throw cRuntimeError("Invalid operation"); }
+    virtual bool supportsPacketSending(const cGate *gate) const override { return true; }
+    virtual bool supportsPacketPushing(const cGate *gate) const override { return true; }
+    virtual bool supportsPacketPulling(const cGate *gate) const override { return false; }
+    virtual bool supportsPacketPassing(const cGate *gate) const override { return true; }
+    virtual bool supportsPacketStreaming(const cGate *gate) const override { return false; }
+    virtual bool canPushSomePacket(const cGate *gate) const override;
+    virtual bool canPushPacket(Packet *packet, const cGate *gate) const override;
+    virtual void pushPacket(Packet *packet, const cGate *gate) override;
+    virtual void pushPacketStart(Packet *packet, const cGate *gate, bps datarate) override;
+    virtual void pushPacketEnd(Packet *packet, const cGate *gate) override;
+    virtual void pushPacketProgress(Packet *packet, const cGate *gate, bps datarate, b position, b extraProcessableLength = b(0)) override { throw cRuntimeError("Invalid operation"); }
 
     /**
      * Returns the IInterfaceTable this interface is in, or nullptr
@@ -214,13 +214,6 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
 
     cChannel *getRxTransmissionChannel() { return rxTransmissionChannel; }
     cChannel *getTxTransmissionChannel() { return txTransmissionChannel; }
-
-    /**
-     * Returns the combined state of the carrier and the interface requested state.
-     */
-    // TODO remove hasCarrier from this function and update all call sites accordingly
-    bool isUp() const { return getState() == UP && hasCarrier(); }
-    bool isDown() const { return getState() != UP; }
 
     void setHasModuleIdAddress(bool value) { hasModuleIdAddress = value; }
     void setHasModulePathAddress(bool value) { hasModulePathAddress = value; }
@@ -238,6 +231,7 @@ class INET_API NetworkInterface : public queueing::PacketProcessorBase, public q
     int getNodeInputGateId() const { return nodeInputGateId; }
     int getMtu() const { return mtu; }
     bool hasCarrier() const { return carrier; }
+    bool isUp() const { return state == UP; }
     bool isBroadcast() const { return broadcast; }
     bool isMulticast() const { return multicast; }
     bool isPointToPoint() const { return pointToPoint; }

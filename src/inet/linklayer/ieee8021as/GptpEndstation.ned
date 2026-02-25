@@ -11,13 +11,14 @@ import inet.applications.contract.IApp;
 import inet.node.inet.StandardHost;
 
 //
-// This module implements a gPTP end station that contains a clock module and
+// Implements a gPTP end station that contains a clock module and
 // a gPTP protocol.
 //
 module GptpEndstation extends StandardHost
 {
     parameters:
         clock.typename = default("SettableClock");
+        eth[*].typename = default("LayeredEthernetInterface");
     submodules:
         gptp: <default("Gptp")> like IApp if typename != "" {
             @display("p=700.11755,75.166");

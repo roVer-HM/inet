@@ -20,7 +20,7 @@
 #include "inet/networklayer/common/L3Tools.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -427,7 +427,7 @@ void Dymo::sendDymoPacket(const Ptr<DymoPacket>& packet, const NetworkInterface 
     // In its default mode of operation, AODVv2 uses the Udp port 269 [RFC5498] to carry protocol packets.
     udpHeader->setSourcePort(DYMO_UDP_PORT);
     udpHeader->setDestinationPort(DYMO_UDP_PORT);
-    udpHeader->setCrcMode(CRC_DISABLED);
+    udpHeader->setChecksumMode(CHECKSUM_DISABLED);
     udpPacket->addTag<DispatchProtocolReq>()->setProtocol(addressType->getNetworkProtocol());
     if (networkInterface)
         udpPacket->addTag<InterfaceReq>()->setInterfaceId(networkInterface->getInterfaceId());
@@ -959,7 +959,7 @@ void Dymo::processRerr(Packet *packet, const Ptr<const Rerr>& rerrIncoming)
         // route table for a route using longest prefix matching.  If no such
         // Route is found, processing is complete for that UnreachableNode.Address.
         std::vector<L3Address> unreachableAddresses;
-        for (int i = 0; i < (int)rerrIncoming->getUnreachableNodeArraySize(); i++) {
+        for (size_t i = 0; i < rerrIncoming->getUnreachableNodeArraySize(); i++) {
             const AddressBlock& addressBlock = rerrIncoming->getUnreachableNode(i);
             for (int j = 0; j < routingTable->getNumRoutes(); j++) {
                 IRoute *route = routingTable->getRoute(j);

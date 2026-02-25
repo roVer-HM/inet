@@ -11,14 +11,14 @@ import inet.visualizer.base.QueueVisualizerBase;
 import inet.visualizer.contract.IQueueVisualizer;
 
 //
-// This module visualizes queues on a 2D canvas.
+// Visualizes queues on a 2D canvas.
 //
 // @see ~QueueOsgVisualizer, ~QueueVisualizer, ~QueueVisualizerBase, ~IQueueVisualizer
 //
 simple QueueCanvasVisualizer extends QueueVisualizerBase like IQueueVisualizer
 {
     parameters:
-        double zIndex = default(10); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(10); // Determines the drawing order of figures relative to other visualizers
         @class(QueueCanvasVisualizer);
 }
 

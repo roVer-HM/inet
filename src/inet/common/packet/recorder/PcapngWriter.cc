@@ -83,7 +83,7 @@ PcapngWriter::~PcapngWriter()
     PcapngWriter::close(); // NOTE: admitting that this will not call overridden methods from the destructor
 }
 
-void PcapngWriter::open(const char *filename, unsigned int snaplen)
+void PcapngWriter::open(const char *filename, unsigned int snaplen, int timePrecision)
 {
     if (opp_isempty(filename))
         throw cRuntimeError("Cannot open pcap file: file name is empty");
@@ -96,6 +96,9 @@ void PcapngWriter::open(const char *filename, unsigned int snaplen)
         throw cRuntimeError("Cannot open pcap file [%s] for writing: %s", filename, strerror(errno));
 
     flush = false;
+
+    // TODO check validity of timePrecision
+    this->timePrecision = timePrecision;
 
     // header
     int blockTotalLength = 28;
@@ -123,7 +126,7 @@ void PcapngWriter::writeInterface(NetworkInterface *networkInterface, PcapLinkTy
     std::string name = networkInterface->getInterfaceName();
     std::string fullPath = networkInterface->getInterfaceFullPath();
     fullPath = fullPath.substr(fullPath.find('.') + 1);
-    uint32_t optionsLength = (4 + roundUp(name.length())) + (4 + roundUp(fullPath.length())) + (4 + 8) + (4 + 4 + 4) + 4;
+    uint32_t optionsLength = (4 + roundUp(name.length())) + (4 + roundUp(fullPath.length())) + (4 + 8) + (4 + 4 + 4) + (4 + 4) + 4;
     uint32_t blockTotalLength = 20 + optionsLength;
     ASSERT(blockTotalLength % 4 == 0);
 
@@ -174,6 +177,15 @@ void PcapngWriter::writeInterface(NetworkInterface *networkInterface, PcapLinkTy
     for (int i = 0; i < 4; i++) ipAddressBytes[i] = ipv4Netmask.getDByte(i);
     fwrite(ipAddressBytes, 4, 1, dumpfile);
 
+    // tsresol option
+    doh.code = 0x0009;
+    doh.length = 1;
+    fwrite(&doh, sizeof(doh), 1, dumpfile);
+    uint8_t d = timePrecision;
+    fwrite(&d, 1, 1, dumpfile);
+    paddingLength = pad(1);
+    fwrite(padding, paddingLength, 1, dumpfile);
+
     // end of options
     uint32_t endOfOptions = 0;
     fwrite(&endOfOptions, sizeof(endOfOptions), 1, dumpfile);
@@ -184,7 +196,7 @@ void PcapngWriter::writeInterface(NetworkInterface *networkInterface, PcapLinkTy
     fwrite(&ibt, sizeof(ibt), 1, dumpfile);
 }
 
-void PcapngWriter::writePacket(simtime_t stime, const Packet *packet, Direction direction, NetworkInterface *networkInterface, PcapLinkType linkType)
+void PcapngWriter::writePacket(simtime_t stime, const Packet *packet, b frontOffset, b backOffset, Direction direction, NetworkInterface *networkInterface, PcapLinkType linkType)
 {
     EV_INFO << "Writing packet to file" << EV_FIELD(fileName) << EV_FIELD(packet) << EV_ENDL;
     if (!dumpfile)
@@ -203,8 +215,9 @@ void PcapngWriter::writePacket(simtime_t stime, const Packet *packet, Direction 
     if (networkInterface == nullptr)
         throw cRuntimeError("The interface entry not found for packet");
 
+    b capturedLength = packet->getDataLength() - frontOffset - backOffset;
     uint32_t optionsLength = (4 + 4) + 4;
-    uint32_t blockTotalLength = 32 + roundUp(packet->getByteLength()) + optionsLength;
+    uint32_t blockTotalLength = 32 + roundUp(capturedLength.get<B>()) + optionsLength;
     ASSERT(blockTotalLength % 4 == 0);
 
     // header
@@ -212,22 +225,24 @@ void PcapngWriter::writePacket(simtime_t stime, const Packet *packet, Direction 
     pbh.blockTotalLength = blockTotalLength;
     pbh.interfaceId = pcapngInterfaceId;
     ASSERT(stime >= SIMTIME_ZERO);
-    uint64_t timestamp = stime.inUnit(SIMTIME_US);
+    uint64_t timestamp = stime.inUnit(static_cast<SimTimeUnit>(-timePrecision));
     pbh.timestampHigh = static_cast<uint32_t>((timestamp >> 32) & 0xFFFFFFFFLLU);
     pbh.timestampLow = static_cast<uint32_t>(timestamp & 0xFFFFFFFFLLU);
-    pbh.capturedPacketLength = packet->getByteLength();
-    pbh.originalPacketLength = packet->getByteLength();
+    pbh.capturedPacketLength = capturedLength.get<B>();
+    pbh.originalPacketLength = capturedLength.get<B>();
     fwrite(&pbh, sizeof(pbh), 1, dumpfile);
 
-    // packet data
-    auto data = packet->peekDataAsBytes();
-    auto bytes = data->getBytes();
-    fwrite(bytes.data(), packet->getByteLength(), 1, dumpfile);
+    if (capturedLength != b(0)) {
+        // packet data
+        auto data = packet->peekDataAt<BytesChunk>(frontOffset, capturedLength);
+        auto bytes = data->getBytes();
+        fwrite(bytes.data(), bytes.size(), 1, dumpfile);
 
-    // packet padding
-    char padding[] = { 0, 0, 0, 0 };
-    int paddingLength = pad(packet->getByteLength());
-    fwrite(padding, paddingLength, 1, dumpfile);
+        // packet padding
+        char padding[] = { 0, 0, 0, 0 };
+        int paddingLength = pad(capturedLength.get<B>());
+        fwrite(padding, paddingLength, 1, dumpfile);
+    }
 
     // direction option
     pcapng_option_header doh;

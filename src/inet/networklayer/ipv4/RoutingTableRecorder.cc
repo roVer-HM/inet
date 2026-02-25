@@ -21,8 +21,6 @@ namespace inet {
 
 Define_Module(RoutingTableRecorder);
 
-Register_PerRunConfigOption(CFGID_ROUTINGLOG_FILE, "routinglog-file", CFG_FILENAME, "${resultdir}/${configname}-${runnumber}.rt", "Name of the routing log file to generate.");
-
 RoutingTableRecorder::RoutingTableRecorder()
 {
     routingLogFile = nullptr;
@@ -38,7 +36,7 @@ RoutingTableRecorder::~RoutingTableRecorder()
 
 void RoutingTableRecorder::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_NETWORK_LAYER) {
         if (par("enabled"))
@@ -73,7 +71,7 @@ void RoutingTableRecorder::hookListeners()
 void RoutingTableRecorder::ensureRoutingLogFileOpen()
 {
     if (routingLogFile == nullptr) {
-        std::string fname = getEnvir()->getConfig()->getAsFilename(CFGID_ROUTINGLOG_FILE);
+        std::string fname = getEnvir()->getConfig()->substituteVariables(par("logfile"));
         inet::utils::makePathForFile(fname.c_str());
         routingLogFile = fopen(fname.c_str(), "w");
         if (!routingLogFile)
@@ -149,7 +147,8 @@ void RoutingTableRecorder::recordRouteChange(cModule *host, const IRoute *route,
     // action, eventNo, simtime, moduleId, routerID, dest, dest netmask, nexthop
     ensureRoutingLogFileOpen();
     auto ie = route->getInterface();
-    fprintf(routingLogFile, "%s #%" PRId64 "  %ss  %s  %s  %s/%d  %s  %s\n",
+    const cObject *routeProtocolData = route->getProtocolData();
+    fprintf(routingLogFile, "%s #%" PRId64 "  %ss  %s  %s  %s/%d  %s  %s %s\n",
             tag,
             getSimulation()->getEventNumber(),
             SIMTIME_STR(simTime()),
@@ -158,7 +157,8 @@ void RoutingTableRecorder::recordRouteChange(cModule *host, const IRoute *route,
             route->getDestinationAsGeneric().str().c_str(),
             route->getPrefixLength(),
             route->getNextHopAsGeneric().str().c_str(),
-            (ie ? ie->getInterfaceName() : "*"));
+            (ie ? ie->getInterfaceName() : "*"),
+            (routeProtocolData ? routeProtocolData->str().c_str() : ""));
     fflush(routingLogFile);
 }
 

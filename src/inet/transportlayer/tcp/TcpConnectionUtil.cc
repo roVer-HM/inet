@@ -75,8 +75,11 @@ const char *TcpConnection::eventName(int event)
         CASE(TCP_E_SEND);
         CASE(TCP_E_CLOSE);
         CASE(TCP_E_ABORT);
+        CASE(TCP_E_DESTROY);
         CASE(TCP_E_STATUS);
         CASE(TCP_E_QUEUE_BYTES_LIMIT);
+        CASE(TCP_E_READ);
+        CASE(TCP_E_SETOPTION);
         CASE(TCP_E_RCV_DATA);
         CASE(TCP_E_RCV_ACK);
         CASE(TCP_E_RCV_SYN);
@@ -171,7 +174,7 @@ void TcpConnection::printSegmentBrief(Packet *tcpSegment, const Ptr<const TcpHea
     if (tcpHeader->getPshBit())
         EV_INFO << "PSH ";
 
-    auto payloadLength = tcpSegment->getByteLength() - B(tcpHeader->getHeaderLength()).get();
+    auto payloadLength = tcpSegment->getByteLength() - tcpHeader->getHeaderLength().get<B>();
     if (payloadLength > 0 || tcpHeader->getSynBit()) {
         EV_INFO << "[" << tcpHeader->getSequenceNo() << ".." << (tcpHeader->getSequenceNo() + payloadLength) << ") ";
         EV_INFO << "(l=" << payloadLength << ") ";
@@ -228,6 +231,8 @@ void TcpConnection::initClonedConnection(TcpConnection *listenerConn)
     state->fork = true;
     localAddr = listenerConn->localAddr;
     localPort = listenerConn->localPort;
+    autoRead = listenerConn->autoRead;
+
     FSM_Goto(fsm, TCP_S_LISTEN);
 }
 
@@ -236,7 +241,7 @@ TcpConnection *TcpConnection::cloneListeningConnection()
     auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
     int newSocketId = getActiveSimulationOrEnvir()->getUniqueNumber();
     char submoduleName[24];
-    sprintf(submoduleName, "conn-%d", newSocketId);
+    snprintf(submoduleName, sizeof(submoduleName), "conn-%d", newSocketId);
     auto conn = check_and_cast<TcpConnection *>(moduleType->createScheduleInit(submoduleName, tcpMain));
     conn->initConnection(tcpMain, newSocketId);
     conn->initClonedConnection(this);
@@ -246,7 +251,7 @@ TcpConnection *TcpConnection::cloneListeningConnection()
 void TcpConnection::sendToIP(Packet *tcpSegment, const Ptr<TcpHeader>& tcpHeader)
 {
     // record seq (only if we do send data) and ackno
-    if (tcpSegment->getByteLength() > B(tcpHeader->getChunkLength()).get())
+    if (tcpSegment->getByteLength() > tcpHeader->getChunkLength().get<B>())
         emit(sndNxtSignal, tcpHeader->getSequenceNo());
 
     emit(sndAckSignal, tcpHeader->getAckNo());
@@ -297,8 +302,8 @@ void TcpConnection::sendToIP(Packet *tcpSegment, const Ptr<TcpHeader>& tcpHeader
     // (ECT(0) or ECT(1)) in the IP header for retransmitted data packets
     tcpSegment->addTagIfAbsent<EcnReq>()->setExplicitCongestionNotification((state->ect && !state->sndAck && !state->rexmit) ? IP_ECN_ECT_1 : IP_ECN_NOT_ECT);
 
-    tcpHeader->setCrc(0);
-    tcpHeader->setCrcMode(tcpMain->crcMode);
+    tcpHeader->setChecksum(0);
+    tcpHeader->setChecksumMode(tcpMain->checksumMode);
 
     insertTransportProtocolHeader(tcpSegment, Protocol::tcp, tcpHeader);
 
@@ -359,6 +364,7 @@ void TcpConnection::sendAvailableIndicationToApp()
     ind->setRemoteAddr(remoteAddr);
     ind->setLocalPort(localPort);
     ind->setRemotePort(remotePort);
+    ind->setAutoRead(autoRead);
 
     indication->addTag<SocketInd>()->setSocketId(listeningSocketId);
     indication->setControlInfo(ind);
@@ -374,6 +380,7 @@ void TcpConnection::sendEstabIndicationToApp()
     ind->setRemoteAddr(remoteAddr);
     ind->setLocalPort(localPort);
     ind->setRemotePort(remotePort);
+    ind->setAutoRead(autoRead);
     indication->addTag<SocketInd>()->setSocketId(socketId);
     indication->setControlInfo(ind);
     sendToApp(indication);
@@ -387,18 +394,21 @@ void TcpConnection::sendToApp(cMessage *msg)
 void TcpConnection::sendAvailableDataToApp()
 {
     if (receiveQueue->getAmountOfBufferedBytes()) {
-        if (tcpMain->useDataNotification) {
-            auto indication = new Indication("Data Notification", TCP_I_DATA_NOTIFICATION); // TODO currently we never send TCP_I_URGENT_DATA
-            TcpCommand *cmd = new TcpCommand();
-            indication->addTag<SocketInd>()->setSocketId(socketId);
-            indication->setControlInfo(cmd);
-            sendToApp(indication);
-        }
-        else {
-            while (auto msg = receiveQueue->extractBytesUpTo(state->rcv_nxt)) {
-                msg->setKind(TCP_I_DATA); // TODO currently we never send TCP_I_URGENT_DATA
+        if (autoRead || maxByteCountRequested > 0) {
+            uint32_t endSeqNo = state->rcv_nxt;
+            if (!autoRead) {
+                uint32_t requestedEndPos = receiveQueue->getFirstSeqNo() + maxByteCountRequested;
+                if (seqLess(requestedEndPos, endSeqNo))
+                    endSeqNo = requestedEndPos;
+            }
+            while (auto msg = receiveQueue->extractBytesUpTo(endSeqNo)) {
+                msg->setKind(TCP_I_DATA);    // TBD currently we never send TCP_I_URGENT_DATA
                 msg->addTag<SocketInd>()->setSocketId(socketId);
                 sendToApp(msg);
+                if (!autoRead) {
+                    maxByteCountRequested = 0;
+                    break;
+                }
             }
         }
     }
@@ -435,29 +445,38 @@ void TcpConnection::initConnection(TcpOpenCommand *openCmd)
 
 void TcpConnection::configureStateVariables()
 {
-    state->dupthresh = tcpMain->par("dupthresh");
-    long advertisedWindowPar = tcpMain->par("advertisedWindow");
-    state->ws_support = tcpMain->par("windowScalingSupport"); // if set, this means that current host supports WS (RFC 1323)
-    state->ws_manual_scale = tcpMain->par("windowScalingFactor"); // scaling factor (set manually) to help for Tcp validation
-    state->ecnWillingness = tcpMain->par("ecnWillingness"); // if set, current host is willing to use ECN
-    if ((!state->ws_support && advertisedWindowPar > TCP_MAX_WIN) || advertisedWindowPar <= 0 || advertisedWindowPar > TCP_MAX_WIN_SCALED)
-        throw cRuntimeError("Invalid advertisedWindow parameter: %ld", advertisedWindowPar);
+    uint32_t advertisedWindow = tcpMain->par("advertisedWindow");
+    state->ws_support = tcpMain->par("windowScalingSupport");
+    int windowScalingFactor = tcpMain->par("windowScalingFactor");
+    if (windowScalingFactor < -1 || windowScalingFactor > 14)
+        throw cRuntimeError("Invalid parameter value windowScalingFactor=%d -- valid values are 0..14, and -1 for automatic selection based on advertisedWindow", windowScalingFactor);
+    if (state->ws_support) {
+        uint32_t maxAdvertisedWindow = TCP_MAX_WIN << (windowScalingFactor==-1 ? 14 : windowScalingFactor);
+        if (advertisedWindow > maxAdvertisedWindow)
+            throw cRuntimeError("Invalid parameter value: advertisedWindow=%" PRIu32 " exceeds representable maximum %" PRIu32 " with windowScalingFactor=%d", advertisedWindow, maxAdvertisedWindow, windowScalingFactor);
+    }
+    else if (advertisedWindow > TCP_MAX_WIN) {
+        throw cRuntimeError("Invalid parameter value: advertisedWindow=%" PRIu32 " exceeds representable maximum %lu, try turning on window scaling (windowScalingSupport=true)", advertisedWindow, TCP_MAX_WIN);
+    }
+    state->ws_manual_scale = windowScalingFactor;
 
-    state->rcv_wnd = advertisedWindowPar;
-    state->rcv_adv = advertisedWindowPar;
+    state->rcv_wnd = advertisedWindow;
+    state->rcv_adv = advertisedWindow;
 
-    if (state->ws_support && advertisedWindowPar > TCP_MAX_WIN) {
+    if (state->ws_support && advertisedWindow > TCP_MAX_WIN) {
         state->rcv_wnd = TCP_MAX_WIN; // we cannot to guarantee that the other end is also supporting the Window Scale (header option) (RFC 1322)
         state->rcv_adv = TCP_MAX_WIN; // therefore TCP_MAX_WIN is used as initial value for rcv_wnd and rcv_adv
     }
 
-    state->maxRcvBuffer = advertisedWindowPar;
+    state->maxRcvBuffer = advertisedWindow;
     state->delayed_acks_enabled = tcpMain->par("delayedAcksEnabled"); // delayed ACK algorithm (RFC 1122) enabled/disabled
     state->nagle_enabled = tcpMain->par("nagleEnabled"); // Nagle's algorithm (RFC 896) enabled/disabled
     state->limited_transmit_enabled = tcpMain->par("limitedTransmitEnabled"); // Limited Transmit algorithm (RFC 3042) enabled/disabled
     state->increased_IW_enabled = tcpMain->par("increasedIWEnabled"); // Increased Initial Window (RFC 3390) enabled/disabled
     state->snd_mss = tcpMain->par("mss"); // Maximum Segment Size (RFC 793)
     state->ts_support = tcpMain->par("timestampSupport"); // if set, this means that current host supports TS (RFC 1323)
+    state->ecnWillingness = tcpMain->par("ecnWillingness"); // if set, current host is willing to use ECN
+    state->dupthresh = tcpMain->par("dupthresh");
     state->sack_support = tcpMain->par("sackSupport"); // if set, this means that current host supports SACK (RFC 2018, 2883, 3517)
 
     if (state->sack_support) {
@@ -496,7 +515,7 @@ bool TcpConnection::isSegmentAcceptable(Packet *tcpSegment, const Ptr<const TcpH
     //      >0       0     not acceptable
     //      >0      >0     RCV.NXT =< SEG.SEQ < RCV.NXT+RCV.WND
     //                  or RCV.NXT =< SEG.SEQ+SEG.LEN-1 < RCV.NXT+RCV.WND"
-    uint32_t len = tcpSegment->getByteLength() - B(tcpHeader->getHeaderLength()).get();
+    uint32_t len = tcpSegment->getByteLength() - tcpHeader->getHeaderLength().get<B>();
     uint32_t seqNo = tcpHeader->getSequenceNo();
     uint32_t ackNo = tcpHeader->getAckNo();
     uint32_t rcvWndEnd = state->rcv_nxt + state->rcv_wnd;
@@ -643,8 +662,8 @@ void TcpConnection::sendRst(uint32_t seq, L3Address src, L3Address dest, int src
 
     tcpHeader->setRstBit(true);
     tcpHeader->setSequenceNo(seq);
-    tcpHeader->setCrcMode(tcpMain->crcMode);
-    tcpHeader->setCrc(0);
+    tcpHeader->setChecksumMode(tcpMain->checksumMode);
+    tcpHeader->setChecksum(0);
 
     Packet *fp = new Packet("RST");
 
@@ -663,8 +682,8 @@ void TcpConnection::sendRstAck(uint32_t seq, uint32_t ack, L3Address src, L3Addr
     tcpHeader->setAckBit(true);
     tcpHeader->setSequenceNo(seq);
     tcpHeader->setAckNo(ack);
-    tcpHeader->setCrcMode(tcpMain->crcMode);
-    tcpHeader->setCrc(0);
+    tcpHeader->setChecksumMode(tcpMain->checksumMode);
+    tcpHeader->setChecksum(0);
 
     Packet *fp = new Packet("RST+ACK");
 
@@ -697,7 +716,7 @@ void TcpConnection::sendAck()
     // flag set).  After the receipt of the CWR packet, acknowledgments for
     // subsequent non-CE data packets do not have the ECN-Echo flag set.
 
-    TcpStateVariables *state = getState();
+    TcpStateVariables *state = getStateForUpdate();
     if (state && state->ect) {
         if (tcpAlgorithm->shouldMarkAck()) {
             tcpHeader->setEceBit(true);
@@ -767,7 +786,7 @@ uint32_t TcpConnection::sendSegment(uint32_t bytes)
     const auto& tmpTcpHeader = makeShared<TcpHeader>();
     tmpTcpHeader->setAckBit(true); // needed for TS option, otherwise TSecr will be set to 0
     writeHeaderOptions(tmpTcpHeader);
-    uint options_len = B(tmpTcpHeader->getHeaderLength() - TCP_MIN_HEADER_LENGTH).get();
+    uint options_len = (tmpTcpHeader->getHeaderLength() - TCP_MIN_HEADER_LENGTH).get<B>();
 
     ASSERT(options_len < state->snd_mss);
 
@@ -880,7 +899,7 @@ bool TcpConnection::sendData(uint32_t congestionWindow)
     const auto& tmpTcpHeader = makeShared<TcpHeader>();
     tmpTcpHeader->setAckBit(true); // needed for TS option, otherwise TSecr will be set to 0
     writeHeaderOptions(tmpTcpHeader);
-    uint options_len = B(tmpTcpHeader->getHeaderLength() - TCP_MIN_HEADER_LENGTH).get();
+    uint options_len = (tmpTcpHeader->getHeaderLength() - TCP_MIN_HEADER_LENGTH).get<B>();
     ASSERT(options_len < state->snd_mss);
     uint32_t effectiveMss = state->snd_mss - options_len;
 
@@ -1435,7 +1454,7 @@ void TcpConnection::updateRcvQueueVars()
 //    tcpEV << "receiveQ: receiveQLength=" << receiveQueue->getQueueLength() << " maxRcvBuffer=" << state->maxRcvBuffer << " usedRcvBuffer=" << state->usedRcvBuffer << " freeRcvBuffer=" << state->freeRcvBuffer << "\n";
 }
 
-unsigned short TcpConnection::updateRcvWnd()
+uint16_t TcpConnection::updateRcvWnd()
 {
     uint32_t win = 0;
 
@@ -1478,9 +1497,9 @@ unsigned short TcpConnection::updateRcvWnd()
         scaled_rcv_wnd = scaled_rcv_wnd >> state->rcv_wnd_scale;
     }
 
-    ASSERT(scaled_rcv_wnd == (unsigned short)scaled_rcv_wnd);
+    ASSERT(scaled_rcv_wnd == (uint16_t)scaled_rcv_wnd);
 
-    return (unsigned short)scaled_rcv_wnd;
+    return (uint16_t)scaled_rcv_wnd;
 }
 
 void TcpConnection::updateWndInfo(const Ptr<const TcpHeader>& tcpHeader, bool doAlways)

@@ -48,7 +48,7 @@ class INET_API CreditBasedGate : public PacketGateBase, public cListener
     virtual void refreshDisplay() const override;
 
     virtual void processPacket(Packet *packet) override;
-    virtual bool hasAvailablePacket() const { return provider->canPullSomePacket(inputGate->getPathStartGate()); }
+    virtual bool hasAvailablePacket() const { return provider != nullptr && provider.canPullSomePacket(); }
     virtual void updateCurrentState();
 
     virtual void setCurrentCredit(double value);
@@ -64,9 +64,7 @@ class INET_API CreditBasedGate : public PacketGateBase, public cListener
   public:
     virtual ~CreditBasedGate() { cancelAndDelete(changeTimer); }
 
-    virtual void handleCanPullPacketChanged(cGate *gate) override;
-
-    virtual std::string resolveDirective(char directive) const override;
+    virtual void handleCanPullPacketChanged(const cGate *gate) override;
 
     virtual void receiveSignal(cComponent *source, simsignal_t signal, double value, cObject *details) override;
     virtual void receiveSignal(cComponent *source, simsignal_t signal, cObject *object, cObject *details) override;

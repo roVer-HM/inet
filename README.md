@@ -1,11 +1,25 @@
-[![badge 1][badge-1]][1] [![badge 2][badge-2]][2]
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/inet-framework/inet)
+
+[![Build: Linux](https://github.com/inet-framework/inet/actions/workflows/build-linux.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/build-linux.yml)
+[![Build: Mac OS](https://github.com/inet-framework/inet/actions/workflows/build-macos.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/build-macos.yml)
+[![Build: Windows](https://github.com/inet-framework/inet/actions/workflows/build-windows.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/build-windows.yml)
+
+[![Test: chart](https://github.com/inet-framework/inet/actions/workflows/chart-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/chart-tests.yml)
+[![Test: feature](https://github.com/inet-framework/inet/actions/workflows/feature-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/feature-tests.yml)
+[![Test: fingerprint](https://github.com/inet-framework/inet/actions/workflows/fingerprint-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/fingerprint-tests.yml)
+[![Test: module](https://github.com/inet-framework/inet/actions/workflows/module-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/module-tests.yml)
+[![Test: other](https://github.com/inet-framework/inet/actions/workflows/other-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/other-tests.yml)
+<!-- [![Test: speed](https://github.com/inet-framework/inet/actions/workflows/speed-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/speed-tests.yml) -->
+[![Test: statistical](https://github.com/inet-framework/inet/actions/workflows/statistical-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/statistical-tests.yml)
+[![Test: unit](https://github.com/inet-framework/inet/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/unit-tests.yml)
+[![Test: validation](https://github.com/inet-framework/inet/actions/workflows/validation-tests.yml/badge.svg)](https://github.com/inet-framework/inet/actions/workflows/validation-tests.yml)
 
 INET Framework for OMNEST/OMNeT++
 =================================
 
 The [INET framework](https://inet.omnetpp.org) is an open-source communication networks
-simulation package, written for the OMNEST/OMNeT++ simulation system. The INET
-framework contains models for numerous wired and wireless protocols, a detailed
+simulation package, written for the [OMNEST/OMNeT++](https://omnetpp.org) simulation system.
+The INET framework contains models for numerous wired and wireless protocols, a detailed
 physical layer model, application models and more. See the CREDITS file for the
 names of people who have contributed to the INET Framework.
 
@@ -43,17 +57,10 @@ the INET framework without writing any C++ code, as long as you use the
 available modules.
 
 To implement new protocols or modify existing ones, you'll need to add your
-code somewhere under the src directory. If you add new files under the 'src'
+code somewhere under the src directory. If you add new files under the 'src/inet'
 directory you will need to regenerate the makefiles (using the 'make makefiles'
 command).
 
 If you want to use external interfaces in INET, enable the "Emulation" feature
 either in the IDE or using the inet_featuretool then regenerate the INET makefile
 using 'make makefiles'.
-
-
-[badge-1]: https://github.com/inet-framework/inet/workflows/Build%20and%20tests/badge.svg?branch=master
-[badge-2]: https://github.com/inet-framework/inet/workflows/Feature%20tests/badge.svg?branch=master
-
-[1]: https://github.com/inet-framework/inet/actions?query=workflow%3A%22Build+and+tests%22
-[2]: https://github.com/inet-framework/inet/actions?query=workflow%3A%22Feature+tests%22

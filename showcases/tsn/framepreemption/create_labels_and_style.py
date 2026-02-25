@@ -1,15 +1,4 @@
-# ----workaround start----
-# workaround when using omnetpp 6.0 that doesn't yet contain the python path feature
-# remove when it's part of a release
-# replace it with:
-#     import modifiedplot
-try:
-    import modifiedplot
-except:
-    import modifiedplot_fp
-    import modifiedplot
-import matplotlib.pyplot as plt
-# ----workaround end----
+import inet.scave.plot
 from matplotlib.lines import Line2D
 
 alternate_handles = [Line2D([0], [0], color='black', lw=1, linestyle=':', label='Line'),
@@ -26,7 +15,7 @@ def add_custom_style(df):
                     ('configname', '.*FramePreemption', {'linestyle': 'solid'}),
                     ('configname', '.*FifoQueueing', {'linestyle': 'dotted'}),
                     ('configname', '.*PriorityQueueing', {'linestyle': 'dashed'})]
-    df = modifiedplot.add_to_dataframe(df, style_tuple_list)
+    df = inet.scave.plot.add_to_dataframe(df, style_tuple_list)
     return df
 
 # rectangle location

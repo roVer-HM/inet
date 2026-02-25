@@ -7,10 +7,13 @@
 
 package inet.linklayer.ieee80211.mac.queue;
 
-//# TODO rename to InProgressQueue?
-simple InProgressFrames
+import inet.common.SimpleModule;
+
+//# TODO rename to `InProgressQueue`?
+simple InProgressFrames extends SimpleModule
 {
     parameters:
+        @class(InProgressFrames);
         string pendingQueueModule;
         string originatorMacDataServiceModule;
         string ackHandlerModule;

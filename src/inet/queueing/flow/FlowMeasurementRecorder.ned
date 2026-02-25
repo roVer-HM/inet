@@ -11,7 +11,7 @@ import inet.queueing.base.PacketFlowBase;
 import inet.queueing.contract.IPacketFlow;
 
 //
-// This module is part of the flow measurement infrastructure. It can be used
+// Part of the flow measurement infrastructure. It can be used
 // to record the collected statistics and also to terminate the flow measurements.
 //
 // The flow measurement statistics are collected for every bit individually.
@@ -25,12 +25,13 @@ import inet.queueing.contract.IPacketFlow;
 simple FlowMeasurementRecorder extends PacketFlowBase like IPacketFlow
 {
     parameters:
-        object packetFilter = default("*"); // which packets are considered, matches all packets by default
-        int offset @unit(b) = default(0b); // designates the packet part to be measured
-        int length @unit(b) = default(-1b); // designates the packet part to be measured
-        string flowName = default(""); // use packet flow to separate measurement from other measurements
-        string measure = default("*"); // match expression for a combination of: packetEvent, elapsedTime, delayingTime, queueingTime, processingTime, transmissionTime, propagationTime
+        object packetFilter = default("*"); // Which packets are considered, matches all packets by default
+        int offset @unit(b) = default(0b); // Designates the packet part to be measured
+        int length @unit(b) = default(-1b); // Designates the packet part to be measured
+        string flowName = default(""); // Use packet flow to separate measurement from other measurements
+        string measure = default("not packetEvent"); // Match expression for a combination of: packetEvent, elapsedTime, delayingTime, queueingTime, processingTime, transmissionTime, propagationTime
         bool endMeasurement = default(true);
+        string packetEventFileName = default("${resultdir}/${configname}-" + fullPath() + "-packetEvent.json");
         @class(FlowMeasurementRecorder);
         @display("i=block/timer");
         @signal[packetFlowMeasured](type=inet::Packet);
@@ -85,6 +86,8 @@ simple FlowMeasurementRecorder extends PacketFlowBase like IPacketFlow
         @statistic[meanTotalBitTransmissionTimePerPacket](title="mean total bit transmission time per packet"; source=weightedMeanPerGroup(groupRegionsPerPacket(transmissionTimePerRegion(demuxFlow(packetFlowMeasured)))); record=vector,histogram; unit=s; interpolationmode=none);
         // the statistical value is the sum of the transmission duration of the complete packets for all transmitters where the particular bit of the region was transmitted
         @statistic[meanTotalPacketTransmissionTime](title="mean total packet transmission time"; source=weightedMeanPerGroup(groupRegionsPerPacket(packetTransmissionTimePerRegion(demuxFlow(packetFlowMeasured)))); record=vector,histogram; unit=s; interpolationmode=none);
+        // the statistical value is the time difference of the current simulation time and the creation time of the whole packet data, nan if not all bits have the same value
+        @statistic[packetLifeTime](title="packet life time"; source=packetLifeTime(demuxFlow(packetFlowMeasured)); record=vector,histogram; unit=s; interpolationmode=none);
         // the statistical value is the difference of subsequent values of the mean bit elapsed time per packet
         @statistic[packetJitter](title="packet jitter"; source=jitter(weightedMeanPerGroup(groupRegionsPerPacket(elapsedTimePerRegion(demuxFlow(packetFlowMeasured))))); record=vector,histogram; unit=s; interpolationmode=none);
         // the statistical value is the difference of the current and the mean bit elapsed time per packet

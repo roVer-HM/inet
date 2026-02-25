@@ -3,7 +3,7 @@ Ordering the Packets in the Queue
 
 The :ned:`PacketQueue` module can order the packets it contains using a packet
 comparator function, which makes it suitable for implementing priority
-queueing. (Other ways of implementing priority queueing, for example using
+queuing. (Other ways of implementing priority queueing, for example using
 :ned:`PriorityScheduler`, will be covered in later steps.)
 
 In this example network, an active packet source (:ned:`ActivePacketSource`) creates
@@ -19,7 +19,6 @@ this happens, packets will be ordered in the queue, so the collector will receiv
 a series of ordered sequences.
 
 .. figure:: media/Comparator.png
-   :width: 90%
    :align: center
 
 .. literalinclude:: ../QueueingTutorial.ned
@@ -36,22 +35,18 @@ a series of ordered sequences.
    first without, then with the comparator function:
 
    .. figure:: media/nocomparator.png
-      :width: 90%
       :align: center
 
    .. figure:: media/comparator.png
-      :width: 90%
       :align: center
 
 The following screenshot demonstrates the queue's contents at the end of the simulation
 without the comparator function:
 
 .. figure:: media/nocomparator.png
-   :width: 90%
    :align: center
 
 And this one using the comparator function (head at the top, tail at the bottom):
 
 .. figure:: media/withcomparator.png
-   :width: 90%
    :align: center

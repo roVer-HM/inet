@@ -17,25 +17,25 @@ void PacketTransmitter::handleMessageWhenUp(cMessage *message)
         endTx();
     else
         PacketTransmitterBase::handleMessageWhenUp(message);
-    updateDisplayString();
 }
 
 void PacketTransmitter::handleStopOperation(LifecycleOperation *operation)
 {
     ASSERT(!isTransmitting());
+    PacketTransmitterBase::handleStopOperation(operation);
 }
 
 void PacketTransmitter::handleCrashOperation(LifecycleOperation *operation)
 {
     ASSERT(!isTransmitting());
+    PacketTransmitterBase::handleCrashOperation(operation);
 }
 
-void PacketTransmitter::pushPacket(Packet *packet, cGate *gate)
+void PacketTransmitter::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
     startTx(packet);
-    updateDisplayString();
 }
 
 void PacketTransmitter::startTx(Packet *packet)
@@ -73,8 +73,8 @@ void PacketTransmitter::endTx()
     txStartClockTime = -1;
     // 4. notify producer
     if (producer != nullptr) {
-        producer->handlePushPacketProcessed(packet, inputGate->getPathStartGate(), true);
-        producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+        producer.handlePushPacketProcessed(packet, true);
+        producer.handleCanPushPacketChanged();
     }
     delete packet;
 }

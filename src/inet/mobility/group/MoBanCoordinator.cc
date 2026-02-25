@@ -86,7 +86,7 @@ void MoBanCoordinator::initialize(int stage)
 
         // preparing output mobility pattern log file
         char log_file_name[70];
-        sprintf(log_file_name, "MoBAN_Pattern_out%d.txt", getIndex());
+        snprintf(log_file_name, sizeof(log_file_name), "MoBAN_Pattern_out%d.txt", getIndex());
         inet::utils::makePathForFile(log_file_name);
         logfile = fopen(log_file_name, "w");
 
@@ -173,9 +173,8 @@ void MoBanCoordinator::setTargetPosition()
 void MoBanCoordinator::refreshDisplay() const
 {
     // show posture name in the graphical interface
-    char dis_str[100];
-    sprintf(dis_str, "%s until %f", currentPosture->getPostureName(), nextChange.dbl());
-    getDisplayString().setTagArg("t", 0, dis_str);
+    std::string dis_str = std::string(currentPosture->getPostureName()) + " until " + std::to_string(nextChange.dbl());
+    getDisplayString().setTagArg("t", 0, dis_str.c_str());
 }
 
 /**
@@ -297,11 +296,10 @@ bool MoBanCoordinator::readMobilityPatternFile()
     patternLength = 0;
     double x, y, z, s;
     int id;
-    char file_name[70];
     char posture_name[50];
 
-    sprintf(file_name, "%s", par("mobilityPatternFile").stringValue());
-    FILE *fp = fopen(file_name, "r");
+    std::string file_name = getEnvir()->getConfig()->substituteVariables(par("mobilityPatternFile"));
+    FILE *fp = fopen(file_name.c_str(), "r");
     if (fp == nullptr)
         return false;
 
@@ -317,7 +315,7 @@ bool MoBanCoordinator::readMobilityPatternFile()
 
     mobilityPattern = new Pattern[patternLength];
 
-    fp = fopen(file_name, "r");
+    fp = fopen(file_name.c_str(), "r");
 
     int i = 0;
     while (fscanf(fp, "%49s %d", posture_name, &id) != -1) {

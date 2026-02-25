@@ -11,14 +11,14 @@ import inet.visualizer.base.RadioVisualizerBase;
 import inet.visualizer.contract.IRadioVisualizer;
 
 //
-// This module visualizes radios on a 2D canvas.
+// Visualizes radios on a 2D canvas.
 //
 // @see ~RadioOsgVisualizer, ~RadioVisualizer, ~RadioVisualizerBase, ~IRadioVisualizer
 //
 simple RadioCanvasVisualizer extends RadioVisualizerBase like IRadioVisualizer
 {
     parameters:
-        double zIndex = default(10); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(10); // Determines the drawing order of figures relative to other visualizers
         @class(RadioCanvasVisualizer);
 }
 

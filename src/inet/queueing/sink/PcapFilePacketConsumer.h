@@ -8,7 +8,7 @@
 #ifndef __INET_PCAPFILEPACKETCONSUMER_H
 #define __INET_PCAPFILEPACKETCONSUMER_H
 
-#include "inet/common/packet/recorder/PcapWriter.h"
+#include "inet/common/packet/recorder/IPcapWriter.h"
 #include "inet/queueing/base/PassivePacketSinkBase.h"
 #include "inet/queueing/contract/IActivePacketSource.h"
 
@@ -18,7 +18,7 @@ namespace queueing {
 class INET_API PcapFilePacketConsumer : public PassivePacketSinkBase
 {
   protected:
-    PcapWriter pcapWriter;
+    IPcapWriter *pcapWriter = nullptr;
     Direction direction = DIRECTION_UNDEFINED;
     PcapLinkType networkType = LINKTYPE_INVALID;
 
@@ -27,10 +27,10 @@ class INET_API PcapFilePacketConsumer : public PassivePacketSinkBase
     virtual void finish() override;
 
   public:
-    virtual bool supportsPacketPushing(cGate *gate) const override { return gate == inputGate; }
-    virtual bool supportsPacketPulling(cGate *gate) const override { return false; }
+    virtual bool supportsPacketPushing(const cGate *gate) const override { return gate == inputGate; }
+    virtual bool supportsPacketPulling(const cGate *gate) const override { return false; }
 
-    virtual void pushPacket(Packet *packet, cGate *gate) override;
+    virtual void pushPacket(Packet *packet, const cGate *gate) override;
 };
 
 } // namespace queueing

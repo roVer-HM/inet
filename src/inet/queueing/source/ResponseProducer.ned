@@ -13,10 +13,10 @@ import inet.queueing.server.TokenBasedServer;
 import inet.queueing.tokengenerator.SignalBasedTokenGenerator;
 
 //
-// This module is capable of generating several different streams of packets,
-// one after the other. For each traffic category, the packets are produced by
-// a separate token based server. The traffic stream can be started by adding
-// tokens the corresponding server module. The packet data, packet length, and
+// Generates several different streams of packets, one after the other.
+// For each traffic category, the packets are produced by
+// a separate token-based server. The traffic stream can be started by adding
+// tokens to the corresponding server module. The packet data, packet length, and
 // timing distributions can be configured in the corresponding packet provider.
 //
 // @see ~RequestConsumer

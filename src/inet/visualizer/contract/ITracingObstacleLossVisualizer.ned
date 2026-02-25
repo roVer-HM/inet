@@ -8,13 +8,13 @@
 package inet.visualizer.contract;
 
 //
-// This module interface allows configuring different
+// Interface allows configuring different
 // ~ITracingObstacleLossVisualizer submodules from INI files. Such a visualizer
 // displays obstacle loss during wireless signal propagation.
 //
 // @see ~TracingObstacleLossCanvasVisualizer, ~TracingObstacleLossOsgVisualizer, ~TracingObstacleLossVisualizer, ~TracingObstacleLossVisualizerBase
 //
-moduleinterface ITracingObstacleLossVisualizer
+moduleinterface ITracingObstacleLossVisualizer extends IVisualizer
 {
     parameters:
         @display("i=block/app");

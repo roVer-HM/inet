@@ -40,7 +40,7 @@ Packet *FragmenterBase::createFragmentPacket(Packet *packet, b fragmentOffset, b
     return fragmentPacket;
 }
 
-void FragmenterBase::pushPacket(Packet *packet, cGate *gate)
+void FragmenterBase::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -56,7 +56,6 @@ void FragmenterBase::pushPacket(Packet *packet, cGate *gate)
     }
     processedTotalLength += packet->getDataLength();
     numProcessedPackets++;
-    updateDisplayString();
     if (deleteSelf)
         deleteModule();
     delete packet;

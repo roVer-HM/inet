@@ -8,13 +8,13 @@
 package inet.visualizer.contract;
 
 //
-// This module interface allows configuring different
+// Interface allows configuring different
 // ~IPhysicalEnvironmentVisualizer submodules from INI files. Such a visualizer
 // displays the physical objects present in the physical environment.
 //
 // @see ~PhysicalEnvironmentCanvasVisualizer, ~PhysicalEnvironmentOsgVisualizer, ~PhysicalEnvironmentVisualizer, ~PhysicalEnvironmentVisualizerBase
 //
-moduleinterface IPhysicalEnvironmentVisualizer
+moduleinterface IPhysicalEnvironmentVisualizer extends IVisualizer
 {
     parameters:
         @display("i=block/app");

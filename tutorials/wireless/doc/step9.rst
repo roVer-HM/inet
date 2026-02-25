@@ -79,7 +79,7 @@ packets to reinforce it.
 
 
 
-   <!--internal video recording, playback speed 2, animation speed 1, fadeOutMode animationTime, fadeOutTime 1s-->
+.. <!--internal video recording, playback speed 2, animation speed 1, fadeOutMode animationTime, fadeOutTime 1s-->
 
 As mentioned before, a communication path could be established between
 host A and B by routing traffic through hosts R2 and R3. To reconfigure
@@ -95,5 +95,5 @@ Discussion
 ----------
 
 Use `this
-page <https://github.com/inet-framework/inet-tutorials/issues/1>`__ in
+page <https://github.com/inet-framework/inet/discussions/998>`__ in
 the GitHub issue tracker for commenting on this tutorial.

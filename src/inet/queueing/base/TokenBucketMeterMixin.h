@@ -8,8 +8,8 @@
 #ifndef __INET_TOKENBUCKETMETERMIXIN_H
 #define __INET_TOKENBUCKETMETERMIXIN_H
 
+#include "inet/common/LabelsTag_m.h"
 #include "inet/common/packet/Packet.h"
-#include "inet/queueing/common/LabelsTag_m.h"
 
 namespace inet {
 namespace queueing {
@@ -42,7 +42,7 @@ class INET_API TokenBucketMeterMixin : public T
             labelsTag->appendLabels(label);
         else {
             int newPriority = std::find(labelPriority.begin(), labelPriority.end(), label) - labelPriority.begin();
-            for (int i = 0; i < labelsTag->getLabelsArraySize(); i++) {
+            for (size_t i = 0; i < labelsTag->getLabelsArraySize(); i++) {
                 auto it = std::find(labelPriority.begin(), labelPriority.end(), labelsTag->getLabels(i));
                 if (it != labelPriority.end()) {
                     int oldPriority = it - labelPriority.begin();
@@ -58,7 +58,7 @@ class INET_API TokenBucketMeterMixin : public T
 
     virtual double getNumPacketTokens(Packet *packet) const
     {
-        return b(packet->getDataLength()).get() * tokenConsumptionPerBit + tokenConsumptionPerPacket;
+        return packet->getDataLength().get<b>() * tokenConsumptionPerBit + tokenConsumptionPerPacket;
     }
 };
 

@@ -8,7 +8,7 @@
 package inet.linklayer.contract;
 
 //
-// This module interface is implemnted by network interfaces.
+// Interface for network interfaces.
 //
 moduleinterface INetworkInterface
 {

@@ -24,7 +24,6 @@ namespace inet {
 class INET_API Ppp : public MacProtocolBase, public queueing::IActivePacketSink
 {
   protected:
-    const char *displayStringTextFormat = nullptr;
     bool sendRawBytes = false;
     cGate *physOutGate = nullptr;
     cChannel *datarateChannel = nullptr; // nullptr if we're not connected
@@ -51,6 +50,7 @@ class INET_API Ppp : public MacProtocolBase, public queueing::IActivePacketSink
     virtual void decapsulate(Packet *packet);
     virtual void refreshDisplay() const override;
     virtual void refreshOutGateConnection(bool connected);
+    virtual std::string resolveDirective(char directive) const override;
 
     // cListener function
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
@@ -74,9 +74,9 @@ class INET_API Ppp : public MacProtocolBase, public queueing::IActivePacketSink
 
   public:
     // IActivePacketSink:
-    virtual queueing::IPassivePacketSource *getProvider(cGate *gate) override;
-    virtual void handleCanPullPacketChanged(cGate *gate) override;
-    virtual void handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful) override;
+    virtual queueing::IPassivePacketSource *getProvider(const cGate *gate) override;
+    virtual void handleCanPullPacketChanged(const cGate *gate) override;
+    virtual void handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful) override;
 };
 
 } // namespace inet

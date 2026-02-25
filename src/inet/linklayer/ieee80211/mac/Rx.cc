@@ -8,7 +8,7 @@
 #include "inet/linklayer/ieee80211/mac/Rx.h"
 
 #include "inet/common/ModuleAccess.h"
-#include "inet/common/checksum/EthernetCRC.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/linklayer/ieee80211/mac/Ieee80211Mac.h"
 #include "inet/linklayer/ieee80211/mac/contract/IContention.h"
 #include "inet/linklayer/ieee80211/mac/contract/ITx.h"
@@ -111,10 +111,10 @@ bool Rx::isFcsOk(Packet *packet) const
                 return true;
             case FCS_COMPUTED: {
                 const auto& fcsBytes = packet->peekDataAt<BytesChunk>(B(0), packet->getDataLength() - trailer->getChunkLength());
-                auto bufferLength = B(fcsBytes->getChunkLength()).get();
+                auto bufferLength = fcsBytes->getChunkLength().get<B>();
                 auto buffer = new uint8_t[bufferLength];
                 fcsBytes->copyToBuffer(buffer, bufferLength);
-                auto computedFcs = ethernetCRC(buffer, bufferLength);
+                auto computedFcs = ethernetFcs(buffer, bufferLength);
                 delete[] buffer;
                 return computedFcs == trailer->getFcs();
             }

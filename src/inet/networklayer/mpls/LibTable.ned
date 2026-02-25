@@ -7,6 +7,8 @@
 
 package inet.networklayer.mpls;
 
+import inet.common.SimpleModule;
+
 //
 // Stores the LIB (Label Information Base), accessed by ~Mpls and its
 // associated control protocols (~RsvpTe, ~Ldp) via direct C++ method calls.
@@ -29,10 +31,11 @@ package inet.networklayer.mpls;
 //
 // A DTD is available in inet/etc/.
 //
-simple LibTable
+simple LibTable extends SimpleModule
 {
     parameters:
-        xml config = default(xml("<libtable/>")); // table contents to be loaded on startup
+        @class(LibTable);
+        xml config = default(xml("<libtable/>")); // Table contents to be loaded on startup
         @display("i=block/table2");
 }
 

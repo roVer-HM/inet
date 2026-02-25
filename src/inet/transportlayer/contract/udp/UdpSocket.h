@@ -8,6 +8,7 @@
 #ifndef __INET_UDPSOCKET_H
 #define __INET_UDPSOCKET_H
 
+#include "inet/common/SimpleModule.h"
 #include <vector>
 
 #include "inet/common/packet/Message.h"
@@ -15,7 +16,7 @@
 #include "inet/common/socket/ISocket.h"
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/networklayer/contract/IInterfaceTable.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -267,7 +268,7 @@ class INET_API UdpSocket : public ISocket
     //@{
     /**
      * Returns true if the message belongs to this socket instance (message
-     * has a UdpControlInfo as getControlInfo(), and the socketId in it matches
+     * has an UdpCommand as getControlInfo(), and the socketId in it matches
      * that of the socket.)
      */
     virtual bool belongsToSocket(cMessage *msg) const override;
@@ -278,7 +279,7 @@ class INET_API UdpSocket : public ISocket
      * multiply inherits from ICallback too, that is you
      * declared it as
      * <pre>
-     * class MyAppModule : public cSimpleModule, public UdpSocket::ICallback
+     * class MyAppModule : public SimpleModule, public UdpSocket::ICallback
      * </pre>
      * and redefined the necessary virtual functions; or you may use
      * dedicated class (and objects) for this purpose.

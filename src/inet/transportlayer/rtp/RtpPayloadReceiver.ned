@@ -7,6 +7,8 @@
 
 package inet.transportlayer.rtp;
 
+import inet.common.SimpleModule;
+
 //
 // Interface for RTP Payload Receivers.
 //
@@ -16,17 +18,18 @@ package inet.transportlayer.rtp;
 moduleinterface IRTPPayloadReceiver
 {
     parameters:
-        string outputFileName;  // use an empty string to disable this logging
-        string outputLogFileName;   // use an empty string to disable this logging
+        string outputFileName;  // Use an empty string to disable this logging
+        string outputLogFileName;   // Use an empty string to disable this logging
 
     gates:
         input profileIn @labels(RtpInnerPacket);
         output profileOut @labels(RtpInnerPacket);
 }
 
-simple RtpPayloadReceiver like IRTPPayloadReceiver
+simple RtpPayloadReceiver extends SimpleModule like IRTPPayloadReceiver
 {
     parameters:
+        @class(RtpPayloadReceiver);
         string outputFileName;
         string outputLogFileName = default("outputLogLoss%d.log");
         @signal[rcvdPkRtpTimestamp](type=simtime_t; unit=s);
@@ -37,9 +40,10 @@ simple RtpPayloadReceiver like IRTPPayloadReceiver
         output profileOut @labels(RtpInnerPacket);
 }
 
-simple RTPAVProfilePayload10Receiver like IRTPPayloadReceiver
+simple RTPAVProfilePayload10Receiver extends SimpleModule like IRTPPayloadReceiver
 {
     parameters:
+        @class(RTPAVProfilePayload10Receiver);
         string outputFileName;
         string outputLogFileName = default("outputLogLoss%d.log");
 
@@ -48,9 +52,10 @@ simple RTPAVProfilePayload10Receiver like IRTPPayloadReceiver
         output profileOut @labels(RtpInnerPacket);
 }
 
-simple RtpAvProfilePayload32Receiver like IRTPPayloadReceiver
+simple RtpAvProfilePayload32Receiver extends SimpleModule like IRTPPayloadReceiver
 {
     parameters:
+        @class(RtpAvProfilePayload32Receiver);
         string outputFileName;
         string outputLogFileName = default("outputLogLoss%d.log");
 
@@ -59,9 +64,10 @@ simple RtpAvProfilePayload32Receiver like IRTPPayloadReceiver
         output profileOut @labels(RtpInnerPacket);
 }
 
-simple RTPAVProfileSampleBasedAudioReceiver like IRTPPayloadReceiver
+simple RTPAVProfileSampleBasedAudioReceiver extends SimpleModule like IRTPPayloadReceiver
 {
     parameters:
+        @class(RTPAVProfileSampleBasedAudioReceiver);
         string outputFileName;
         string outputLogFileName = default("outputLogLoss%d.log");
 

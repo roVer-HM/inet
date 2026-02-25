@@ -91,7 +91,7 @@ void BehaviorAggregateClassifier::initialize(int stage)
     }
 }
 
-void BehaviorAggregateClassifier::pushPacket(Packet *packet, cGate *inputGate)
+void BehaviorAggregateClassifier::pushPacket(Packet *packet, const cGate *inputGate)
 {
     EV_INFO << "Classifying packet " << packet->getName() << ".\n";
     numRcvd++;
@@ -101,17 +101,20 @@ void BehaviorAggregateClassifier::pushPacket(Packet *packet, cGate *inputGate)
         pushOrSendPacket(packet, outputGates[index], consumers[index]);
     else {
         auto defaultOutputGate = gate("defaultOut");
-        auto defaultConsumer = findConnectedModule<IPassivePacketSink>(defaultOutputGate);
+        queueing::PassivePacketSinkRef defaultConsumer;
+        defaultConsumer.reference(defaultOutputGate, false);
         pushOrSendPacket(packet, defaultOutputGate, defaultConsumer);
     }
 }
 
 void BehaviorAggregateClassifier::refreshDisplay() const
 {
-    char buf[20] = "";
-    if (numRcvd > 0)
-        sprintf(buf + strlen(buf), "rcvd:%d ", numRcvd);
-    getDisplayString().setTagArg("t", 0, buf);
+    if (numRcvd > 0) {
+        std::string buf = "rcvd:" + std::to_string(numRcvd) + " ";
+        getDisplayString().setTagArg("t", 0, buf.c_str());
+    }
+    else
+        getDisplayString().setTagArg("t", 0, "");
 }
 
 int BehaviorAggregateClassifier::classifyPacket(Packet *packet)

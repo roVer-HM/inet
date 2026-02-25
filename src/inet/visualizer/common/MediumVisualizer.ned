@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.IMediumVisualizer;
 
 //
-// This module integrates canvas and osg medium visualizers into a single module.
+// Integrates canvas and osg medium visualizers into a single module.
 //
 // @see ~MediumCanvasVisualizer, ~MediumOsgVisualizer, ~MediumVisualizerBase, ~IMediumVisualizer
 //
@@ -18,8 +18,10 @@ module MediumVisualizer like IMediumVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("MediumCanvasVisualizer"))> like IMediumVisualizer if typename != "" {
             parameters:

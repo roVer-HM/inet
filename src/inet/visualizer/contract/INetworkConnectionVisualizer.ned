@@ -8,13 +8,13 @@
 package inet.visualizer.contract;
 
 //
-// This module interface allows configuring different ~INetworkConnectionVisualizer
+// Interface allows configuring different ~INetworkConnectionVisualizer
 // submodules from INI files. Such a visualizer creates the visual representations
 // of network connections.
 //
 // @see ~NetworkConnectionCanvasVisualizer, ~NetworkConnectionOsgVisualizer, ~NetworkConnectionVisualizer, ~NetworkConnectionVisualizerBase
 //
-moduleinterface INetworkConnectionVisualizer
+moduleinterface INetworkConnectionVisualizer extends IVisualizer
 {
     parameters:
         @display("i=block/app");

@@ -8,16 +8,19 @@
 #ifndef __INET_CHUNKSERIALIZERREGISTRY_H
 #define __INET_CHUNKSERIALIZERREGISTRY_H
 
+#include <typeindex>
+#include <unordered_map>
+
 #include "inet/common/packet/serializer/ChunkSerializer.h"
 
 namespace inet {
 
-#define Register_Serializer(TYPE, CLASSNAME)    EXECUTE_PRE_NETWORK_SETUP(ChunkSerializerRegistry::getInstance().registerSerializer(typeid(TYPE), new CLASSNAME()));
+#define Register_Serializer(TYPE, CLASSNAME)    EXECUTE_PRE_NETWORK_SETUP(::inet::ChunkSerializerRegistry::getInstance().registerSerializer(typeid(TYPE), new CLASSNAME()));
 
 class INET_API ChunkSerializerRegistry
 {
   protected:
-    std::map<const std::type_info *, const ChunkSerializer *> serializers;
+    std::unordered_map<std::type_index, const ChunkSerializer *> serializers;
 
   public:
     ~ChunkSerializerRegistry();

@@ -7,18 +7,23 @@
 
 package inet.applications.ethernet;
 
+import inet.common.SimpleModule;
+
 //
-// This module provides Ethernet socket handling for generic applications.
+// Provides Ethernet socket handling for generic applications.
 //
-simple EthernetSocketIo
+simple EthernetSocketIo extends SimpleModule
 {
     parameters:
-        string interfaceTableModule; // relative module path of the interface table
-        string interface = default(""); // network interface name
-        string localAddress = default(""); // local Ethernet MAC address
-        string remoteAddress = default(""); // remove Ethernet MAC address
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        @class(EthernetSocketIo);
+        string interfaceTableModule; // Relative module path of the interface table
+        string interface = default(""); // Network interface name
+        string protocol = default(""); // Bind the socket to this protocol if specified
+        string localAddress = default(""); // Local Ethernet MAC address
+        string remoteAddress = default(""); // Remote Ethernet MAC address
+        bool steal = default(false); // Steal packets
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation finished
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
         @lifecycleSupport();
         @display("i=block/socket");
         @signal[packetSent](type=inet::Packet);

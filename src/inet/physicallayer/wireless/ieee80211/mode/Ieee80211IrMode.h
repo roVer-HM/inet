@@ -44,14 +44,14 @@ class INET_API Ieee80211IrHeaderMode : public IIeee80211HeaderMode
     int getDRSlotLength() const { return 3; }
     int getDCLASlotLength() const { return 32; }
     b getLengthFieldLength() const { return b(16); }
-    b getCrcFieldLength() const { return b(16); }
+    b getFcsFieldLength() const { return b(16); }
     int getSlotLength() const { return getDRSlotLength() + getDCLASlotLength(); }
     const simtime_t getSlotDuration() const { return 250E-9; }
 
-    virtual b getLength() const override { return getLengthFieldLength() + getCrcFieldLength(); }
+    virtual b getLength() const override { return getLengthFieldLength() + getFcsFieldLength(); }
     virtual bps getNetBitrate() const override { return Mbps(1); }
     virtual bps getGrossBitrate() const override { return getNetBitrate(); }
-    virtual const simtime_t getDuration() const override { return (double)getLength().get() / getNetBitrate().get() + getSlotLength() * getSlotDuration(); }
+    virtual const simtime_t getDuration() const override { return (double)getLength().get<b>() / getNetBitrate().get<bps>() + getSlotLength() * getSlotDuration(); }
     virtual const simtime_t getSymbolInterval() const override { return -1; }
     virtual const PpmModulationBase *getModulation() const override { return modulation; }
 
@@ -71,7 +71,7 @@ class INET_API Ieee80211IrDataMode : public IIeee80211DataMode
     virtual bps getGrossBitrate() const override { return getNetBitrate(); }
     virtual b getPaddingLength(b dataLength) const override { return b(0); }
     virtual b getCompleteLength(b dataLength) const override { return dataLength; }
-    virtual const simtime_t getDuration(b length) const override { return (double)length.get() / getGrossBitrate().get(); }
+    virtual const simtime_t getDuration(b length) const override { return (double)length.get<b>() / getGrossBitrate().get<bps>(); }
     virtual const simtime_t getSymbolInterval() const override { return -1; }
     virtual const PpmModulationBase *getModulation() const override { return modulation; }
     virtual int getNumberOfSpatialStreams() const override { return 1; }

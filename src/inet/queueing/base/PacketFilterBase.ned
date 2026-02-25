@@ -8,7 +8,7 @@
 package inet.queueing.base;
 
 //
-// This is a base module for various packet filter modules. Derived modules must
+// Base module for various packet filter modules. Derived modules must
 // implement a single packet matcher function which determines if a packet is to
 // be passed through or filtered out.
 //
@@ -18,7 +18,7 @@ simple PacketFilterBase extends PacketProcessorBase
 {
     parameters:
         bool backpressure = default(false);
-        displayStringTextFormat = default("dropped %d/%p pk (%k/%l)"); // determines the text that is written on top of the submodule
+        displayStringTextFormat = default("dropped %d/%p pk (%k/%l)"); // Determines the text that is written on top of the submodule
         @class(PacketFilterBase);
         @display("i=block/downarrow");
         @signal[packetPushedIn](type=inet::Packet);

@@ -24,7 +24,7 @@ Define_Module(MacForwardingTable);
 std::ostream& operator<<(std::ostream& os, const std::vector<int>& ids)
 {
     os << "[";
-    for (int i = 0; i < ids.size(); i++) {
+    for (size_t i = 0; i < ids.size(); i++) {
         auto id = ids[i];
         if (i != 0)
             os << ", ";
@@ -103,19 +103,6 @@ void MacForwardingTable::handleMessageWhenUp(cMessage *)
     throw cRuntimeError("This module doesn't process messages");
 }
 
-void MacForwardingTable::refreshDisplay() const
-{
-    updateDisplayString();
-}
-
-void MacForwardingTable::updateDisplayString() const
-{
-    if (getEnvir()->isGUI()) {
-        auto text = StringFormat::formatString(par("displayStringTextFormat"), this);
-        getDisplayString().setTagArg("t", 0, text.c_str());
-    }
-}
-
 std::string MacForwardingTable::resolveDirective(char directive) const
 {
     switch (directive) {
@@ -124,7 +111,7 @@ std::string MacForwardingTable::resolveDirective(char directive) const
         case 'v':
             return "";
         default:
-            throw cRuntimeError("Unknown directive: %c", directive);
+            return SimpleModule::resolveDirective(directive);   
     }
 }
 
@@ -339,10 +326,14 @@ void MacForwardingTable::readForwardingTable(const char *fileName)
             throw cRuntimeError("error in line %d in address table file `%s': interface '%s' not found", lineno, fileName, interfaceName);
         interfaceId = ie->getInterfaceId();
 
-        // Create an entry with address and interfaceId and insert into table
-        AddressEntry entry(vlanId, interfaceId, 0);
-        ForwardingTableKey key(vlanId, macAddress);
-        forwardingTable[key] = entry;
+        if (macAddress.isMulticast()) {
+            addMulticastAddressForwardingInterface(interfaceId, macAddress, vlanId);
+        } else {
+            // Create an entry with address and interfaceId and insert into table
+            AddressEntry entry(vlanId, interfaceId, 0);
+            ForwardingTableKey key(vlanId, macAddress);
+            forwardingTable[key] = entry;
+        }
     }
     fclose(fp);
 }
@@ -381,9 +372,9 @@ void MacForwardingTable::initializeTable()
     parseForwardingTableParameter();
 
     // Option to pre-read in Address Table. To turn it off, set forwardingTableFile to empty string
-    const char *forwardingTableFile = par("forwardingTableFile");
-    if (forwardingTableFile && *forwardingTableFile)
-        readForwardingTable(forwardingTableFile);
+    std::string forwardingTableFile = getEnvir()->getConfig()->substituteVariables(par("forwardingTableFile"));
+    if (!forwardingTableFile.empty())
+        readForwardingTable(forwardingTableFile.c_str());
 }
 
 void MacForwardingTable::clearTable()

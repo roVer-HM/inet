@@ -7,18 +7,27 @@
 
 package inet.clock.base;
 
+import inet.common.Module;
+
 //
-// This is a base module for clocks.
+// Base module for clocks.
 //
-module ClockBase
+// Display string format directives:
+//
+//  -t: clock time in seconds
+//  -T: clock time in automatically selected (natural) units
+//  -d: clock time difference to reference clock in automatically selected (natural) units
+//
+module ClockBase extends Module
 {
     parameters:
-        string displayStringTextFormat = default("%t"); // determines the text that is written on top of the submodule
-        string referenceClock = default("");			// full path of reference clock
-        double emitClockTimeInterval @unit(s) = default(0s); // non-zero value means the clock time will be emitted periodically
+        displayStringTextFormat = default("%t"); // Determines the text that is written on top of the submodule
+        string referenceClock = default("");            // Full path of the reference clock
+        int clockTimeChangeEventSchedulingPriority = default(0); // Specifies the scheduling priority of the clock time changed event
+        double emitClockTimeInterval @unit(s) = default(0s); // A non-zero value means the clock time will be emitted periodically
         @class(ClockBase);
         @display("i=block/timer");
         @signal[timeChanged](type=simtime_t);
-        @statistic[timeChanged](title="Clock time"; record=vector; interpolationmode=linear);
+        @statistic[timeChanged](title="Clock time"; source=localSignal(timeChanged); record=vector; interpolationmode=linear; unit=s);
 }
 

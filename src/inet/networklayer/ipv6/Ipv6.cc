@@ -170,18 +170,18 @@ void Ipv6::handleRequest(Request *request)
 
 void Ipv6::refreshDisplay() const
 {
-    char buf[80] = "";
+    std::string buf;
     if (numForwarded > 0)
-        sprintf(buf + strlen(buf), "fwd:%d ", numForwarded);
+        buf += "fwd:" + std::to_string(numForwarded) + " ";
     if (numLocalDeliver > 0)
-        sprintf(buf + strlen(buf), "up:%d ", numLocalDeliver);
+        buf += "up:" + std::to_string(numLocalDeliver) + " ";
     if (numMulticast > 0)
-        sprintf(buf + strlen(buf), "mcast:%d ", numMulticast);
+        buf += "mcast:" + std::to_string(numMulticast) + " ";
     if (numDropped > 0)
-        sprintf(buf + strlen(buf), "DROP:%d ", numDropped);
+        buf += "DROP:" + std::to_string(numDropped) + " ";
     if (numUnroutable > 0)
-        sprintf(buf + strlen(buf), "UNROUTABLE:%d ", numUnroutable);
-    getDisplayString().setTagArg("t", 0, buf);
+        buf += "UNROUTABLE:" + std::to_string(numUnroutable) + " ";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void Ipv6::handleMessage(cMessage *msg)
@@ -901,7 +901,7 @@ void Ipv6::fragmentAndSend(Packet *packet, const NetworkInterface *ie, const Mac
     int mtu = ie->getMtu();
 
     // check if datagram does not require fragmentation
-    if (packet->getTotalLength() <= B(mtu)) {
+    if (packet->getDataLength() <= B(mtu)) {
         sendDatagramToOutput(packet, ie, nextHopAddr);
         return;
     }
@@ -920,7 +920,7 @@ void Ipv6::fragmentAndSend(Packet *packet, const NetworkInterface *ie, const Mac
     B fragmentLength = ((B(mtu) - headerLength - IPv6_FRAGMENT_HEADER_LENGTH) / 8) * 8;
     ASSERT(fragmentLength > B(0));
 
-    int noOfFragments = B(payloadLength + fragmentLength - B(1)).get() / B(fragmentLength).get();
+    int noOfFragments = (payloadLength + fragmentLength - B(1)).get<B>() / fragmentLength.get<B>();
     EV_INFO << "Breaking datagram into " << noOfFragments << " fragments\n";
     std::string fragMsgName = packet->getName();
     fragMsgName += "-frag-";
@@ -1017,42 +1017,48 @@ bool Ipv6::processExtensionHeaders(Packet *packet, const Ipv6Header *ipv6Header)
     // walk through all extension headers
     for (int i = 0; i < noExtHeaders; i++) {
         const Ipv6ExtensionHeader *eh = ipv6Header->getExtensionHeader(i);
+        switch (eh->getExtensionType()) {
+            case IP_PROT_IPv6EXT_ROUTING: {
+                const Ipv6RoutingHeader *rh = check_and_cast<const Ipv6RoutingHeader *>(eh);
+                EV_DETAIL << "Routing Header with type=" << rh->getRoutingType() << endl;
 
-        if (const Ipv6RoutingHeader *rh = dynamic_cast<const Ipv6RoutingHeader *>(eh)) {
-            EV_DETAIL << "Routing Header with type=" << rh->getRoutingType() << endl;
+                // type 2 routing header should be processed by MIPv6 module
+                // if no MIP support, ignore the header
+                if (rt->hasMipv6Support() && rh->getRoutingType() == 2) {
+                    // for simplicity, we set a context pointer on the datagram
+                    packet->setContextPointer((void *)rh);
+                    EV_INFO << "Sending datagram with RH2 to MIPv6 module" << endl;
+                    send(packet, "xMIPv6Out");
+                    return false;
+                }
+                else {
+                    EV_INFO << "Ignoring unknown routing header" << endl;
+                }
+                break;
+            }
+            case IP_PROT_IPv6EXT_DEST: {
+                (void)check_and_cast<const Ipv6DestinationOptionsHeader *>(eh);
+                // Ipv6DestinationOptionsHeader* doh = (Ipv6DestinationOptionsHeader*) (eh);
+                // EV << "object of type=" << typeid(eh).name() << endl;
 
-            // type 2 routing header should be processed by MIPv6 module
-            // if no MIP support, ignore the header
-            if (rt->hasMipv6Support() && rh->getRoutingType() == 2) {
-                // for simplicity, we set a context pointer on the datagram
-                packet->setContextPointer((void *)rh);
-                EV_INFO << "Sending datagram with RH2 to MIPv6 module" << endl;
-                send(packet, "xMIPv6Out");
-                return false;
+                if (rt->hasMipv6Support() && dynamic_cast<const HomeAddressOption *>(eh)) {
+                    packet->setContextPointer((void *)eh);
+                    EV_INFO << "Sending datagram with HoA Option to MIPv6 module" << endl;
+                    send(packet, "xMIPv6Out");
+                    return false;
+                }
+                else {
+                    // delete eh;
+                    EV_INFO << "Ignoring unknown destination options header" << endl;
+                }
+                break;
             }
-            else {
-                EV_INFO << "Ignoring unknown routing header" << endl;
-            }
+            default:
+                // delete eh;
+                EV_INFO << "Ignoring unknown extension header" << endl;
+                break;
         }
-        else if (dynamic_cast<const Ipv6DestinationOptionsHeader *>(eh)) {
-//            Ipv6DestinationOptionsHeader* doh = (Ipv6DestinationOptionsHeader*) (eh);
-//            EV << "object of type=" << typeid(eh).name() << endl;
 
-            if (rt->hasMipv6Support() && dynamic_cast<const HomeAddressOption *>(eh)) {
-                packet->setContextPointer((void *)eh);
-                EV_INFO << "Sending datagram with HoA Option to MIPv6 module" << endl;
-                send(packet, "xMIPv6Out");
-                return false;
-            }
-            else {
-//                delete eh;
-                EV_INFO << "Ignoring unknown destination options header" << endl;
-            }
-        }
-        else {
-//            delete eh;
-            EV_INFO << "Ignoring unknown extension header" << endl;
-        }
     }
 
     // we have processed no extension headers -> the Ipv6 module can continue

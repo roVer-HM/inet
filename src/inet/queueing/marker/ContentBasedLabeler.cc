@@ -7,7 +7,7 @@
 
 #include "inet/queueing/marker/ContentBasedLabeler.h"
 
-#include "inet/queueing/common/LabelsTag_m.h"
+#include "inet/common/LabelsTag_m.h"
 
 namespace inet {
 namespace queueing {
@@ -36,7 +36,7 @@ void ContentBasedLabeler::initialize(int stage)
 void ContentBasedLabeler::markPacket(Packet *packet)
 {
     auto labelsTag = packet->addTagIfAbsent<LabelsTag>();
-    for (int i = 0; i < (int)filters.size(); i++) {
+    for (size_t i = 0; i < filters.size(); i++) {
         auto filter = filters[i];
         if (filter->matches(packet)) {
             EV_INFO << "Marking packet" << EV_FIELD(label, labels[i]) << EV_FIELD(packet) << EV_ENDL;

@@ -47,7 +47,11 @@ InfoVisualizerBase::InfoVisualization *InfoCanvasVisualizer::createInfoVisualiza
     figure->setFont(font);
     figure->setText(getInfoVisualizationText(module).c_str());
     figure->setLabelColor(textColor);
+    figure->setAlignment(textAlignment);
     figure->setBackgroundColor(backgroundColor);
+    figure->setLineColor(lineColor);
+    figure->setFilled(filled);
+    figure->setOutlined(outlined);
     figure->setOpacity(opacity);
     auto networkNode = getContainingNode(module);
     auto networkNodeVisualization = networkNodeVisualizer->getNetworkNodeVisualization(networkNode);
@@ -59,7 +63,7 @@ void InfoCanvasVisualizer::addInfoVisualization(const InfoVisualization *infoVis
     InfoVisualizerBase::addInfoVisualization(infoVisualization);
     auto infoCanvasVisualization = static_cast<const InfoCanvasVisualization *>(infoVisualization);
     auto figure = infoCanvasVisualization->figure;
-    infoCanvasVisualization->networkNodeVisualization->addAnnotation(figure, figure->getBounds().getSize(), placementHint, placementPriority);
+    infoCanvasVisualization->networkNodeVisualization->addAnnotation(figure, figure->getBounds(), placementHint, placementPriority);
 }
 
 void InfoCanvasVisualizer::removeInfoVisualization(const InfoVisualization *infoVisualization)

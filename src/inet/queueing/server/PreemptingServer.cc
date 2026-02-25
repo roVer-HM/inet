@@ -31,62 +31,71 @@ void PreemptingServer::handleMessage(cMessage *message)
 
 bool PreemptingServer::canStartStreaming() const
 {
-    return provider->canPullSomePacket(inputGate->getPathStartGate()) && consumer->canPushSomePacket(outputGate->getPathEndGate());
+    return provider.canPullSomePacket() && consumer.canPushSomePacket();
 }
 
 void PreemptingServer::startStreaming()
 {
-    auto packet = provider->pullPacketStart(inputGate->getPathStartGate(), datarate);
+    auto packet = provider.pullPacketStart(datarate);
     take(packet);
     EV_INFO << "Starting streaming packet" << EV_FIELD(packet) << EV_ENDL;
     streamedPacket = packet;
     pushOrSendPacketStart(streamedPacket->dup(), outputGate, consumer, datarate, packet->getTransmissionId());
-    scheduleClockEventAfter(s(streamedPacket->getTotalLength() / datarate).get(), timer);
+    scheduleClockEventAfter((streamedPacket->getDataLength() / datarate).get<s>(), timer);
     handlePacketProcessed(streamedPacket);
-    updateDisplayString();
 }
 
 void PreemptingServer::endStreaming()
 {
-    auto packet = provider->pullPacketEnd(inputGate->getPathStartGate());
+    auto packet = provider.pullPacketEnd();
     take(packet);
+    EV_INFO << "Ending streaming packet" << EV_FIELD(packet) << EV_ENDL;
     delete streamedPacket;
     streamedPacket = packet;
     EV_INFO << "Ending streaming packet" << EV_FIELD(packet, *streamedPacket) << EV_ENDL;
     pushOrSendPacketEnd(streamedPacket, outputGate, consumer, packet->getTransmissionId());
     streamedPacket = nullptr;
-    updateDisplayString();
 }
 
-void PreemptingServer::handleCanPushPacketChanged(cGate *gate)
+void PreemptingServer::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
+    EV_DEBUG << "Checking if packet streaming should be started" << EV_ENDL;
     if (!isStreaming() && canStartStreaming())
         startStreaming();
 }
 
-void PreemptingServer::handleCanPullPacketChanged(cGate *gate)
+void PreemptingServer::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
-    if (isStreaming()) {
-        endStreaming();
-        cancelClockEvent(timer);
-    }
-    else if (canStartStreaming())
+    EV_DEBUG << "Checking if packet streaming should be started" << EV_ENDL;
+    if (!isStreaming() && canStartStreaming())
         startStreaming();
 }
 
-void PreemptingServer::handlePushPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void PreemptingServer::handlePushPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePushPacketProcessed");
     if (isStreaming()) {
         delete streamedPacket;
-        streamedPacket = provider->pullPacketEnd(inputGate->getPathStartGate());
+        streamedPacket = provider.pullPacketEnd();
         take(streamedPacket);
         EV_INFO << "Ending streaming packet" << EV_FIELD(packet, *streamedPacket) << EV_ENDL;
         delete streamedPacket;
         streamedPacket = nullptr;
     }
+}
+
+void PreemptingServer::pushPacketEnd(Packet *packet, const cGate *gate)
+{
+    Enter_Method("pushPacketEnd");
+    ASSERT(isStreaming());
+    EV_INFO << "Ending packet streaming, requested by packet producer" << EV_FIELD(packet) << EV_ENDL;
+    take(packet);
+    consumer.pushPacketEnd(packet);
+    cancelEvent(timer);
+    delete streamedPacket;
+    streamedPacket = nullptr;
 }
 
 } // namespace queueing

@@ -18,8 +18,10 @@ Define_Module(PcapFilePacketProducer);
 void PcapFilePacketProducer::initialize(int stage)
 {
     ActivePacketSourceBase::initialize(stage);
-    if (stage == INITSTAGE_LOCAL)
-        pcapReader.openPcap(par("filename"), par("packetNameFormat"));
+    if (stage == INITSTAGE_LOCAL) {
+        std::string filename = getEnvir()->getConfig()->substituteVariables(par("filename"));
+        pcapReader.openPcap(filename.c_str(), par("packetNameFormat"));
+    }
     else if (stage == INITSTAGE_QUEUEING)
         schedulePacket();
 }
@@ -34,7 +36,7 @@ void PcapFilePacketProducer::handleMessage(cMessage *message)
 {
     if (message->isPacket()) {
         auto packet = check_and_cast<Packet *>(message);
-        if (consumer == nullptr || consumer->canPushPacket(packet, outputGate->getPathEndGate())) {
+        if (consumer == nullptr || consumer.canPushPacket(packet)) {
             emit(packetPushedSignal, packet);
             pushOrSendPacket(packet, outputGate, consumer);
             schedulePacket();
@@ -57,7 +59,7 @@ void PcapFilePacketProducer::schedulePacket()
         EV << "End of PCAP file reached" << EV_ENDL;
 }
 
-void PcapFilePacketProducer::handleCanPushPacketChanged(cGate *gate)
+void PcapFilePacketProducer::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
     if (gate == outputGate)

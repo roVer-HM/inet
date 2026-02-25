@@ -14,7 +14,7 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/lifecycle/NodeStatus.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -37,7 +37,11 @@ VoipStreamSender::VoipStreamSender()
 VoipStreamSender::~VoipStreamSender()
 {
     if (pEncoderCtx) {
+#if LIBAVCODEC_VERSION_MAJOR < 58
+        // avcodec_close() is needed for FFmpeg < 3.1 (libavcodec < 58)
         avcodec_close(pEncoderCtx);
+#endif
+        // Note: For FFmpeg >= 3.1, avcodec_free_context() automatically closes the codec
         avcodec_free_context(&pEncoderCtx);
     }
     cancelAndDelete(timer);
@@ -85,9 +89,9 @@ void VoipStreamSender::initialize(int stage)
         packetTimeLength = ((double)samplesPerPacket) / sampleRate;
         EV_INFO << "adjusted to " << packetTimeLength * 1000.0 << "ms" << endl;
 
-        soundFile = par("soundFile");
+        soundFile = getEnvir()->getConfig()->substituteVariables(par("soundFile"));
         repeatCount = par("repeatCount");
-        traceFileName = par("traceFileName");
+        traceFileName = getEnvir()->getConfig()->substituteVariables(par("traceFileName"));
 
         pReSampleCtx = nullptr;
         localPort = par("localPort");
@@ -131,7 +135,7 @@ void VoipStreamSender::initialize(int stage)
         // initialize avcodec library
         av_log_set_callback(&inet_av_log);
 
-        openSoundFile(soundFile);
+        openSoundFile(soundFile.c_str());
 
         timer = new cMessage("sendVoIP");
         scheduleAt(startTime, timer);
@@ -179,9 +183,13 @@ void VoipStreamSender::finish()
 {
     outFile.close();
 
+#if LIBAVCODEC_VERSION_MAJOR < 58
+    // avcodec_close() is needed for FFmpeg < 3.1 (libavcodec < 58)
     if (pCodecCtx) {
         avcodec_close(pCodecCtx);
     }
+#endif
+    // Note: For FFmpeg >= 3.1, avcodec_free_context() automatically closes the codec
 
     if (pReSampleCtx) {
         swr_close(pReSampleCtx);
@@ -252,7 +260,22 @@ void VoipStreamSender::openSoundFile(const char *name)
     if (!pCodecEncoder)
         throw cRuntimeError("Codec '%s' not found!", codec);
 
+    // Set sample format - handle deprecated sample_fmts field in newer FFmpeg versions
+#if LIBAVCODEC_VERSION_MAJOR < 61
     pEncoderCtx->sample_fmt = pCodecEncoder->sample_fmts[0];
+#else /* LIBAVCODEC_VERSION_MAJOR < 61 */
+    // For FFmpeg 6.1+, use the new API to get supported sample formats
+    const void *sample_fmts_ptr = nullptr;
+    int num_sample_fmts = 0;
+    err = avcodec_get_supported_config(nullptr, pCodecEncoder, AV_CODEC_CONFIG_SAMPLE_FORMAT,
+                                       0, &sample_fmts_ptr, &num_sample_fmts);
+    if (err >= 0 && num_sample_fmts > 0 && sample_fmts_ptr != nullptr) {
+        const enum AVSampleFormat *sample_fmts = (const enum AVSampleFormat *)sample_fmts_ptr;
+        pEncoderCtx->sample_fmt = sample_fmts[0];
+    } else {
+        throw cRuntimeError("Codec '%s' does not support any sample format!", codec);
+    }
+#endif /* LIBAVCODEC_VERSION_MAJOR < 61 */
 
     if (avcodec_open2(pEncoderCtx, pCodecEncoder, nullptr) < 0)
         throw cRuntimeError("could not open %s encoding codec!", codec);
@@ -315,9 +338,9 @@ void VoipStreamSender::openSoundFile(const char *name)
             throw cRuntimeError("Error opening context, swr_init() returns (%d) %s", err, av_err2str(err));
     }
 
-    if (traceFileName && *traceFileName) {
-        inet::utils::makePathForFile(traceFileName);
-        outFile.open(traceFileName, sampleRate, 8 * av_get_bytes_per_sample(pEncoderCtx->sample_fmt));
+    if (!traceFileName.empty()) {
+        inet::utils::makePathForFile(traceFileName.c_str());
+        outFile.open(traceFileName.c_str(), sampleRate, 8 * av_get_bytes_per_sample(pEncoderCtx->sample_fmt));
     }
 
     sampleBuffer.clear(samplesPerPacket * av_get_bytes_per_sample(pEncoderCtx->sample_fmt));
@@ -571,4 +594,3 @@ void VoipStreamSender::resampleFrame(const uint8_t **in_data, int in_nb_samples)
 }
 
 } // namespace inet
-

@@ -227,8 +227,8 @@ void TcpBaseAlg::processRexmitTimer(TcpEventCode& event)
 
     // if sacked_enabled reset sack related flags
     if (state->sack_enabled) {
-        conn->rexmitQueue->resetSackedBit();
-        conn->rexmitQueue->resetRexmittedBit();
+        conn->getRexmitQueueForUpdate()->resetSackedBit();
+        conn->getRexmitQueueForUpdate()->resetRexmittedBit();
 
         // RFC 3517, page 8: "If an RTO occurs during loss recovery as specified in this document,
         // RecoveryPoint MUST be set to HighData.  Further, the new value of
@@ -608,7 +608,6 @@ void TcpBaseAlg::restartRexmitTimer()
 
 bool TcpBaseAlg::shouldMarkAck()
 {
-
     // rfc-3168, pages 19-20:
     // When TCP receives a CE data packet at the destination end-system, the
     // TCP data receiver sets the ECN-Echo flag in the TCP header of the

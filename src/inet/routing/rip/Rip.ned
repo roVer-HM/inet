@@ -7,12 +7,13 @@
 
 package inet.routing.rip;
 
+import inet.common.SimpleModule;
 import inet.applications.contract.IApp;
 
 //
 // Routing Information Protocol.
 //
-// This module implements distance vector routing as
+// Implements distance vector routing as
 // specified in RFC 2453 (RIPv2) and RFC 2080 (RIPng).
 // The routing protocol uses the Bellman-Ford algorithm to compute
 // the optimal routes. Each router periodically sends its
@@ -31,30 +32,31 @@ import inet.applications.contract.IApp;
 //
 // The module has the following parameters:
 //   - mode: either "RIPv2" (RFC 2453) or "RIPng" (RFC 2080)
-//   - routingTableModule: path to the routing table module
-//   - ripConfig: an XML configuration file containing per-interface parameters
+//   - `routingTableModule`: path to the routing table module
+//   - `ripConfig`: an XML configuration file containing per-interface parameters
 //
 // The configuration file specifies the per interface parameters.
 // Each <interface> element configures one or more interfaces;
 // the @hosts, @names, @towards, @among attributes select the
 // configured interfaces (see ~Ipv4NetworkConfigurator).
-// The other attributes sets parameters of the selected interfaces:
+// The other attributes set parameters of the selected interfaces:
 //
 // - @metric: metric assigned to the link, default value is 1.
 //            This value is added to the metric of a learned route,
 //            received on this interface. It must be an integer in
 //            the [1,15] interval.
 // - @mode: mode of the interface; an enumerated value, default is
-//          'SplitHorizonPoisonedReverse'. Accepted values are:
-//     - 'NoRIP': no RIP messages are sent or received on this interface
-//     - 'NoSplitHorizon': no split horizon filtering; send all routes to
+//          `SplitHorizonPoisonedReverse`. Accepted values are:
+//     - `NoRIP`: no RIP messages are sent or received on this interface
+//     - `NoSplitHorizon`: no split horizon filtering; send all routes to
 //                         neighbors.
-//     - 'SplitHorizon':   do not sent routes whose next hop is the neighbor
-//     - 'SplitHorizonPoisonedReverse': if the next hop is the neighbor, then
+//     - `SplitHorizon`:   do not send routes whose next hop is the neighbor
+//     - `SplitHorizonPoisonedReverse`: if the next hop is the neighbor, then
 //                         set the metric of the route to infinity.
-simple Rip like IApp
+simple Rip extends SimpleModule like IApp
 {
     parameters:
+        @class(Rip);
         @display("i=block/network2");
 
         string interfaceTableModule;   // The path to the InterfaceTable module
@@ -64,21 +66,21 @@ simple Rip like IApp
         string mode @enum("RIPv2", "RIPng") = default("RIPv2");
         int udpPort = (mode == "RIPng" ? 521 : 520);
 
-        volatile double startupTime @unit(s) = default(uniform(0s,5s)); // delay before starting RIP
-        double shutdownTime @unit(s) = default(1s); // delay before shutting down RIP
+        double startupTime @unit(s) = default(uniform(0s,updateInterval)); // Delay before starting RIP
+        double shutdownTime @unit(s) = default(1s); // Delay before shutting down RIP
 
         // RIP timers
         double updateInterval @unit(s) = default(30s);   // 30s timer or update timer
-        double routeExpiryTime @unit(s) = default(180s); // invalid timer
-        double routePurgeTime @unit(s) = default(120s);  // garbage collection timer or flush timer
-        double holdDownTime @unit(s) = default(0s);      // hold-down timer (not defined in RFC). 0s means not active
+        double routeExpiryTime @unit(s) = default(180s); // Invalid timer
+        double routePurgeTime @unit(s) = default(120s);  // Garbage collection timer or flush timer
+        double holdDownTime @unit(s) = default(0s);      // Hold-down timer (not defined in RFC). 0s means not active
 
-        bool triggeredUpdate = default(true);  // sending triggered updates on route changes
+        bool triggeredUpdate = default(true);  // Sending triggered updates on route changes
         volatile double triggeredUpdateDelay @unit(s) = default(uniform(1s,5s));
 
         @lifecycleSupport;
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation finished
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
 
         @signal[sentRequest](type=cPacket);
         @signal[sentUpdate](type=cPacket);
@@ -91,7 +93,7 @@ simple Rip like IApp
         @statistic[badResponse](title="bad response received"; source=badResponse; record=count,"vector(constant1)"; interpolationmode=none);
         @statistic[numRoutes](title="number of routes"; source=numRoutes; record=last,vector; interpolationmode=none);
     gates:
-        input socketIn @labels(UdpControlInfo/up);
-        output socketOut @labels(UdpControlInfo/down);
+        input socketIn @labels(UdpCommand/up);
+        output socketOut @labels(UdpCommand/down);
 }
 

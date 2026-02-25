@@ -10,12 +10,12 @@ package inet.linklayer.csmaca;
 import inet.linklayer.common.WirelessInterface;
 
 //
-// Module interface for CSMA/MA network interfaces.
+// Module interface for CSMA/CA network interfaces.
 //
 module CsmaCaInterface extends WirelessInterface
 {
     parameters:
-        radio.typename = default("ApskScalarRadio");
+        radio.typename = default("ApskRadio");
         mac.typename = default("CsmaCaMac");
         queue.typename = default("DropTailQueue");
         queue.packetCapacity = default(-1);

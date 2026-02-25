@@ -7,7 +7,7 @@ Goals
 This example analyzes how application-level throughput changes as a
 function of nominal bitrate in an 802.11g network.
 
-| INET version: ``4.0``
+| Verified with INET version: ``4.6``
 | Source files location: `inet/showcases/wireless/throughput <https://github.com/inet-framework/inet/tree/master/showcases/wireless/throughput>`__
 
 The model
@@ -26,7 +26,7 @@ Configuration
 ~~~~~~~~~~~~~
 
 The network contains two :ned:`WirelessHost`'s, at a distance of 1 meter,
-one of them acting as traffic source, the other one as traffic sink. The
+one of them acting as a traffic source, the other one as a traffic sink. The
 source host sends a UDP stream to the destination host in ad-hoc mode.
 The simulation is run with a small packet size of 100 bytes, 1000 bytes, and the
 default maximum unfragmented packet size in 802.11, 2236 bytes. (The
@@ -35,7 +35,7 @@ corresponds to 2236 bytes of application data.) The simulation will be
 run several times, with different bitrates. The UDP application in the
 source host is configured to saturate the channel at all bitrates and
 packet sizes. There will be no packets lost in the physical layer
-because the hosts are close to each other, and background noise is
+because the hosts are close to each other, and the background noise is
 configured to be very low.
 
 The parameter study iterates over the following 802.11g bitrates: 6, 9,
@@ -58,7 +58,7 @@ Results
    -->
 
 Throughput measured in the simulation is compared to analytically
-obtained values. The application level throughput can be calculated from
+obtained values. The application-level throughput can be calculated from
 the nominal bitrate and the payload size, for example, using the excel sheet
 `here <https://sarwiki.informatik.hu-berlin.de/Packet_transmission_time_in_802.11>`__.)
 It takes the DIFS, data frame duration, SIFS, ACK duration, and backoff
@@ -82,7 +82,7 @@ the simulation for all bitrates and both packet sizes:
 The two curves match almost exactly. The curves are not linear:
 throughput doesn't increase linearly with the bitrate, especially
 at higher bitrates. The curve for the 2268-byte packets is nearly
-linear, while the curve for the 100-byte packets is not linear, because
+linear, while the curve for the 100-byte packets is not linear because
 the 100-byte packets have relatively more overhead due to various
 protocol headers, such as UDP header and 802.11 MAC header. Also, faster
 bitrates have more overhead. For example, with 1000-byte packets, at 6
@@ -103,7 +103,7 @@ the frame exchange as bitrates increase.
 
 The following sequence chart illustrates the relative sizes of the
 preamble, physical header, and data part of a 54 Mbps frame exchange.
-The preamble and the physical header has the same duration regardless of
+The preamble and the physical header have the same duration regardless of
 the bitrate, further increasing overhead at higher bitrates.
 
 .. figure:: media/seqchart5.png
@@ -125,6 +125,40 @@ Further information
 -------------------
 
 More information can be found in the `INET Reference <https://omnetpp.org/doc/inet/api-current/neddoc/index.html>`__.
+
+
+Try It Yourself
+---------------
+
+If you already have INET and OMNeT++ installed, start the IDE by typing
+``omnetpp``, import the INET project into the IDE, then navigate to the
+``inet/showcases/wireless/throughput`` folder in the `Project Explorer`. There, you can view
+and edit the showcase files, run simulations, and analyze results.
+
+Otherwise, there is an easy way to install INET and OMNeT++ using `opp_env
+<https://omnetpp.org/opp_env>`__, and run the simulation interactively.
+Ensure that ``opp_env`` is installed on your system, then execute:
+
+.. code-block:: bash
+
+    $ opp_env run inet-4.6 --init -w inet-workspace --install --build-modes=release --chdir \
+       -c 'cd inet-4.6.*/showcases/wireless/throughput && inet'
+
+This command creates an ``inet-workspace`` directory, installs the appropriate
+versions of INET and OMNeT++ within it, and launches the ``inet`` command in the
+showcase directory for interactive simulation.
+
+Alternatively, for a more hands-on experience, you can first set up the
+workspace and then open an interactive shell:
+
+.. code-block:: bash
+
+    $ opp_env install --init -w inet-workspace --build-modes=release inet-4.6
+    $ cd inet-workspace
+    $ opp_env shell
+
+Inside the shell, start the IDE by typing ``omnetpp``, import the INET project,
+then start exploring.
 
 Discussion
 ----------

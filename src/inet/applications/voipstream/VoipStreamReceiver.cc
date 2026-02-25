@@ -16,7 +16,7 @@
 #include "inet/networklayer/common/L3AddressResolver.h"
 #include "inet/networklayer/common/L3AddressTag_m.h"
 #include "inet/transportlayer/common/L4PortTag_m.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -41,7 +41,7 @@ VoipStreamReceiver::~VoipStreamReceiver()
 
 void VoipStreamReceiver::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
         // Say Hello to the world
@@ -49,7 +49,7 @@ void VoipStreamReceiver::initialize(int stage)
 
         // read parameters
         localPort = par("localPort");
-        resultFile = par("resultFile");
+        resultFile = getEnvir()->getConfig()->substituteVariables(par("resultFile"));
         playoutDelay = par("playoutDelay");
 
         // initialize avcodec library
@@ -193,7 +193,7 @@ void VoipStreamReceiver::createConnection(Packet *pk)
     if (err < 0)
         throw cRuntimeError("could not open decoding codec %d (%s): error (%d) %s", curConn.codec, curConn.pCodecDec->name, err, av_err2str(err));
 
-    curConn.openAudio(resultFile);
+    curConn.openAudio(resultFile.c_str());
     curConn.offline = false;
     emit(connStateSignal, 1);
 }
@@ -227,7 +227,11 @@ void VoipStreamReceiver::closeConnection()
 {
     if (!curConn.offline) {
         curConn.offline = true;
+#if LIBAVCODEC_VERSION_MAJOR < 58
+        // avcodec_close() is needed for FFmpeg < 3.1 (libavcodec < 58)
         avcodec_close(curConn.decCtx);
+#endif
+        // Note: For FFmpeg >= 3.1, avcodec_free_context() automatically closes the codec
         avcodec_free_context(&curConn.decCtx);
         curConn.outFile.close();
         emit(connStateSignal, -1L); // so that sum() yields the number of active sessions
@@ -284,4 +288,3 @@ void VoipStreamReceiver::finish()
 }
 
 } // namespace inet
-

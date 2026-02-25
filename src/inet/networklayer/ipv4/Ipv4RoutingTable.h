@@ -17,6 +17,7 @@
 #ifndef __INET_IPV4ROUTINGTABLE_H
 #define __INET_IPV4ROUTINGTABLE_H
 
+#include "inet/common/SimpleModule.h"
 #include <vector>
 
 #include "inet/common/ModuleRefByPar.h"
@@ -60,7 +61,7 @@ class IRoutingTable;
  *
  * @see NetworkInterface, Ipv4InterfaceData, Ipv4Route
  */
-class INET_API Ipv4RoutingTable : public cSimpleModule, public IIpv4RoutingTable, protected cListener, public ILifecycle
+class INET_API Ipv4RoutingTable : public SimpleModule, public IIpv4RoutingTable, protected cListener, public ILifecycle
 {
   protected:
     ModuleRefByPar<IInterfaceTable> ift;
@@ -71,10 +72,6 @@ class INET_API Ipv4RoutingTable : public cSimpleModule, public IIpv4RoutingTable
     bool multicastForward = false;
     bool isNodeUp = false;
     bool useAdminDist = false; // Use Cisco like administrative distances
-
-    // for convenience
-    typedef Ipv4MulticastRoute::OutInterface OutInterface;
-    typedef Ipv4MulticastRoute::OutInterfaceVector OutInterfaceVector;
 
     // routing cache: maps destination address to the route
     typedef std::map<Ipv4Address, Ipv4Route *> RoutingCache;
@@ -331,12 +328,6 @@ class INET_API Ipv4RoutingTable : public cSimpleModule, public IIpv4RoutingTable
      * not in the routing table.
      */
     virtual bool deleteMulticastRoute(Ipv4MulticastRoute *entry) override;
-
-    /**
-     * Deletes invalid routes from the routing table. Invalid routes are those
-     * where the isValid() method returns false.
-     */
-    virtual void purge() override;
 
     /**
      * Utility function: Returns a vector of all addresses of the node.

@@ -7,6 +7,7 @@
 
 package inet.linklayer.ieee8021d.rstp;
 
+import inet.common.SimpleModule;
 import inet.linklayer.contract.ISpanningTree;
 
 //
@@ -28,9 +29,10 @@ import inet.linklayer.contract.ISpanningTree;
 //
 // @see ~L2NetworkConfigurator, ~InterfaceTable
 //
-simple Rstp like ISpanningTree
+simple Rstp extends SimpleModule like ISpanningTree
 {
     parameters:
+        @class(Rstp);
         // The hello time is the time between each bridge protocol data unit (BPDU) that is sent on a port.
         // This time is equal to 2 seconds (sec) by default, but you can tune the time to be between 1 and 10 sec.
         double helloTime @unit(s) = default(2s);
@@ -64,7 +66,7 @@ simple Rstp like ISpanningTree
         // Label ethernet interface with port role and status. Mark root switch
         bool visualize = default(false);
 
-        // If true, edge ports immediately become designated/forwarding, else it will have to wait to get designated.
+        // If true, edge ports immediately become designated/forwarding, else they will have to wait to get designated.
         bool autoEdge = default(true);
 
         @display("i=block/network2");

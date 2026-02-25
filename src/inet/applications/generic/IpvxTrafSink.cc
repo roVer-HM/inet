@@ -33,9 +33,8 @@ void IpvxTrafSink::initialize(int stage)
             throw cRuntimeError("invalid protocol id %d, accepts only between 143 and 254", protocolId);
         auto protocol = ProtocolGroup::getIpProtocolGroup()->findProtocol(protocolId);
         if (!protocol) {
-            char *buff = new char[40];
-            sprintf(buff, "prot_%d", protocolId);
-            protocol = new Protocol(buff, buff);
+            std::string buff = "prot_" + std::to_string(protocolId);
+            protocol = new Protocol(buff.c_str(), buff.c_str());
             ProtocolGroup::getIpProtocolGroup()->addProtocol(protocolId, protocol);
         }
         registerProtocol(*protocol, gate("ipOut"), gate("ipIn"));
@@ -45,15 +44,6 @@ void IpvxTrafSink::initialize(int stage)
 void IpvxTrafSink::handleMessageWhenUp(cMessage *msg)
 {
     processPacket(check_and_cast<Packet *>(msg));
-}
-
-void IpvxTrafSink::refreshDisplay() const
-{
-    ApplicationBase::refreshDisplay();
-
-    char buf[32];
-    sprintf(buf, "rcvd: %d pks", numReceived);
-    getDisplayString().setTagArg("t", 0, buf);
 }
 
 void IpvxTrafSink::printPacket(Packet *msg)

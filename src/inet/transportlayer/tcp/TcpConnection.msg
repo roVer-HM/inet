@@ -40,7 +40,7 @@ class TcpReceiveQueue extends cObject
     ReorderBuffer reorderBuffer;
 }
 
-class TcpConnection extends cObject
+class TcpConnection extends cSimpleModule
 {
     @existingClass;
     @descriptor(readonly);
@@ -49,8 +49,8 @@ class TcpConnection extends cObject
     int listeningSocketId;    // identifies listening connection within the app
 
     // socket pair
-    L3Address localAddr;
-    L3Address remoteAddr;
+    L3Address localAddr @getter(getLocalAddress);
+    L3Address remoteAddr @getter(getRemoteAddress);
     int localPort;
     int remotePort;
 

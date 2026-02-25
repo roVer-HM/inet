@@ -14,21 +14,19 @@ namespace inet {
 
 FieldsChunk::FieldsChunk() :
     Chunk(),
-    chunkLength(b(-1)),
-    serializedBytes(nullptr)
+    chunkLength(b(-1))
 {
 }
 
 FieldsChunk::FieldsChunk(const FieldsChunk& other) :
     Chunk(other),
     chunkLength(other.chunkLength),
-    serializedBytes(other.serializedBytes != nullptr ? new std::vector<uint8_t>(*other.serializedBytes) : nullptr)
+    serializedData(other.serializedData)
 {
 }
 
 FieldsChunk::~FieldsChunk()
 {
-    delete serializedBytes;
 }
 
 void FieldsChunk::parsimPack(cCommBuffer *buffer) const
@@ -43,15 +41,13 @@ void FieldsChunk::parsimUnpack(cCommBuffer *buffer)
     int64_t l;
     buffer->unpack(l);
     chunkLength = b(l);
-    delete serializedBytes;
-    serializedBytes = nullptr;
+    serializedData.clear();
 }
 
 void FieldsChunk::handleChange()
 {
     Chunk::handleChange();
-    delete serializedBytes;
-    serializedBytes = nullptr;
+    serializedData.clear();
 }
 
 bool FieldsChunk::containsSameData(const Chunk& other) const
@@ -117,13 +113,20 @@ const Ptr<Chunk> FieldsChunk::peekUnchecked(PeekPredicate predicate, PeekConvert
 
 std::ostream& FieldsChunk::printFieldsToStream(std::ostream& stream, int level, int evFlags) const
 {
-    auto className = getClassName();
     auto descriptor = getDescriptor();
     // TODO make this more sophisticated, e.g. add properties to fields to control what is printed
-    if (level <= PRINT_LEVEL_DETAIL)
-        for (int i = 0; i < descriptor->getFieldCount(); i++)
-            if (!descriptor->getFieldIsArray(i) && !strcmp(className, descriptor->getFieldDeclaredOn(i)))
+    if (level <= PRINT_LEVEL_DETAIL) {
+        for (int i = 0; i < descriptor->getFieldCount(); i++) {
+            auto fieldDeclaredOn = descriptor->getFieldDeclaredOn(i);
+            if (!descriptor->getFieldIsArray(i) &&
+                strcmp("inet::FieldsChunk", fieldDeclaredOn) &&
+                strcmp("inet::Chunk", fieldDeclaredOn) &&
+                strcmp("omnetpp::cObject", fieldDeclaredOn))
+            {
                 stream << ", " << EV_BOLD << descriptor->getFieldName(i) << EV_NORMAL << " = " << descriptor->getFieldValueAsString(toAnyPtr(this), i, 0);
+            }
+        }
+    }
     return stream;
 }
 

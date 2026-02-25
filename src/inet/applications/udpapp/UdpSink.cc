@@ -9,7 +9,7 @@
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -82,9 +82,8 @@ void UdpSink::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
 
-    char buf[50];
-    sprintf(buf, "rcvd: %d pks", numReceived);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = "rcvd: " + std::to_string(numReceived) + " pks";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void UdpSink::finish()

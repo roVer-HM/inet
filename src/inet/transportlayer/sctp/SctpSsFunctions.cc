@@ -55,15 +55,12 @@ void SctpAssociation::initStreams(uint32_t inStreams, uint32_t outStreams)
 void SctpAssociation::addInStreams(uint32_t inStreams)
 {
     uint32_t i, j;
-    char vectorName[128];
     EV_INFO << "Add " << inStreams << " inbound streams" << endl;
     for (i = receiveStreams.size(), j = 0; j < inStreams; i++, j++) {
         SctpReceiveStream *rcvStream = new SctpReceiveStream(this);
         this->receiveStreams[i] = rcvStream;
         rcvStream->setStreamId(i);
         this->state->numMsgsReq[i] = 0;
-        snprintf(vectorName, sizeof(vectorName), "Stream %d Throughput", i);
-        streamThroughputVectors[i] = new cOutVector(vectorName);
     }
 }
 
@@ -522,7 +519,7 @@ int32_t SctpAssociation::pathStreamSchedulerMapToPath(SctpPathVariables *path, b
             if ((stream->getUnorderedStreamQ()->getLength() > 0) || // Stream has something to send ...
                 (stream->getStreamQ()->getLength() > 0))
             {
-                assert(sid == -1);
+                ASSERT(sid == -1);
                 sid = stream->getStreamId();
                 break;
             }

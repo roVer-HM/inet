@@ -7,6 +7,7 @@
 
 package inet.linklayer.ieee80211.mac.coordinationfunction;
 
+import inet.common.Module;
 import inet.linklayer.ieee80211.mac.channelaccess.Dcaf;
 import inet.linklayer.ieee80211.mac.contract.ICtsPolicy;
 import inet.linklayer.ieee80211.mac.contract.IDcf;
@@ -21,11 +22,10 @@ import inet.linklayer.ieee80211.mac.protectionmechanism.OriginatorProtectionMech
 import inet.linklayer.ieee80211.mac.rateselection.RateSelection;
 import inet.linklayer.ieee80211.mac.recipient.RecipientMacDataService;
 
-
 //
 // Implements the DCF (Distributed Coordination Function) for IEEE 802.11.
 //
-module Dcf like IDcf
+module Dcf extends Module like IDcf
 {
     parameters:
         string rxModule;
@@ -67,7 +67,7 @@ module Dcf like IDcf
         @statistic[datarateSelected](title="datarates selected"; record=vector; interpolationmode=none);
 
     submodules:
-        // TODO consider merging Dcaf into Dcf, because its not like the relationship between Hcf and Edcaf or
+        // TODO consider merging Dcaf into Dcf because it's not like the relationship between Hcf and Edcaf or
         // TODO maybe move PendingQueue and InProgressFrames in Edcaf?
         channelAccess: Dcaf {
             parameters:

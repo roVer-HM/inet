@@ -9,6 +9,7 @@
 
 #include "inet/common/ModuleAccess.h"
 #include "inet/networklayer/diffserv/DiffservUtil.h"
+#include "inet/queueing/common/PassivePacketSinkRef.h"
 
 namespace inet {
 
@@ -37,7 +38,7 @@ void TokenBucketMeter::initialize(int stage)
     }
 }
 
-void TokenBucketMeter::pushPacket(Packet *packet, cGate *inputGate)
+void TokenBucketMeter::pushPacket(Packet *packet, const cGate *inputGate)
 {
     numRcvd++;
     cGate *outputGate = nullptr;
@@ -48,18 +49,19 @@ void TokenBucketMeter::pushPacket(Packet *packet, cGate *inputGate)
         numRed++;
         outputGate = gate("redOut");
     }
-    auto consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+    queueing::PassivePacketSinkRef consumer;
+    consumer.reference(outputGate, false);
     pushOrSendPacket(packet, outputGate, consumer);
 }
 
 void TokenBucketMeter::refreshDisplay() const
 {
-    char buf[50] = "";
+    std::string buf;
     if (numRcvd > 0)
-        sprintf(buf + strlen(buf), "rcvd: %d ", numRcvd);
+        buf = "rcvd: " + std::to_string(numRcvd) + " ";
     if (numRed > 0)
-        sprintf(buf + strlen(buf), "red:%d ", numRed);
-    getDisplayString().setTagArg("t", 0, buf);
+        buf += "red:" + std::to_string(numRed) + " ";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 int TokenBucketMeter::meterPacket(Packet *packet)

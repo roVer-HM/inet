@@ -70,7 +70,7 @@ SctpNatPeer::~SctpNatPeer()
 
 void SctpNatPeer::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
     EV_DEBUG << "initialize SCTP NAT Peer stage " << stage << endl;
     if (stage == INITSTAGE_LOCAL) {
         WATCH(numSessions);
@@ -260,12 +260,12 @@ void SctpNatPeer::handleMessage(cMessage *msg)
                     rcvdPacketsPerAssoc[serverAssocId] = static_cast<int64_t>(par("numPacketsToReceivePerClient"));
                     sentPacketsPerAssoc[serverAssocId] = static_cast<int64_t>(par("numPacketsToSendPerClient"));
                     char text[128];
-                    sprintf(text, "App: Received Bytes of assoc %d", serverAssocId);
+                    snprintf(text, sizeof(text), "App: Received Bytes of assoc %d", serverAssocId);
                     bytesPerAssoc[serverAssocId] = new cOutVector(text);
                     rcvdBytesPerAssoc[serverAssocId] = 0;
-                    sprintf(text, "App: EndToEndDelay of assoc %d", serverAssocId);
+                    snprintf(text, sizeof(text), "App: EndToEndDelay of assoc %d", serverAssocId);
                     endToEndDelay[serverAssocId] = new cOutVector(text);
-                    sprintf(text, "Hist: EndToEndDelay of assoc %d", serverAssocId);
+                    snprintf(text, sizeof(text), "Hist: EndToEndDelay of assoc %d", serverAssocId);
                     histEndToEndDelay[serverAssocId] = new cHistogram(text);
 
                     delete msg;
@@ -306,8 +306,8 @@ void SctpNatPeer::handleMessage(cMessage *msg)
 
                             auto j = rcvdPacketsPerAssoc.find(serverAssocId);
                             if (j->second == 0 && par("waitToClose").doubleValue() > 0.0) {
-                                char as[5];
-                                sprintf(as, "%d", serverAssocId);
+                                char as[32];
+                                snprintf(as, sizeof(as), "%d", serverAssocId);
                                 cMessage *abortMsg = new cMessage(as, SCTP_I_ABORT);
                                 scheduleAfter(par("waitToClose"), abortMsg);
                             }
@@ -353,7 +353,7 @@ void SctpNatPeer::handleMessage(cMessage *msg)
                 id = ind->getSocketId();
                 if (rendezvous) {
                     const auto& smsg = message->peekDataAsBytes();
-                    int bufferlen = B(smsg->getChunkLength()).get();
+                    int bufferlen = smsg->getChunkLength().get<B>();
                     uint8_t *buffer = new uint8_t[bufferlen];
                     std::vector<uint8_t> vec = smsg->getBytes();
                     for (int i = 0; i < bufferlen; i++) {
@@ -417,8 +417,8 @@ void SctpNatPeer::handleMessage(cMessage *msg)
                             cmd->setPrValue(0);
                             cmd->setSid(lastStream);
                             cmd->setLast(true);
-                            cmsg->encapsulate(smsg);
-                            cmsg->setControlInfo(cmd.get()); // KLUDGE
+//                            cmsg->encapsulate(smsg); // KLUDGE: commented out the unavailable function
+//                            cmsg->setControlInfo(cmd.get()); // KLUDGE: commented out the unavailable function
                             packetsSent++;
                             delete msg;
                             sendOrSchedule(cmsg);
@@ -470,10 +470,9 @@ void SctpNatPeer::handleMessage(cMessage *msg)
     }
 
     if (hasGUI()) {
-        char buf[32];
         auto l = rcvdBytesPerAssoc.find(id);
-        sprintf(buf, "rcvd: %lld bytes\nsent: %lld bytes", (long long int)l->second, (long long int)bytesSent);
-        getDisplayString().setTagArg("t", 0, buf);
+        std::string buf = "rcvd: " + std::to_string(l->second) + " bytes\nsent: " + std::to_string(bytesSent) + " bytes";
+        getDisplayString().setTagArg("t", 0, buf.c_str());
     }
 }
 

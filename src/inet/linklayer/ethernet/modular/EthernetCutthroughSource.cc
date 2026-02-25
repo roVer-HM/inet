@@ -73,18 +73,17 @@ void EthernetCutthroughSource::EthernetCutthroughDissectorCallback::visitChunk(c
         payloadProtocol = protocol;
 }
 
-void EthernetCutthroughSource::pushPacketStart(Packet *packet, cGate *gate, bps datarate)
+void EthernetCutthroughSource::pushPacketStart(Packet *packet, const cGate *gate, bps datarate)
 {
     PacketDestreamer::pushPacketStart(packet, gate, datarate);
     if (!cutthroughInProgress && isEligibleForCutthrough(packet)) {
         b cutthroughPosition = getCutthroughSwitchingHeaderSize(packet);
-        simtime_t delay = s(cutthroughPosition / datarate).get();
+        simtime_t delay = (cutthroughPosition / datarate).get<s>();
         scheduleAt(simTime() + delay, cutthroughTimer);
-        updateDisplayString();
     }
 }
 
-void EthernetCutthroughSource::pushPacketEnd(Packet *packet, cGate *gate)
+void EthernetCutthroughSource::pushPacketEnd(Packet *packet, const cGate *gate)
 {
     if (cutthroughInProgress) {
         Enter_Method("pushPacketEnd");
@@ -100,7 +99,6 @@ void EthernetCutthroughSource::pushPacketEnd(Packet *packet, cGate *gate)
         numProcessedPackets++;
         processedTotalLength += packet->getTotalLength();
         delete packet;
-        updateDisplayString();
     }
     else
         PacketDestreamer::pushPacketEnd(packet, gate);

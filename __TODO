@@ -1,4 +1,8 @@
-INET 4.5 release
+ - merge outstanding development branches
+ - merge GitHub pull requests
+ - fix GitHub issues
+
+INET 4.6 release
 ================
 
 Implementation

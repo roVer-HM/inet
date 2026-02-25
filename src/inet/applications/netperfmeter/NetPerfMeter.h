@@ -22,12 +22,13 @@
 #include <fstream>
 
 #include "inet/applications/netperfmeter/NetPerfMeter_m.h"
+#include "inet/common/SimpleModule.h"
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/transportlayer/contract/sctp/SctpCommand_m.h"
 #include "inet/transportlayer/contract/sctp/SctpSocket.h"
 #include "inet/transportlayer/contract/tcp/TcpCommand_m.h"
 #include "inet/transportlayer/contract/tcp/TcpSocket.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 #include "inet/transportlayer/contract/udp/UdpSocket.h"
 
 namespace inet {
@@ -35,7 +36,7 @@ namespace inet {
 /**
  * Implementation of NetPerfMeter. See NED file for more details.
  */
-class INET_API NetPerfMeter : public cSimpleModule
+class INET_API NetPerfMeter : public SimpleModule
 {
   public:
     NetPerfMeter();
@@ -165,13 +166,13 @@ class INET_API NetPerfMeter : public cSimpleModule
 
     inline SenderStatistics *getSenderStatistics(const unsigned int streamID) {
         auto found = SenderStatisticsMap.find(streamID);
-        assert(found != SenderStatisticsMap.end());
+        ASSERT(found != SenderStatisticsMap.end());
         return found->second;
     }
 
     inline ReceiverStatistics *getReceiverStatistics(const unsigned int streamID) {
         auto found = ReceiverStatisticsMap.find(streamID);
-        assert(found != ReceiverStatisticsMap.end());
+        ASSERT(found != ReceiverStatisticsMap.end());
         return found->second;
     }
 

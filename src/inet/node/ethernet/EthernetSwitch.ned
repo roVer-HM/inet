@@ -13,26 +13,39 @@ import inet.common.IMeasurer;
 import inet.common.MessageDispatcher;
 import inet.common.lifecycle.NodeStatus;
 import inet.common.packet.recorder.PcapRecorder;
-import inet.linklayer.configurator.L2NodeConfigurator;
+import inet.linklayer.configurator.contract.IL2NodeConfigurator;
 import inet.linklayer.contract.IEthernetInterface;
+import inet.linklayer.contract.IEthernetLayer;
+import inet.linklayer.contract.IGptp;
+import inet.linklayer.contract.IIeee8021qLayer;
+import inet.linklayer.contract.IIeee8021rLayer;
+import inet.linklayer.contract.IIeee8022Llc;
 import inet.linklayer.contract.IMacForwardingTable;
+import inet.linklayer.contract.IMrp;
 import inet.linklayer.contract.ISpanningTree;
-import inet.linklayer.ethernet.contract.IEthernetLayer;
-import inet.linklayer.ieee8021q.IIeee8021qLayer;
-import inet.linklayer.ieee8021r.IIeee8021rLayer;
-import inet.linklayer.ieee8022.IIeee8022Llc;
 import inet.networklayer.common.InterfaceTable;
 import inet.node.contract.IEthernetNetworkNode;
 import inet.protocolelement.contract.IProtocolLayer;
 
-
 //
-// Model of an Ethernet switch.
+// EthernetSwitch models a Layer 2 Ethernet switch with support for various IEEE 802.1
+// protocols and features. It provides frame forwarding based on MAC addresses and
+// implements multiple switching technologies.
 //
-// The duplexChannel attributes of the MACs must be set according to the
-// medium connected to the port; if collisions are possible (it's a bus or hub)
-// it must be set to false, otherwise it can be set to true.
-// By default used half duples CSMA/CD mac
+// The switch maintains a MAC address table (forwarding database) that maps MAC addresses
+// to ports. It learns these mappings by examining the source address of incoming frames.
+// When a frame arrives with an unknown destination, the switch floods it to all ports
+// except the incoming one.
+//
+// Key features:
+// - MAC address learning and forwarding
+// - Support for Spanning Tree Protocol (STP/RSTP) to prevent loops
+// - Optional VLAN support through IEEE 802.1Q
+// - Optional Media Redundancy Protocol (MRP) support
+// - Optional Generalized Precision Time Protocol (gPTP) for time synchronization
+// - Support for cut-through switching for reduced latency
+// - Configurable number of Ethernet interfaces
+// - Optional PCAP recording for traffic analysis
 //
 module EthernetSwitch like IEthernetNetworkNode
 {
@@ -45,15 +58,17 @@ module EthernetSwitch like IEthernetNetworkNode
         int numApps = default(0);
         bool hasStatus = default(false);
         bool hasStp = default(false);
+        bool hasMrp = default(false);
         bool hasGptp = default(false);
         bool hasCutthroughSwitching = default(false);
         string fcsMode @enum("declared","computed") = default("declared");
         string spanningTreeProtocol = default("Stp");
-        int numEthInterfaces = default(0);  // minimum number of ethernet interfaces
+        int numEthInterfaces = default(0);  // Minimum number of ethernet interfaces
         eth[*].encap.typename = default("");
         *.fcsMode = this.fcsMode;
         **.interfaceTableModule = default(absPath(".interfaceTable"));
         **.macTableModule = default(absPath(".macTable"));
+        **.mrpRelayModule = default(absPath(".bridging"));
         *.clockModule = default(exists(clock) ? absPath(".clock") : "");
 
         llc.registerProtocol = true;
@@ -64,13 +79,13 @@ module EthernetSwitch like IEthernetNetworkNode
     gates:
         inout ethg[numEthInterfaces] @labels(EtherFrame-conn);
     submodules:
-        macTable: <default("MacForwardingTable")> like IMacForwardingTable {
+        macTable: <default(hasMrp ? "MrpMacForwardingTable" : "MacForwardingTable")> like IMacForwardingTable {
             @display("p=100,100;is=s");
         }
         interfaceTable: InterfaceTable {
             @display("p=100,200;is=s");
         }
-        l2NodeConfigurator: L2NodeConfigurator if hasStp {
+        l2NodeConfigurator: <default("L2NodeConfigurator")> like IL2NodeConfigurator if hasStp || hasMrp {
             @display("p=100,300;is=s");
         }
         status: NodeStatus if hasStatus {
@@ -83,12 +98,15 @@ module EthernetSwitch like IEthernetNetworkNode
             @display("p=100,600;is=s");
         }
         measurer: <default("")> like IMeasurer if typename != "" {
-            @display("p=125,700;is=s");
+            @display("p=100,700;is=s");
+        }
+        mrp: <default("Mrp")> like IMrp if hasMrp {
+            @display("p=500,50");
         }
         stp: <spanningTreeProtocol> like ISpanningTree if hasStp {
             @display("p=500,75");
         }
-        gptp: <default("Gptp")> like IApp if hasGptp {
+        gptp: <default("Gptp")> like IGptp if hasGptp {
             @display("p=700,75");
             gptpNodeType = default("BRIDGE_NODE"); // @enum("gptpNodeType"): MASTER_NODE, BRIDGE_NODE, SLAVE_NODE
         }
@@ -99,13 +117,13 @@ module EthernetSwitch like IEthernetNetworkNode
         sc: MessageDispatcher {
             @display("p=800,150;b=1200,5");
         }
-        llc: <default("Ieee8022Llc")> like IIeee8022Llc if typename != "" {
+        llc: <default(hasMrp ? "Ieee8022Llc" : "")> like IIeee8022Llc if typename != "" || hasMrp {
             @display("p=700,225");
         }
         cb: MessageDispatcher {
             @display("p=800,300;b=1200,5");
         }
-        bridging: <default(firstAvailable("Ieee8021dRelay","MacRelayUnit"))> like IProtocolLayer {
+        bridging: <default(hasMrp ? "MrpRelay" : firstAvailable("Ieee8021dRelay","MacRelayUnit"))> like IProtocolLayer {
             @display("p=800,375;is=m");
         }
         bl: MessageDispatcher {
@@ -114,10 +132,10 @@ module EthernetSwitch like IEthernetNetworkNode
         ethernet: <default("EthernetEncapsulation")> like IEthernetLayer if typename != "" {
             @display("p=500,525");
         }
-        ieee8021q: <default("Ieee8021qProtocol")> like IIeee8021qLayer if typename != "" {
+        ieee8021q: <default("")> like IIeee8021qLayer if typename != "" {
             @display("p=700,525");
         }
-        ieee8021r: <default("Ieee8021rProtocol")> like IIeee8021rLayer if typename != "" {
+        ieee8021r: <default("")> like IIeee8021rLayer if typename != "" {
             @display("p=900,525");
         }
         li: MessageDispatcher {
@@ -167,6 +185,11 @@ module EthernetSwitch like IEthernetNetworkNode
             li.out++ --> eth[i].upperLayerIn;
             li.in++ <-- eth[i].upperLayerOut;
             eth[i].phys <--> { @display("m=s"); } <--> ethg[i];
+        }
+
+        if hasMrp {
+            mrp.relayIn <-- sc.out++;
+            mrp.relayOut --> sc.in++;
         }
 
         if hasStp {

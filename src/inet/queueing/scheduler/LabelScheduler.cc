@@ -7,7 +7,7 @@
 
 #include "inet/queueing/scheduler/LabelScheduler.h"
 
-#include "inet/queueing/common/LabelsTag_m.h"
+#include "inet/common/LabelsTag_m.h"
 
 namespace inet {
 namespace queueing {
@@ -21,7 +21,7 @@ void LabelScheduler::initialize(int stage)
         defaultGateIndex = par("defaultGateIndex");
         labels = cStringTokenizer(par("labels")).asVector();
         for (auto provider : providers)
-            collections.push_back(dynamic_cast<IPacketCollection *>(provider));
+            collections.push_back(dynamic_cast<IPacketCollection *>(provider.get()));
     }
 }
 
@@ -61,11 +61,11 @@ void LabelScheduler::removeAllPackets()
 int LabelScheduler::schedulePacket()
 {
     for (auto label : labels) {
-        for (int i = 0; i < (int)providers.size(); i++) {
-            auto packet = providers[i]->canPullPacket(inputGates[i]->getPathStartGate());
+        for (size_t i = 0; i < providers.size(); i++) {
+            auto packet = providers[i].canPullPacket();
             const auto& labelsTag = packet->findTag<LabelsTag>();
             if (labelsTag != nullptr) {
-                for (int j = 0; j < (int)labelsTag->getLabelsArraySize(); j++)
+                for (size_t j = 0; j < labelsTag->getLabelsArraySize(); j++)
                     if (label == labelsTag->getLabels(j))
                         return i;
             }

@@ -40,7 +40,7 @@ class INET_API PacketGateBase : public PacketFlowBase, public TransparentProtoco
 
     virtual bool canPacketFlowThrough(Packet *packet) const;
 
-    virtual void updateDisplayString() const override;
+    virtual void refreshDisplay() const override;
 
   public:
     virtual bool isOpen() const override { return isOpen_; }
@@ -48,20 +48,27 @@ class INET_API PacketGateBase : public PacketFlowBase, public TransparentProtoco
     virtual void open() override;
     virtual void close() override;
 
-    virtual IPassivePacketSink *getConsumer(cGate *gate) override { return this; }
-    virtual IPassivePacketSource *getProvider(cGate *gate) override { return this; }
+    virtual int getNumPackets() const override;
+    virtual b getTotalLength() const override;
+    virtual Packet* getPacket(int index) const override;
+    virtual bool isEmpty() const override;
+    virtual void removePacket(Packet *packet) override;
+    virtual void removeAllPackets() override;
 
-    virtual bool supportsPacketPushing(cGate *gate) const override { return true; }
-    virtual bool supportsPacketPulling(cGate *gate) const override { return true; }
+    virtual IPassivePacketSink *getConsumer(const cGate *gate) override { return this; }
+    virtual IPassivePacketSource *getProvider(const cGate *gate) override { return this; }
 
-    virtual bool canPushSomePacket(cGate *gate) const override;
-    virtual bool canPushPacket(Packet *packet, cGate *gate) const override;
+    virtual bool supportsPacketPushing(const cGate *gate) const override { return true; }
+    virtual bool supportsPacketPulling(const cGate *gate) const override { return true; }
 
-    virtual bool canPullSomePacket(cGate *gate) const override;
-    virtual Packet *canPullPacket(cGate *gate) const override;
+    virtual bool canPushSomePacket(const cGate *gate) const override;
+    virtual bool canPushPacket(Packet *packet, const cGate *gate) const override;
 
-    virtual void handleCanPushPacketChanged(cGate *gate) override;
-    virtual void handleCanPullPacketChanged(cGate *gate) override;
+    virtual bool canPullSomePacket(const cGate *gate) const override;
+    virtual Packet *canPullPacket(const cGate *gate) const override;
+
+    virtual void handleCanPushPacketChanged(const cGate *gate) override;
+    virtual void handleCanPullPacketChanged(const cGate *gate) override;
 };
 
 } // namespace queueing

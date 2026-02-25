@@ -31,7 +31,7 @@ void SctpServer::initialize(int stage)
 {
     EV_DEBUG << "initialize SCTP Server stage " << stage << endl;
 
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
         WATCH(numSessions);
@@ -252,9 +252,9 @@ void SctpServer::handleMessage(cMessage *msg)
                 serverAssocStatMap[assocId].abortSent = false;
                 serverAssocStatMap[assocId].peerClosed = false;
                 char text[50];
-                sprintf(text, "App: Received Bytes of assoc %d", assocId);
+                snprintf(text, sizeof(text), "App: Received Bytes of assoc %d", assocId);
                 bytesPerAssoc[assocId] = new cOutVector(text);
-                sprintf(text, "App: EndToEndDelay of assoc %d", assocId);
+                snprintf(text, sizeof(text), "App: EndToEndDelay of assoc %d", assocId);
                 endToEndDelay[assocId] = new cOutVector(text);
 
                 delete msg;
@@ -292,7 +292,7 @@ void SctpServer::handleMessage(cMessage *msg)
                         auto j = serverAssocStatMap.find(assocId);
                         if (j->second.rcvdPackets == 0 && par("waitToClose").doubleValue() > 0) {
                             char as[5];
-                            sprintf(as, "%d", assocId);
+                            snprintf(as, sizeof(as), "%d", assocId);
                             cMessage *abortMsg = new cMessage(as, SCTP_I_ABORT);
                             scheduleAfter(par("waitToClose"), abortMsg);
                         }
@@ -398,7 +398,7 @@ void SctpServer::handleMessage(cMessage *msg)
                     cmd->setPrValue(0);
                     cmd->setSid(lastStream);
                     cmsg->setKind(cmd->getSendUnordered() ? SCTP_C_SEND_UNORDERED : SCTP_C_SEND_ORDERED);
-                    bytesSent += B(smsg->getChunkLength()).get();
+                    bytesSent += smsg->getChunkLength().get<B>();
                     packetsSent++;
                     sendOrSchedule(cmsg);
                 }

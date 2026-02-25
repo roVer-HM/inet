@@ -1,11 +1,12 @@
 import logging
 import subprocess
 
-logger = logging.getLogger(__name__)
-
 from inet.common import *
 from inet.simulation.project import *
+from inet.project.inet import *
+
+_logger = logging.getLogger(__name__)
 
 def generate_ned_documentation(excludes = []):
-    logger.info("Generating NED documentation")
-    subprocess.run(["opp_neddoc", "--no-automatic-hyperlinks", "-x", ','.join(excludes), inet_project.get_full_path(".")])
+    _logger.info("Generating NED documentation")
+    run_command_with_logging(["opp_neddoc", "--no-automatic-hyperlinks", "-x", ','.join(excludes), inet_project.get_full_path(".")])

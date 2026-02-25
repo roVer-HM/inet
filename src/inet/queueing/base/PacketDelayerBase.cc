@@ -38,7 +38,7 @@ void PacketDelayerBase::handleMessage(cMessage *message)
 void PacketDelayerBase::processPacket(Packet *packet, simtime_t sendingTime)
 {
     simtime_t delay = simTime() - sendingTime;
-    insertPacketEvent(this, packet, PEK_DELAYED, delay / packet->getBitLength());
+    insertPacketEvent(this, packet, PEK_DELAYED, delay / packet->getBitLength(), 0);
     increaseTimeTag<DelayingTimeTag>(packet, delay / packet->getBitLength(), delay);
     pushOrSendPacket(packet, outputGate, consumer);
 }
@@ -53,7 +53,7 @@ cGate *PacketDelayerBase::getRegistrationForwardingGate(cGate *gate)
         throw cRuntimeError("Unknown gate");
 }
 
-void PacketDelayerBase::pushPacket(Packet *packet, cGate *gate)
+void PacketDelayerBase::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -81,21 +81,20 @@ void PacketDelayerBase::pushPacket(Packet *packet, cGate *gate)
             processPacket(packet, simTime());
     }
     handlePacketProcessed(packet);
-    updateDisplayString();
 }
 
-void PacketDelayerBase::handleCanPushPacketChanged(cGate *gate)
+void PacketDelayerBase::handleCanPushPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPushPacketChanged");
     if (producer != nullptr)
-        producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+        producer.handleCanPushPacketChanged();
 }
 
-void PacketDelayerBase::handlePushPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void PacketDelayerBase::handlePushPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePushPacketProcessed");
     if (producer != nullptr)
-        producer->handlePushPacketProcessed(packet, gate, successful);
+        producer.handlePushPacketProcessed(packet, successful);
 }
 
 } // namespace queueing

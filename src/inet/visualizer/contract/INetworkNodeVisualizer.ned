@@ -8,13 +8,13 @@
 package inet.visualizer.contract;
 
 //
-// This module interface allows configuring different ~INetworkNodeVisualizer
+// Interface allows configuring different ~INetworkNodeVisualizer
 // submodules from INI files. Such a visualizer creates the visual representations
 // of network nodes.
 //
 // @see ~NetworkNodeCanvasVisualizer, ~NetworkNodeOsgVisualizer, ~NetworkNodeVisualizer, ~NetworkNodeVisualizerBase
 //
-moduleinterface INetworkNodeVisualizer
+moduleinterface INetworkNodeVisualizer extends IVisualizer
 {
     parameters:
         @display("i=block/app");

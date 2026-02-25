@@ -8,6 +8,7 @@
 #ifndef __INET_RADIOMEDIUM_H
 #define __INET_RADIOMEDIUM_H
 
+#include "inet/common/SimpleModule.h"
 #include <algorithm>
 
 #include "inet/common/IntervalTree.h"
@@ -28,7 +29,7 @@ namespace physicallayer {
  * The default implementation of the radio medium interface.
  */
 // TODO add tests for various optimization configurations
-class INET_API RadioMedium : public cSimpleModule, public cListener, public IRadioMedium
+class INET_API RadioMedium : public SimpleModule, public cListener, public IRadioMedium
 {
     friend Radio;
 
@@ -57,7 +58,7 @@ class INET_API RadioMedium : public cSimpleModule, public cListener, public IRad
     /**
      * The analog model is never nullptr.
      */
-    const IAnalogModel *analogModel;
+    const IMediumAnalogModel *analogModel;
     /**
      * The background noise model or nullptr if unused.
      */
@@ -98,6 +99,10 @@ class INET_API RadioMedium : public cSimpleModule, public cListener, public IRad
      */
     bool recordTransmissionLog;
     bool recordReceptionLog;
+    /**
+     * Specifies what should happen if two transmissions start at the same moment
+     */
+    const char *sameTransmissionStartTimeCheck = nullptr;
     //@}
 
     /** @name Timer */
@@ -306,7 +311,7 @@ class INET_API RadioMedium : public cSimpleModule, public cListener, public IRad
     virtual const IPropagation *getPropagation() const override { return propagation; }
     virtual const IPathLoss *getPathLoss() const override { return pathLoss; }
     virtual const IObstacleLoss *getObstacleLoss() const override { return obstacleLoss; }
-    virtual const IAnalogModel *getAnalogModel() const override { return analogModel; }
+    virtual const IMediumAnalogModel *getAnalogModel() const override { return analogModel; }
     virtual const IBackgroundNoise *getBackgroundNoise() const override { return backgroundNoise; }
     virtual const physicalenvironment::IPhysicalEnvironment *getPhysicalEnvironment() const override { return physicalEnvironment; }
     virtual const IMediumLimitCache *getMediumLimitCache() const override { return mediumLimitCache; }

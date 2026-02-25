@@ -7,6 +7,8 @@
 
 package inet.linklayer.ieee80211.mgmt;
 
+import inet.common.SimpleModule;
+
 //
 // Used in 802.11 infrastructure mode for a station (STA).
 //
@@ -14,10 +16,11 @@ package inet.linklayer.ieee80211.mgmt;
 // it send or expect to receive any management frames. It simply treats the
 // station as associated to the configured AP all the time.
 //
-simple Ieee80211MgmtStaSimplified like IIeee80211Mgmt
+simple Ieee80211MgmtStaSimplified extends SimpleModule like IIeee80211Mgmt
 {
     parameters:
-        string accessPointAddress; // MAC address of associate AP
+        @class(Ieee80211MgmtStaSimplified);
+        string accessPointAddress; // MAC address of associated AP
         string interfaceTableModule;
         string mibModule;
         string macModule;               // The path to the MAC module
@@ -25,7 +28,6 @@ simple Ieee80211MgmtStaSimplified like IIeee80211Mgmt
     gates:
         input macIn @labels(Ieee80211MacHeader);
         output macOut @labels(Ieee80211MacHeader);
-        input agentIn @loose;   // unused dummy to statisfy the IIeee80211Mgmt interface
-        output agentOut @loose; // unused dummy to statisfy the IIeee80211Mgmt interface
+        input agentIn @loose;   // Unused dummy to satisfy the IIeee80211Mgmt interface
+        output agentOut @loose; // Unused dummy to satisfy the IIeee80211Mgmt interface
 }
-

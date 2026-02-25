@@ -1,14 +1,19 @@
 import math
-import optimparallel
 import scipy.optimize
 import time
+
+import importlib.util
+
+if importlib.util.find_spec('optimparallel'):
+    import optimparallel
 
 from omnetpp.scave.results import *
 
 from inet.simulation.config import *
-from inet.simulation.project import *
 from inet.simulation.task import *
-from inet.simulation.cffi import *
+from inet.simulation.project import *
+
+__sphinx_mock__ = True # ignore this module in documentation
 
 def cost_function(parameter_values, simulation_task, expected_result_names, expected_result_values, fixed_parameter_names, fixed_parameter_values, fixed_parameter_assignments, fixed_parameter_units, parameter_names, parameter_assignments, parameter_units, kwargs):
     all_parameter_assignments = [*fixed_parameter_assignments, *parameter_assignments]
@@ -16,8 +21,8 @@ def cost_function(parameter_values, simulation_task, expected_result_names, expe
     all_parameter_units = [*fixed_parameter_units, *parameter_units]
     all_parameter_assignment_args = list(map(lambda name, value, unit: "--" + name + "=" + str(value) + unit, all_parameter_assignments, all_parameter_values, all_parameter_units))
     output_vector_file = "results/" + simulation_task.simulation_config.config + "-" + "-".join(map(str, all_parameter_values)) + ".vec"
-    extra_args = ["--output-vector-file=" + output_vector_file, *all_parameter_assignment_args]
-    simulation_result = simulation_task.run(extra_args=extra_args, **kwargs)
+    append_args = ["--output-vector-file=" + output_vector_file, *all_parameter_assignment_args]
+    simulation_result = simulation_task.run(append_args=append_args, **kwargs)
     if simulation_result.result == "DONE":
         filter_expression = """name =~ packetErrorRate:vector"""
         result_file = simulation_task.simulation_config.simulation_project.get_full_path(os.path.join(simulation_task.simulation_config.working_directory, output_vector_file))
@@ -33,11 +38,15 @@ def optimize_simulation_parameters(simulation_task, expected_result_names, expec
                                    fixed_parameter_names, fixed_parameter_values, fixed_parameter_assignments, fixed_parameter_units,
                                    parameter_names, parameter_assignments, parameter_units,
                                    initial_values, min_values, max_values, tol=1E-3,
-                                   concurrent=False, simulation_runner=inprocess_simulation_runner if "inprocess_simulation_runner" in locals() else subprocess_simulation_runner, **kwargs):
+                                   concurrent=False, simulation_runner=None, **kwargs):
+    start_time = time.time()
     # TODO unfortunately we cannot run simulations concurrently in the same process right now
     if concurrent:
         simulation_runner = subprocess_simulation_runner
-    start_time = time.time()
+    elif "inet.cffi.libinet" in sys.modules:
+        simulation_runner = getattr(sys.modules["omnetpp.cffi.inprocess"], "inprocess_simulation_runner")
+    else:
+        simulation_runner = subprocess_simulation_runner
     xs = np.array(initial_values)
     bounds = list(map(lambda min, max: (min, max), min_values, max_values))
     args = (simulation_task, expected_result_names, expected_result_values, fixed_parameter_names, fixed_parameter_values, fixed_parameter_assignments, fixed_parameter_units, parameter_names, parameter_assignments, parameter_units, dict(kwargs, simulation_runner=simulation_runner))

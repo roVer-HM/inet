@@ -20,9 +20,9 @@ void CompoundPacketQueueBase::initialize(int stage)
     if (stage == INITSTAGE_LOCAL) {
         packetCapacity = par("packetCapacity");
         dataCapacity = b(par("dataCapacity"));
-        consumer = check_and_cast<IPassivePacketSink *>(inputGate->getPathEndGate()->getOwnerModule());
-        provider = check_and_cast<IPassivePacketSource *>(outputGate->getPathStartGate()->getOwnerModule());
-        collection = check_and_cast<IPacketCollection *>(provider);
+        consumer.reference(inputGate, true, 1);
+        provider.reference(outputGate, true, -1);
+        collection = check_and_cast<IPacketCollection *>(provider.get());
         packetDropperFunction = createDropperFunction(par("dropperClass"));
         subscribe(packetDroppedSignal, this);
         subscribe(packetCreatedSignal, this);
@@ -32,8 +32,6 @@ void CompoundPacketQueueBase::initialize(int stage)
         checkPacketOperationSupport(inputGate);
         checkPacketOperationSupport(outputGate);
     }
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
 }
 
 IPacketDropperFunction *CompoundPacketQueueBase::createDropperFunction(const char *dropperClass) const
@@ -50,14 +48,15 @@ bool CompoundPacketQueueBase::isOverloaded() const
            (dataCapacity != b(-1) && getTotalLength() > dataCapacity);
 }
 
-void CompoundPacketQueueBase::pushPacket(Packet *packet, cGate *gate)
+void CompoundPacketQueueBase::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
     cNamedObject packetPushStartedDetails("atomicOperationStarted");
     emit(packetPushStartedSignal, packet, &packetPushStartedDetails);
+    animatePushPacket(packet, inputGate, consumer.getReferencedGate());
     EV_INFO << "Pushing packet" << EV_FIELD(packet) << EV_ENDL;
-    consumer->pushPacket(packet, inputGate->getPathEndGate());
+    consumer.pushPacket(packet);
     if (packetDropperFunction != nullptr) {
         while (isOverloaded()) {
             auto packet = packetDropperFunction->selectPacket(this);
@@ -69,16 +68,14 @@ void CompoundPacketQueueBase::pushPacket(Packet *packet, cGate *gate)
     ASSERT(!isOverloaded());
     cNamedObject packetPushEndedDetails("atomicOperationEnded");
     emit(packetPushEndedSignal, nullptr, &packetPushEndedDetails);
-    updateDisplayString();
 }
 
-Packet *CompoundPacketQueueBase::pullPacket(cGate *gate)
+Packet *CompoundPacketQueueBase::pullPacket(const cGate *gate)
 {
     Enter_Method("pullPacket");
-    auto packet = provider->pullPacket(outputGate->getPathStartGate());
+    auto packet = provider.pullPacket();
     take(packet);
     emit(packetPulledSignal, packet);
-    updateDisplayString();
     return packet;
 }
 
@@ -87,17 +84,15 @@ void CompoundPacketQueueBase::removePacket(Packet *packet)
     Enter_Method("removePacket");
     collection->removePacket(packet);
     emit(packetRemovedSignal, packet);
-    updateDisplayString();
 }
 
 void CompoundPacketQueueBase::removeAllPackets()
 {
     Enter_Method("removeAllPacket");
     collection->removeAllPackets();
-    updateDisplayString();
 }
 
-bool CompoundPacketQueueBase::canPushSomePacket(cGate *gate) const
+bool CompoundPacketQueueBase::canPushSomePacket(const cGate *gate) const
 {
     if (packetDropperFunction)
         return true;
@@ -108,7 +103,7 @@ bool CompoundPacketQueueBase::canPushSomePacket(cGate *gate) const
     return true;
 }
 
-bool CompoundPacketQueueBase::canPushPacket(Packet *packet, cGate *gate) const
+bool CompoundPacketQueueBase::canPushPacket(Packet *packet, const cGate *gate) const
 {
     if (packetDropperFunction)
         return true;
@@ -128,7 +123,6 @@ void CompoundPacketQueueBase::receiveSignal(cComponent *source, simsignal_t sign
         numCreatedPackets++;
     else
         throw cRuntimeError("Unknown signal");
-    updateDisplayString();
 }
 
 } // namespace queueing

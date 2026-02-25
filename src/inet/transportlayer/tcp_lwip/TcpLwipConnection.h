@@ -8,6 +8,7 @@
 #ifndef __INET_TCPLWIPCONNECTION_H
 #define __INET_TCPLWIPCONNECTION_H
 
+#include "inet/common/SimpleModule.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3Address.h"
 #include "inet/transportlayer/contract/tcp/TcpCommand_m.h"
@@ -24,7 +25,7 @@ class TcpLwip;
 /**
  * Module for representing a connection in TcpLwip stack
  */
-class INET_API TcpLwipConnection : public cSimpleModule
+class INET_API TcpLwipConnection : public SimpleModule
 {
   protected:
     // prevent copy constructor:
@@ -73,6 +74,8 @@ class INET_API TcpLwipConnection : public cSimpleModule
     void process_CLOSE(TcpCommand *tcpCommandP, cMessage *msgP);
     void process_ABORT(TcpCommand *tcpCommandP, cMessage *msgP);
     void process_STATUS(TcpCommand *tcpCommandP, cMessage *msgP);
+    void process_READ_REQUEST(TcpCommand *tcpCommand, cMessage *msg);
+
     void fillStatusInfo(TcpStatusInfo& statusInfo);
 
   public:
@@ -87,6 +90,8 @@ class INET_API TcpLwipConnection : public cSimpleModule
     bool isListenerM = false;
     bool onCloseM = false;
     bool sendUpEnabled = false;
+    bool autoRead = true;
+    int32_t maxByteCountRequested = 0;  // from READ requests
 
     // statistics
     static simsignal_t sndWndSignal; // snd_wnd

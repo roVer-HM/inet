@@ -21,6 +21,9 @@ void EligibilityTimeGate::initialize(int stage)
     if (stage == INITSTAGE_LOCAL) {
         eligibilityTimer = new ClockEvent("EligibilityTimer");
         lastRemainingEligibilityTimeSignalTime = simTime();
+#if OMNETPP_VERSION >= 0x0602
+        WATCH_EXPR("remainingEligibilityTime", getRemainingEligibilityTime());
+#endif
     }
     else if (stage == INITSTAGE_QUEUEING) {
         updateOpen();
@@ -43,7 +46,7 @@ void EligibilityTimeGate::finish()
 
 void EligibilityTimeGate::updateOpen()
 {
-    auto packet = provider->canPullPacket(inputGate->getPathStartGate());
+    auto packet = provider.canPullPacket();
     if (packet == nullptr || packet->getTag<EligibilityTimeTag>()->getEligibilityTime() <= getClockTime()) {
         if (isClosed())
             open();
@@ -52,7 +55,7 @@ void EligibilityTimeGate::updateOpen()
         if (isOpen())
             close();
     }
-    packet = provider->canPullPacket(inputGate->getPathStartGate());
+    packet = provider.canPullPacket();
     if (packet != nullptr) {
         clocktime_t eligibilityTime = packet->getTag<EligibilityTimeTag>()->getEligibilityTime();
         if (eligibilityTime > getClockTime())
@@ -65,7 +68,7 @@ void EligibilityTimeGate::emitEligibilityTimeChangedSignal()
     simtime_t now = simTime();
     simtime_t signalValue;
     if (lastRemainingEligibilityTimeSignalTime == now) {
-        auto packet = provider->canPullPacket(inputGate->getPathStartGate());
+        auto packet = provider.canPullPacket();
         signalValue = packet == nullptr ? 0 : CLOCKTIME_AS_SIMTIME(packet->getTag<EligibilityTimeTag>()->getEligibilityTime() - getClockTime());
         lastRemainingEligibilityTimePacket = packet;
     }
@@ -76,7 +79,7 @@ void EligibilityTimeGate::emitEligibilityTimeChangedSignal()
     lastRemainingEligibilityTimeSignalTime = now;
 }
 
-Packet *EligibilityTimeGate::pullPacket(cGate *gate)
+Packet *EligibilityTimeGate::pullPacket(const cGate *gate)
 {
     Enter_Method("pullPacket");
     emitEligibilityTimeChangedSignal();
@@ -86,7 +89,7 @@ Packet *EligibilityTimeGate::pullPacket(cGate *gate)
     return packet;
 }
 
-void EligibilityTimeGate::handleCanPullPacketChanged(cGate *gate)
+void EligibilityTimeGate::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     emitEligibilityTimeChangedSignal();
@@ -94,6 +97,23 @@ void EligibilityTimeGate::handleCanPullPacketChanged(cGate *gate)
     emitEligibilityTimeChangedSignal();
     PacketGateBase::handleCanPullPacketChanged(gate);
 }
+
+simtime_t EligibilityTimeGate::getRemainingEligibilityTime() const
+{
+    auto packet = provider.canPullPacket();
+    auto remainingEligibilityTime = packet == nullptr ? 0 : CLOCKTIME_AS_SIMTIME(packet->getTag<EligibilityTimeTag>()->getEligibilityTime() - getClockTime());
+    return remainingEligibilityTime < 0 ? 0 : remainingEligibilityTime;
+}
+
+#if OMNETPP_VERSION < 0x0602
+std::string EligibilityTimeGate::resolveExpression(const char *expression) const
+{
+    if (!strcmp(expression, "remainingEligibilityTime"))
+        return getRemainingEligibilityTime().ustr();
+    else
+        return ClockUserModuleMixin::resolveExpression(expression);
+}
+#endif
 
 } // namespace inet
 

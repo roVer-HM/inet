@@ -85,9 +85,14 @@ std::string PacketSourceBase::createPacketName(const Ptr<const Chunk>& data) con
         });
 }
 
+b PacketSourceBase::computePacketLength() const
+{
+    return b(packetLengthParameter->intValue());
+}
+
 Ptr<Chunk> PacketSourceBase::createPacketContent() const
 {
-    auto packetLength = b(packetLengthParameter->intValue());
+    auto packetLength = computePacketLength();
     if (!strcmp(packetRepresentation, "bitCount")) {
         int packetData = packetDataParameter->intValue();
         return packetData == -1 ? makeShared<BitCountChunk>(packetLength) : makeShared<BitCountChunk>(packetLength, packetData);
@@ -95,8 +100,8 @@ Ptr<Chunk> PacketSourceBase::createPacketContent() const
     else if (!strcmp(packetRepresentation, "bits")) {
         const auto& packetContent = makeShared<BitsChunk>();
         std::vector<bool> bits;
-        bits.resize(b(packetLength).get());
-        for (int i = 0; i < (int)bits.size(); i++) {
+        bits.resize(packetLength.get<b>());
+        for (size_t i = 0; i < bits.size(); i++) {
             int packetData = packetDataParameter->intValue();
             bits[i] = packetData == -1 ? i % 2 == 0 : packetData;
         }
@@ -110,8 +115,8 @@ Ptr<Chunk> PacketSourceBase::createPacketContent() const
     else if (!strcmp(packetRepresentation, "bytes")) {
         const auto& packetContent = makeShared<BytesChunk>();
         std::vector<uint8_t> bytes;
-        bytes.resize(B(packetLength).get());
-        for (int i = 0; i < (int)bytes.size(); i++) {
+        bytes.resize(packetLength.get<B>());
+        for (size_t i = 0; i < bytes.size(); i++) {
             int packetData = packetDataParameter->intValue();
             bytes[i] = packetData == -1 ? i % 256 : packetData;
         }

@@ -4,8 +4,8 @@ import inet.environment.common.PhysicalEnvironment;
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.WirelessHost;
 import inet.node.wireless.AccessPoint;
-import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
-import inet.visualizer.common.IntegratedVisualizer;
+import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211RadioMedium;
+import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
 
 network Ieee80211VisualizationDisplayingAssociationsShowcase
@@ -21,10 +21,10 @@ network Ieee80211VisualizationDisplayingAssociationsShowcase
         configurator: Ipv4NetworkConfigurator {
             @display("p=409,32");
         }
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             @display("p=409,78");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=408,123");
         }
 }
@@ -33,11 +33,11 @@ network Ieee80211VisualizationAdvancedFeaturesShowcase
 {
     @display("bgb=574,468");
     submodules:
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             parameters:
                 @display("p=100,50");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             parameters:
                 @display("p=99,111");
         }
@@ -90,10 +90,10 @@ network Ieee80211VisualizationVisualizingHandoverShowcase
         configurator: Ipv4NetworkConfigurator {
             @display("p=100,344");
         }
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             @display("p=203,344");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=317,346");
         }
         wirelessHost: WirelessHost {
@@ -105,11 +105,11 @@ network Ieee80211VisualizationSignalLevelsShowcase
 {
     @display("bgb=574,468");
     submodules:
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             parameters:
                 @display("p=100,50");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             parameters:
                 @display("p=99,111");
         }

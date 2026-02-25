@@ -7,9 +7,21 @@
 
 package inet.linklayer.tun;
 
-simple Tun
+import inet.common.SimpleModule;
+
+//
+// Implements a TUN (network tunnel) interface that provides a virtual network
+// interface for applications. This is the main component of ~TunInterface.
+// Allows applications to send and receive packets
+// directly to/from the network layer using a socket-like API. Maintains a list
+// of registered sockets and handles commands for opening, closing, and using
+// the TUN interface. Processes packets between upper layers and the network
+// layer, adding appropriate tags for routing.
+//
+simple Tun extends SimpleModule
 {
     parameters:
+        @class(Tun);
         string interfaceTableModule;    // The path to the InterfaceTable module
         int mtu @unit(B) = default(1500B);
         @display("i=block/tunnel");
@@ -20,7 +32,6 @@ simple Tun
         @signal[packetReceivedFromUpper](type=cPacket);
 
     gates:
-        input upperLayerIn @messageKinds(inet::TunCommandCode);    // from upper layers
-        output upperLayerOut @messageKinds(inet::TunSocketIndication);  // to upper layers
+        input upperLayerIn @messageKinds(inet::TunCommandCode);    // From upper layers
+        output upperLayerOut @messageKinds(inet::TunSocketIndication);  // To upper layers
 }
-

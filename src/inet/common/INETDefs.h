@@ -25,16 +25,19 @@
 // General definitions.
 //
 
+#include "inet/common/Compat.h"
+
 namespace inet {
 using namespace omnetpp;
+using omnetpp::operator<<;
 } // namespace inet
 
-#if OMNETPP_VERSION < 0x0600 || OMNETPP_BUILDNUM < 1531
-#  error At least OMNeT++/OMNEST version 6.0 required
+#if OMNETPP_VERSION < 0x0602
+#  error At least OMNeT++/OMNEST version 6.2 required
 #endif
 
-#define INET_VERSION        0x0405
-#define INET_PATCH_LEVEL    0x04
+#define INET_VERSION        0x0406
+#define INET_PATCH_LEVEL    0x00
 
 #if defined(INET_EXPORT)
 #define INET_API          OPP_DLLEXPORT
@@ -44,8 +47,15 @@ using namespace omnetpp;
 #define INET_API
 #endif // if defined(INET_EXPORT)
 
-#include "inet/common/Compat.h"
 #include "inet/common/InitStages.h"
+
+#ifndef SIMTIME_RAW_T_DEFINED
+#define SIMTIME_RAW_T_DEFINED
+
+#include <cstdint>
+using simtime_raw_t = int64_t;
+
+#endif
 
 // main namespace of INET framework
 namespace inet {

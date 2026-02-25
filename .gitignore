@@ -12,6 +12,9 @@ debug/makefile
 .pydevproject
 .pydevproject
 .vscode/*
+.metadata
+.doxy
+*.ninja
 src/inet/features.h
 src/inet/opp_defines.h
 precompiled_*.h.*
@@ -19,7 +22,8 @@ precompiled_*.h.*
 /media
 /statistics
 **/MoBAN_Pattern*.txt
-python/inet/test/fingerprint/all_fingerprints.json
+**/__pycache__
+python/levy.py
 
 # output and result files
 .settings/
@@ -28,6 +32,7 @@ python/inet/test/fingerprint/all_fingerprints.json
 /doc/neddoc/
 /doc/src/manual/figures/*.pdf
 /doc/src/manual/inet-manual.pdf
+/doc/src/python-api/_autosummary
 /doc/inet-manual-draft.pdf
 /examples/*/results/
 /examples/*/*/results/
@@ -39,6 +44,10 @@ python/inet/test/fingerprint/all_fingerprints.json
 /tests/*/work/
 /tests/*/*/work/
 /tests/*/results*/
+/tests/fingerprint/SelfDoc.xml
+/coverage
+*.orig
+*.rej
 *.log
 *.sim
 *.pyc
@@ -61,6 +70,7 @@ compile_commands.json
 
 # ignore binary files
 out/
+*_dbg
 *.so
 *.dylib
 *.dll
@@ -72,6 +82,8 @@ out/
 *.pdb
 *.idb
 *.manifest
+*.profraw
+*.data
 .qtenv.ini
 .qtenvrc
 .tkenvrc
@@ -85,6 +97,7 @@ netanim-trace.txt
 *.FAILED
 *.ERROR
 *.bak
+*.old
 backups
 *~
 xxx

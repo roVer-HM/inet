@@ -8,8 +8,8 @@
 package inet.physicallayer.wireless.common.contract.packetlevel;
 
 //
-// The transmitter model describes the physical process which converts packets
-// into electric signals.
+// The transmitter model models the physical process which converts packets
+// into electrical signals.
 //
 moduleinterface ITransmitter
 {

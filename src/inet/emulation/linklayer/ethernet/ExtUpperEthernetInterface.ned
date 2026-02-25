@@ -14,15 +14,16 @@ import inet.queueing.contract.IPacketQueue;
 
 
 //
-// This module provides an Ethernet network interface suitable for emulation.
+// Provides an Ethernet network interface suitable for emulation.
 // The upper part of the network interface is realized in the real world using
 // a real TAP device of the host computer which is running the simulation.
 //
 module ExtUpperEthernetInterface extends ExtInterface like IEthernetInterface
 {
     parameters:
-        bool csmacdSupport = default(false);  // by default CSMA/CD is turned off, so only point-to-point duplex links are supported.
+        bool csmacdSupport = default(false);  // By default, CSMA/CD is turned off, so only point-to-point duplex links are supported.
         double bitrate @unit(bps) = default(nan bps);
+        *.bitrate = default(bitrate);
         @display("bgb=450,400");
     gates:
         input cutthroughIn @loose;
@@ -38,7 +39,7 @@ module ExtUpperEthernetInterface extends ExtInterface like IEthernetInterface
                 packetCapacity = default(10000);
                 @display("p=250,200");
         }
-        mac: <default(csmacdSupport ? "EthernetCsmaMac" : "EthernetMac")> like IEtherMac {
+        mac: <default(csmacdSupport ? "EthernetCsmaMacPhy" : "EthernetMacPhy")> like IEtherMac {
             parameters:
                 @display("p=350,300");
         }

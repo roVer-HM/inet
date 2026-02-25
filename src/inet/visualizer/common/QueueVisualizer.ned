@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.IQueueVisualizer;
 
 //
-// This module integrates canvas and osg queue visualizers into a single module.
+// Integrates canvas and osg queue visualizers into a single module.
 //
 // @see ~QueueCanvasVisualizer, ~QueueOsgVisualizer, ~QueueVisualizerBase, ~IQueueVisualizer
 //
@@ -18,8 +18,10 @@ module QueueVisualizer like IQueueVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("QueueCanvasVisualizer"))> like IQueueVisualizer if typename != "" {
             parameters:

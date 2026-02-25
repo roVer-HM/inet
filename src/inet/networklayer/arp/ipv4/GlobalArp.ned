@@ -8,15 +8,17 @@
 
 package inet.networklayer.arp.ipv4;
 
+import inet.common.SimpleModule;
 import inet.networklayer.contract.IArp;
 
 //
-// This module provides global address resolution without exchanging packets.
+// Provides global address resolution without exchanging packets.
 //
-simple GlobalArp like IArp
+simple GlobalArp extends SimpleModule like IArp
 {
     parameters:
-        string interfaceTableModule;   // path to the InterfaceTable module
+        @class(GlobalArp);
+        string interfaceTableModule;   // Path to the InterfaceTable module
         string addressType @enum("ipv4", "ipv6", "mac", "moduleid", "modulepath") = default("ipv4");
         @display("i=block/layer");
     gates:

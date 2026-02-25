@@ -16,6 +16,8 @@ namespace queueing {
 class INET_API SignalBasedTokenGenerator : public TokenGeneratorBase, public cListener
 {
   protected:
+    int intSignalValue = -1;
+    double doubleSignalValue = NaN;
     cPar *numTokensParameter = nullptr;
 
   protected:
@@ -23,8 +25,8 @@ class INET_API SignalBasedTokenGenerator : public TokenGeneratorBase, public cLi
     virtual void generateTokens();
 
   public:
-    virtual bool supportsPacketPushing(cGate *gate) const override { return false; }
-    virtual bool supportsPacketPulling(cGate *gate) const override { return false; }
+    virtual bool supportsPacketPushing(const cGate *gate) const override { return false; }
+    virtual bool supportsPacketPulling(const cGate *gate) const override { return false; }
 
     virtual void receiveSignal(cComponent *source, simsignal_t signal, intval_t value, cObject *details) override;
     virtual void receiveSignal(cComponent *source, simsignal_t signal, double value, cObject *details) override;

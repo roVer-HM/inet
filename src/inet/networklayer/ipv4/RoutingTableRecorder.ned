@@ -7,15 +7,19 @@
 
 package inet.networklayer.ipv4;
 
+import inet.common.SimpleModule;
+
 //
 // Records changes in the routing tables (~Ipv4RoutingTable) and interface tables
 // (~InterfaceTable) of all hosts and routers. The filename has to be specified
 // in the routinglog-file configuration option that this module registers.
 //
-simple RoutingTableRecorder
+simple RoutingTableRecorder extends SimpleModule
 {
     parameters:
+        @class(RoutingTableRecorder);
         bool enabled = default(true);
+        string logfile = default("${resultdir}/${configname}-#${runnumber}.rt");
         @display("i=block/control");
 }
 

@@ -7,12 +7,12 @@
 
 package inet.networklayer.configurator.ipv4;
 
+import inet.common.SimpleModule;
 import inet.networklayer.configurator.contract.IIpv4NodeConfigurator;
 
 //
-// This module has one instance per network node, and it acts like a bridge
-// between the node and the network's global configurator module,
-// ~Ipv4NetworkConfigurator.
+// Configures the containing network node using information provided by
+// the network's global configurator modue  ~Ipv4NetworkConfigurator.
 //
 // ~Ipv4NetworkConfigurator only computes and remembers configuration data
 // (assigned IP addresses, static routes, etc), but doesn't configure the nodes'
@@ -25,14 +25,15 @@ import inet.networklayer.configurator.contract.IIpv4NodeConfigurator;
 // a restart, because being a global module, it doesn't know about node
 // lifecycle events.
 //
-simple Ipv4NodeConfigurator like IIpv4NodeConfigurator
+simple Ipv4NodeConfigurator extends SimpleModule like IIpv4NodeConfigurator
 {
     parameters:
+        @class(Ipv4NodeConfigurator);
         string interfaceTableModule;   // The path to the InterfaceTable module
         string routingTableModule;
         // TODO eventually rename to networkConfigurator
-        string networkConfiguratorModule = default("configurator"); // the absolute path to the Ipv4NetworkConfigurator; use "" if there is no configurator
-        bool configureRoutingTable = default(true);     // add routing entries to routing table (uses the configurator module)
+        string networkConfiguratorModule = default("configurator"); // The absolute path to the Ipv4NetworkConfigurator; use "" if there is no configurator
+        bool configureRoutingTable = default(true);     // Add routing entries to the routing table (uses the configurator module)
         @display("i=block/cogwheel");
 }
 

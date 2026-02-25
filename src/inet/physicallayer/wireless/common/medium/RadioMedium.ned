@@ -7,7 +7,8 @@
 
 package inet.physicallayer.wireless.common.medium;
 
-import inet.physicallayer.wireless.common.contract.packetlevel.IAnalogModel;
+import inet.common.Module;
+import inet.physicallayer.wireless.common.contract.packetlevel.IMediumAnalogModel;
 import inet.physicallayer.wireless.common.contract.packetlevel.ICommunicationCache;
 import inet.physicallayer.wireless.common.contract.packetlevel.IMediumLimitCache;
 import inet.physicallayer.wireless.common.contract.packetlevel.INeighborCache;
@@ -24,21 +25,23 @@ import inet.physicallayer.wireless.common.contract.packetlevel.IRadioMedium;
 // and how transmissions and noises arrive at receivers. It also efficiently
 // provides the set of interfering transmissions and noises for the receivers.
 //
-module RadioMedium like IRadioMedium
+module RadioMedium extends Module like IRadioMedium
 {
     parameters:
-        string physicalEnvironmentModule = default("physicalEnvironment"); // module path of the physical environment model
+        string physicalEnvironmentModule = default("physicalEnvironment"); // Module path of the physical environment model
         string signalAnalogRepresentation @enum("unitDisk","scalar","dimensional") = default("scalar");
 
         // filter parameters that control when signals are sent to receiver radios
-        string rangeFilter = default("");       // when either set to 'interferenceRange' or 'communicationRange' the radio medium doesn't send signals to a radio if it's outside the provided range
-        bool radioModeFilter = default(false);  // when enabled the radio medium doesn't send signals to a radio if it's neither in receiver nor in transceiver mode
-        bool listeningFilter = default(false);  // when enabled the radio medium doesn't send signals to a radio if it listens on the channel in incompatible mode (e.g. different carrier frequency and bandwidth, different modulation)
-        bool macAddressFilter = default(false); // when enabled the radio medium doesn't send signals to a radio if it the destination mac address differs
+        string rangeFilter = default("");       // When either set to 'interferenceRange' or 'communicationRange' the radio medium doesn't send signals to a radio if it's outside the provided range
+        bool radioModeFilter = default(false);  // When enabled, the radio medium doesn't send signals to a radio if it's neither in receiver nor in transceiver mode
+        bool listeningFilter = default(false);  // When enabled, the radio medium doesn't send signals to a radio if it listens on the channel in an incompatible mode (e.g. different carrier frequency and bandwidth, different modulation)
+        bool macAddressFilter = default(false); // When enabled, the radio medium doesn't send signals to a radio if the destination MAC address differs
 
         // logging parameters
-        bool recordTransmissionLog = default(false); // when enabled the medium writes one line per transmission into the communication log file
-        bool recordReceptionLog = default(false);    // when enabled the medium writes one line per reception into the communication log file
+        bool recordTransmissionLog = default(false); // When enabled, the medium writes one line per transmission into the communication log file
+        bool recordReceptionLog = default(false);    // When enabled, the medium writes one line per reception into the communication log file
+
+        string sameTransmissionStartTimeCheck @enum("ignore", "warning", "error") = default("error"); // Specifies what should happen if two transmissions start at the same moment
 
         @class(RadioMedium);
         @display("i=misc/sun");
@@ -57,7 +60,7 @@ module RadioMedium like IRadioMedium
             parameters:
                 @display("p=100,100");
         }
-        analogModel: <default(signalAnalogRepresentation == "unitDisk" ? "UnitDiskAnalogModel" : signalAnalogRepresentation == "scalar" ? "ScalarAnalogModel" : signalAnalogRepresentation == "dimensional" ? "DimensionalAnalogModel" : "")> like IAnalogModel {
+        analogModel: <default(signalAnalogRepresentation == "unitDisk" ? "UnitDiskMediumAnalogModel" : signalAnalogRepresentation == "scalar" ? "ScalarMediumAnalogModel" : signalAnalogRepresentation == "dimensional" ? "DimensionalMediumAnalogModel" : "")> like IMediumAnalogModel {
             parameters:
                 @display("p=100,200");
         }

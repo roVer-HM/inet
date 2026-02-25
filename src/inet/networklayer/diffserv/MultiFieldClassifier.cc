@@ -145,7 +145,7 @@ void MultiFieldClassifier::initialize(int stage)
     }
 }
 
-void MultiFieldClassifier::pushPacket(Packet *packet, cGate *inputGate)
+void MultiFieldClassifier::pushPacket(Packet *packet, const cGate *inputGate)
 {
     numRcvd++;
     int gateIndex = classifyPacket(packet);
@@ -156,16 +156,17 @@ void MultiFieldClassifier::pushPacket(Packet *packet, cGate *inputGate)
         outputGate = gate("out", gateIndex);
     else
         outputGate = gate("defaultOut", gateIndex);
-    auto consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+    queueing::PassivePacketSinkRef consumer;
+    consumer.reference(outputGate, false);
     pushOrSendPacket(packet, outputGate, consumer);
 }
 
 void MultiFieldClassifier::refreshDisplay() const
 {
-    char buf[20] = "";
+    std::string buf;
     if (numRcvd > 0)
-        sprintf(buf + strlen(buf), "rcvd:%d ", numRcvd);
-    getDisplayString().setTagArg("t", 0, buf);
+        buf = "rcvd:" + std::to_string(numRcvd) + " ";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 int MultiFieldClassifier::classifyPacket(Packet *packet)

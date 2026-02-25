@@ -7,18 +7,19 @@
 
 package inet.environment.objectcache;
 
+import inet.common.Module;
 import inet.environment.contract.IObjectCache;
 
 //
 // This object cache model organizes closely positioned physical objects into a
 // tree data structure.
 //
-module BvhObjectCache like IObjectCache
+module BvhObjectCache extends Module like IObjectCache
 {
     parameters:
         string physicalEnvironmentModule = default("^");
-        int leafCapacity = default(1); // the upper bound for the number of physical objects per leaf
-        string axisOrder = default("XYZ"); //  "X", "XY", "ZYZ", "ZZXZZYXYX", etc are all allowed combinations
+        int leafCapacity = default(1); // The upper bound for the number of physical objects per leaf
+        string axisOrder = default("XYZ"); //  "X", "XY", "ZYZ", "ZZXZZYXYX", etc. are all allowed combinations
         @display("i=block/table2");
         @class(BvhObjectCache);
 }

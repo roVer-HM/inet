@@ -17,7 +17,7 @@ void PriorityScheduler::initialize(int stage)
     PacketSchedulerBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         for (auto provider : providers)
-            collections.push_back(dynamic_cast<IPacketCollection *>(provider));
+            collections.push_back(dynamic_cast<IPacketCollection *>(provider.get()));
     }
 }
 
@@ -82,10 +82,27 @@ int PriorityScheduler::schedulePacket()
 {
     for (size_t i = 0; i < providers.size(); i++) {
         int inputIndex = getInputGateIndex(i);
-        if (inputIndex == inProgressGateIndex || providers[inputIndex]->canPullSomePacket(inputGates[inputIndex]->getPathStartGate()))
+        if (inputIndex == inProgressGateIndex || providers[inputIndex].canPullSomePacket())
             return inputIndex;
     }
     return -1;
+}
+
+void PriorityScheduler::handleCanPullPacketChanged(const cGate *gate)
+{
+    Enter_Method("handleCanPullPacketChanged");
+    if (isStreamingPacket()) {
+        EV_INFO << "Checking if the ongoing packet streaming should be ended" << EV_ENDL;
+        int index = callSchedulePacket();
+        if (index != inProgressGateIndex) {
+            auto packet = providers[inProgressGateIndex].pullPacketEnd();
+            EV_INFO << "Ending packet streaming" << EV_FIELD(packet) << EV_ENDL;
+            take(packet);
+            endPacketStreaming(packet);
+            consumer.pushPacketEnd(packet);
+        }
+    }
+    PacketSchedulerBase::handleCanPullPacketChanged(gate);
 }
 
 } // namespace queueing

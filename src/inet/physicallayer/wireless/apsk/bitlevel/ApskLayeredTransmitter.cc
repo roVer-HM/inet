@@ -11,8 +11,8 @@
 #include "inet/physicallayer/wireless/apsk/bitlevel/ApskEncoder.h"
 #include "inet/physicallayer/wireless/apsk/bitlevel/ApskModulator.h"
 #include "inet/physicallayer/wireless/apsk/packetlevel/ApskPhyHeader_m.h"
-#include "inet/physicallayer/wireless/common/analogmodel/bitlevel/LayeredTransmission.h"
-#include "inet/physicallayer/wireless/common/analogmodel/bitlevel/ScalarSignalAnalogModel.h"
+#include "inet/physicallayer/wireless/apsk/packetlevel/ApskTransmission.h"
+#include "inet/physicallayer/wireless/common/analogmodel/scalar/ScalarTransmissionAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/bitlevel/ISignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IRadio.h"
 
@@ -48,6 +48,7 @@ void ApskLayeredTransmitter::initialize(int stage)
             throw cRuntimeError("Invalid birate: %s", bitrate.str().c_str());
         bandwidth = Hz(par("bandwidth"));
         centerFrequency = Hz(par("centerFrequency"));
+        preambleDuration = par("preambleDuration");
         const char *levelOfDetailStr = par("levelOfDetail");
         if (strcmp("packet", levelOfDetailStr) == 0)
             levelOfDetail = PACKET_DOMAIN;
@@ -97,15 +98,15 @@ const ITransmissionBitModel *ApskLayeredTransmitter::createBitModel(const ITrans
     else {
         auto packet = packetModel->getPacket();
         b netHeaderLength = packet->peekAtFront<ApskPhyHeader>()->getChunkLength();
-        b netDataLength = packet->getTotalLength() - netHeaderLength;
+        b netDataLength = packet->getDataLength() - netHeaderLength;
         if (encoder) {
             const ApskEncoder *apskEncoder = check_and_cast<const ApskEncoder *>(encoder);
             const ConvolutionalCode *forwardErrorCorrection = apskEncoder->getCode()->getConvolutionalCode();
             if (forwardErrorCorrection == nullptr)
                 return new TransmissionBitModel(netHeaderLength, bitrate, netDataLength, bitrate, nullptr, forwardErrorCorrection, nullptr, nullptr);
             else {
-                b grossHeaderLength = b(forwardErrorCorrection->getEncodedLength(b(netHeaderLength).get()));
-                b grossDataLength = b(forwardErrorCorrection->getEncodedLength(b(netDataLength).get()));
+                b grossHeaderLength = b(forwardErrorCorrection->getEncodedLength(netHeaderLength.get<b>()));
+                b grossDataLength = b(forwardErrorCorrection->getEncodedLength(netDataLength.get<b>()));
                 bps grossBitrate = bitrate / forwardErrorCorrection->getCodeRate();
                 return new TransmissionBitModel(grossHeaderLength, grossBitrate, grossDataLength, grossBitrate, nullptr, forwardErrorCorrection, nullptr, nullptr);
             }
@@ -141,7 +142,7 @@ const ITransmissionAnalogModel *ApskLayeredTransmitter::createAnalogModel(const 
     }
     else {
         simtime_t duration = packetModel->getPacket()->getBitLength() / bitrate.get();
-        return new ScalarTransmissionSignalAnalogModel(0, 0, duration, centerFrequency, bandwidth, power);
+        return new ScalarTransmissionAnalogModel(0, 0, duration, centerFrequency, bandwidth, power);
     }
 }
 
@@ -159,7 +160,25 @@ const ITransmission *ApskLayeredTransmitter::createTransmission(const IRadio *tr
     const Coord& endPosition = mobility->getCurrentPosition();
     const Quaternion& startOrientation = mobility->getCurrentAngularPosition();
     const Quaternion& endOrientation = mobility->getCurrentAngularPosition();
-    return new LayeredTransmission(packetModel, bitModel, symbolModel, sampleModel, analogModel, transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation);
+
+    b headerLength = bitModel->getHeaderLength();
+    b dataLength = bitModel->getDataLength();
+    simtime_t headerDuration = (headerLength / bitrate).get<s>();
+    simtime_t dataDuration = (dataLength / bitrate).get<s>();
+
+    auto fec = bitModel->getForwardErrorCorrection();
+    auto codeRate = fec ? fec->getCodeRate() : 1.0;
+
+    double symbolRate = symbolModel->getDataSymbolRate();
+    auto symbolTime = std::isnan(symbolRate) ? -1 : (unit(1) / Hz(symbolRate)).get<s>();
+
+    return new ApskTransmission(transmitter, packet, startTime, endTime,
+        preambleDuration, headerDuration, dataDuration,
+        startPosition, endPosition, startOrientation, endOrientation,
+        packetModel, bitModel, symbolModel, sampleModel, analogModel,
+        headerLength, dataLength, symbolModel->getDataModulation(),
+        bandwidth, symbolTime, bitrate, codeRate);
+
 }
 
 } // namespace physicallayer

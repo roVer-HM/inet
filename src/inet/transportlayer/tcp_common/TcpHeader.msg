@@ -7,7 +7,7 @@
 
 import inet.common.INETDefs;
 import inet.common.packet.chunk.Chunk;
-import inet.transportlayer.common.CrcMode;
+import inet.common.checksum.ChecksumMode;
 import inet.transportlayer.contract.TransportHeaderBase;
 
 namespace inet::tcp;
@@ -217,13 +217,26 @@ class TcpHeader extends TransportHeaderBase
     // the URG control bit set.
     uint16_t urgentPointer;
 
-    uint16_t crc = 0;
-    CrcMode crcMode = CRC_MODE_UNDEFINED;
+    uint16_t checksum = 0;
+    ChecksumMode checksumMode = CHECKSUM_MODE_UNDEFINED;
 
     // Header options (optional)
     // Currently only EOL, NOP, MSS, WS, SACK_PERMITTED, SACK and TS are implemented
     TcpOption *headerOption[] @owned;
 }
+
+cplusplus(cc) {{
+void doParsimPacking(omnetpp::cCommBuffer *b, TcpOption *t)
+{
+    b->packObject(t);
+}
+
+void doParsimUnpacking(omnetpp::cCommBuffer *b, TcpOption * &t)
+{
+    t = check_and_cast<TcpOption*>(b->unpackObject());
+}
+
+}}
 
 cplusplus(TcpHeader) {{
   public:
@@ -236,7 +249,7 @@ cplusplus(TcpHeader) {{
     uint32_t getSynFinLen() const { return (finBit ? 1 : 0) + (synBit ? 1 : 0); }
 
     /** Calculate Length of TCP Options Array in bytes */
-    virtual B getHeaderOptionArrayLength();
+    virtual B getHeaderOptionArrayLength() const;
 
     /** Drops all TCP options of the TCP segment */
     virtual void dropHeaderOptions();

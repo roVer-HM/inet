@@ -4,19 +4,23 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-// Authors: Veronika Rybova, Vladimir Vesely (ivesely@fit.vutbr.cz),
+// Authors: Veronika Rybová, Vladimir Veselý (ivesely@fit.vutbr.cz),
 //          Tamas Borbely (tomi@omnetpp.org)
 
 package inet.routing.pim.tables;
 
+import inet.common.SimpleModule;
+
 //
-// The PimNeighborTable module contains information about neighboring PIM routers.
+// The `PimNeighborTable` module contains information about neighboring PIM routers.
 //
-simple PimNeighborTable
+simple PimNeighborTable extends SimpleModule
 {
-      @display("i=block/table");
-      @signal[pimNeighborAdded](type=inet::PimNeighbor);
-    @signal[pimNeighborDeleted](type=inet::PimNeighbor);
-    @signal[pimNeighborChanged](type=inet::PimNeighbor);
+    parameters:
+        @class(PimNeighborTable);
+        @display("i=block/table");
+        @signal[pimNeighborAdded](type=inet::PimNeighbor);
+        @signal[pimNeighborDeleted](type=inet::PimNeighbor);
+        @signal[pimNeighborChanged](type=inet::PimNeighbor);
 }
 

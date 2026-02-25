@@ -1,15 +1,15 @@
+#include "inet/common/SimpleModule.h"
 #include "inet/common/clock/ClockUserModuleMixin.h"
 
 namespace inet {
 
-class ClockTestApp : public ClockUserModuleMixin<cSimpleModule>
+class ClockTestApp : public ClockUserModuleMixin<SimpleModule>
 {
 private:
         size_t idx = 0;
         std::vector<clocktime_t> timeVector;
         ClockEvent *afterClock;
         clocktime_t after;
-        int repeat;
     public:
        ClockTestApp() : ClockUserModuleMixin() {}
     protected:
@@ -30,8 +30,6 @@ void ClockTestApp::initialize(int stage)
     ClockUserModuleMixin::initialize(stage);
 
     if (stage == INITSTAGE_LAST) {
-        auto c = getClockTime();
-        auto s = computeSimTimeFromClockTime(c);
         EV << "start" << ": simtime: " << simTime() << ", clock: " << getClockTime() << ", computed simtime: " << computeSimTimeFromClockTime(getClockTime()) << endl;
         timeVector.push_back(1.1);
         timeVector.push_back(2.11);

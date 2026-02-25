@@ -25,10 +25,11 @@ void MarkovClassifier::initialize(int stage)
         ClockUserModuleMixin::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         for (int i = 0; i < gateSize("out"); i++) {
-            auto output = findConnectedModule<IActivePacketSink>(outputGates[i]);
-            collectors.push_back(output);
+            ActivePacketSinkRef collector;
+            collector.reference(outputGates[i], false);
+            collectors.push_back(collector);
         }
-        provider = findConnectedModule<IPassivePacketSource>(inputGate);
+        provider.reference(inputGate, false);
         state = par("initialState");
         int numStates = gateSize("out");
         cStringTokenizer transitionProbabilitiesTokenizer(par("transitionProbabilities"));
@@ -51,7 +52,7 @@ void MarkovClassifier::initialize(int stage)
             checkPacketOperationSupport(outputGate);
         checkPacketOperationSupport(inputGate);
         if (collectors[state] != nullptr)
-            collectors[state]->handleCanPullPacketChanged(outputGates[state]->getPathEndGate());
+            collectors[state].handleCanPullPacketChanged();
         scheduleWaitTimer();
     }
 }
@@ -70,7 +71,7 @@ void MarkovClassifier::handleMessage(cMessage *message)
             }
         }
         if (collectors[state] != nullptr)
-            collectors[state]->handleCanPullPacketChanged(outputGates[state]->getPathEndGate());
+            collectors[state].handleCanPullPacketChanged();
         scheduleWaitTimer();
     }
     else
@@ -87,27 +88,26 @@ void MarkovClassifier::scheduleWaitTimer()
     scheduleClockEventAfter(waitIntervals[state].doubleValue(this), waitTimer);
 }
 
-bool MarkovClassifier::canPullSomePacket(cGate *gate) const
+bool MarkovClassifier::canPullSomePacket(const cGate *gate) const
 {
     return gate->getIndex() == state;
 }
 
-Packet *MarkovClassifier::canPullPacket(cGate *gate) const
+Packet *MarkovClassifier::canPullPacket(const cGate *gate) const
 {
-    return canPullSomePacket(gate) ? provider->canPullPacket(inputGate->getPathStartGate()) : nullptr;
+    return canPullSomePacket(gate) ? provider.canPullPacket() : nullptr;
 }
 
-Packet *MarkovClassifier::pullPacket(cGate *gate)
+Packet *MarkovClassifier::pullPacket(const cGate *gate)
 {
     Enter_Method("pullPacket");
     if (gate->getIndex() != state)
         throw cRuntimeError("Cannot pull from gate");
-    auto packet = provider->pullPacket(inputGate->getPathStartGate());
+    auto packet = provider.pullPacket();
     take(packet);
-    animatePullPacket(packet, gate);
+    animatePullPacket(packet, outputGates[gate->getIndex()], findConnectedGate<IActivePacketSink>(gate));
     numProcessedPackets++;
     processedTotalLength += packet->getDataLength();
-    updateDisplayString();
     return packet;
 }
 
@@ -121,18 +121,18 @@ std::string MarkovClassifier::resolveDirective(char directive) const
     }
 }
 
-void MarkovClassifier::handleCanPullPacketChanged(cGate *gate)
+void MarkovClassifier::handleCanPullPacketChanged(const cGate *gate)
 {
     Enter_Method("handleCanPullPacketChanged");
     if (collectors[state] != nullptr)
-        collectors[state]->handleCanPullPacketChanged(outputGates[state]->getPathEndGate());
+        collectors[state].handleCanPullPacketChanged();
 }
 
-void MarkovClassifier::handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful)
+void MarkovClassifier::handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful)
 {
     Enter_Method("handlePullPacketProcessed");
     if (collectors[state] != nullptr)
-        collectors[state]->handlePullPacketProcessed(packet, outputGates[state]->getPathEndGate(), successful);
+        collectors[state].handlePullPacketProcessed(packet, successful);
 }
 
 } // namespace queueing

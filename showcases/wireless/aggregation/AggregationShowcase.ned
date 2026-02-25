@@ -2,8 +2,8 @@ package inet.showcases.wireless.aggregation;
 
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.AdhocHost;
-import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
-import inet.visualizer.common.IntegratedVisualizer;
+import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211RadioMedium;
+import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
 
 network AggregationShowcase
@@ -13,10 +13,10 @@ network AggregationShowcase
         configurator: Ipv4NetworkConfigurator {
             @display("p=50,50");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=50,100");
         }
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             @display("p=50,150");
         }
         host1: AdhocHost {

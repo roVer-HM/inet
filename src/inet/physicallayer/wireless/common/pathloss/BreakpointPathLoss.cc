@@ -34,10 +34,10 @@ std::ostream& BreakpointPathLoss::printToStream(std::ostream& stream, int level,
 {
     stream << "BreakpointPathLoss";
     if (level <= PRINT_LEVEL_TRACE)
-        stream << ", L01 = " << l01
-               << ", L02 = " << l02
-               << ", alpha1 = " << alpha1
-               << ", alpha2 = " << alpha2
+        stream << EV_FIELD(l01)
+               << EV_FIELD(l02)
+               << EV_FIELD(alpha1)
+               << EV_FIELD(alpha2)
                << EV_FIELD(breakpointDistance);
     return stream;
 }
@@ -52,7 +52,7 @@ double BreakpointPathLoss::computePathLoss(mps propagationSpeed, Hz frequency, m
     if (distance < breakpointDistance)
         return 1 / (l01 * pow(distance.get(), alpha1));
     else
-        return 1 / (l02 * pow(unit(distance / breakpointDistance).get(), alpha2));
+        return 1 / (l02 * pow((distance / breakpointDistance).get<unit>(), alpha2));
 }
 
 m BreakpointPathLoss::computeRange(mps propagationSpeed, Hz frequency, double loss) const

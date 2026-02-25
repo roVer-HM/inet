@@ -6,8 +6,6 @@
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
-# -- Path setup --------------------------------------------------------------
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -18,23 +16,30 @@ import re
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('_themes'))
 
-
 # -- Project information -----------------------------------------------------
-
 project = 'INET'
 copyright = 'INET community'
 author = 'INET community'
+
+# what to build? (environment variable DOC_BUILD_TARGET determines the targets. Empty means everything)
+# valid targets are: ned, python, showcases, tutorials, users-guide, developers-guide
+# example: DOC_BUILD_TARGET="python,showcases" to build only the Python API and showcases
+#
+# build_python, build_showcases, build_tutorials, build_users_guide, build_developers_guide, build_ned
+# are available in the conf.py file
+target = os.environ.get('DOC_BUILD_TARGET') or 'ned,python,showcases,tutorials,users-guide,developers-guide'
+print(f"Building targets: {target}")
+for label in ['ned', 'python', 'showcases', 'tutorials', 'users-guide', 'developers-guide']:
+    globals()[f'build_{label.replace("-", "_")}'] = label in target
 
 # The short X.Y version this doc refers to (last tagged release)
 release = re.sub('^v', '', os.popen('git describe --tags --abbrev=0 --match=v[0-9].*').read().strip())
 # Git version this documentation built from (including last release tag, number of commints since then and git hash)
 version = re.sub('^v', '', os.popen('git describe --tags --abbrev=4 --match=v[0-9].*').read().strip())
 
-# -- General configuration ---------------------------------------------------
-
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-needs_sphinx = '3.0'
+needs_sphinx = '8.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -46,8 +51,13 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.githubpages',
     'sphinx.ext.graphviz',
-    #'sphinxcontrib.images',
+    'sphinx.ext.imgconverter',
+    'sphinx.ext.napoleon',
+    'sphinxcontrib.jquery',
+    'sphinxcontrib.images',
     'tools.doxylink',
+    'IPython.sphinxext.ipython_console_highlighting',
+    'IPython.sphinxext.ipython_directive',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -56,9 +66,9 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = [ '.rst',
-# '.md',
-]
+source_suffix = { '.rst': 'restructuredtext',
+# '.md': 'markdowntext',
+}
 
 # Source parsers
 source_parsers = {
@@ -73,20 +83,76 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', '_deploy', 'Thumbs.db', '.DS_Store', '**/_docs', 'global.rst',
-#  'users-guide/**',
-#  'developers-guide/**',
-#  'showcases/**',
-#  'tutorials/**',
-]
+exclude_patterns = ['_build', '_deploy', 'Thumbs.db', '.DS_Store', '**/_docs', 'global.rst']
+
+latex_documents = []
+
+# optional parts of the documentation determined by the DOC_BUILD_TARGET environment variable
+if build_showcases:
+    latex_documents.append(('showcases/index', 'inet-showcases.tex', "INET Framework Showcases", '', 'manual', False))
+else:
+    exclude_patterns.append('showcases/**')
+
+if build_tutorials:
+    latex_documents.append(('tutorials/index', 'inet-tutorials.tex', "INET Framework Tutorials", '', 'manual', False))
+else:
+    exclude_patterns.append('tutorials/**')
+
+if build_users_guide:
+    latex_documents.append(('users-guide/index', 'inet-users-guide.tex', "INET Framework User's Guide", '', 'manual', False))
+else:
+    exclude_patterns.append('users-guide/**')
+
+if build_developers_guide:
+    latex_documents.append(('developers-guide/index', 'inet-developers-guide.tex', "INET Framework Developer's Guide", '', 'manual', False))
+else:
+    exclude_patterns.append('developers-guide/**')
+
 
 # graphviz options
 graphviz_output_format = 'svg'
+
+# disable autosummary, we use autoapi instead
+autosummary_generate = False
+
+# -- python auto-api doc generator configuration ----------------------------------
+if build_python:
+    extensions.append('autoapi.extension')
+    if 'suppress_warnings' not in globals():
+        suppress_warnings = []
+    suppress_warnings.append('autoapi.python_import_resolution')
+    autoapi_generate_api_docs = True
+    autoapi_add_toctree_entry = True
+    autoapi_python_use_implicit_namespaces = True
+    autoapi_root = 'python-api'
+    autoapi_dirs = ['../../python/inet']
+    autoapi_python_class_content = "both"
+    autoapi_options = [ "members", "show-inheritance", "show-module-summary" , "inherited-members" ]
+    autoapi_member_order = "groupwise"
+    autoapi_own_page_level = "class"
+else:
+    exclude_patterns.append('python-api/**')
+
+# Napoleon settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_admonition_for_examples = False
+napoleon_use_admonition_for_notes = False
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_preprocess_types = False
+napoleon_type_aliases = None
+napoleon_attr_annotations = True
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -145,7 +211,7 @@ html_theme_options = {
     'show_footer': False,
 
     # google analytics
-    'googleanalytics_id': 'UA-240922-3'
+    'googleanalytics_id': 'G-WPFKHJQDQW'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -169,7 +235,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'INETFrameworkdoc'
+htmlhelp_basename = 'INETFrameworkDoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -191,25 +257,6 @@ latex_elements = {
     #
     # 'figure_align': 'htbp',
 }
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    ('users-guide/index', 'users-guide.tex', "INET Framework User's Guide", '', 'manual', False),
-    ('developers-guide/index', 'developers-guide.tex', "INET Framework Developer's Guide", '', 'manual', False),
-]
-
-
-# -- Options for manual page output ------------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'inetframework', 'INET Framework Documentation',
-     [author], 1)
-]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -334,8 +381,8 @@ class NedLexer(RegexLexer):
             (words(("volatile", "allowunconnected", "extends", "for", "if", "import", "like", "package", "property"), suffix=r'\b'), Keyword),
             (words(("sizeof", "const", "default", "ask", "this", "index", "typename", "xmldoc"), suffix=r'\b'), Keyword),
             (words(("acos", "asin", "atan", "atan2", "bernoulli","beta", "binomial", "cauchy", "ceil", "chi_square", "cos", "erlang_k", "exp","exponential", "fabs", "floor", "fmod", "gamma_d", "genk_exponential","genk_intuniform", "genk_normal", "genk_truncnormal", "genk_uniform", "geometric","hypergeometric", "hypot", "intuniform", "log", "log10", "lognormal", "max", "min","negbinomial", "normal", "pareto_shifted", "poisson", "pow", "simTime", "sin", "sqrt","student_t", "tan", "triang", "truncnormal", "uniform", "weibull", "xml", "xmldoc"), suffix=r'\b'), Name.Builtin),
-            ('@[a-zA-Z_]\w*', Name.Builtin),
-            ('[a-zA-Z_]\w*', Name),
+            (r'@[a-zA-Z_]\w*', Name.Builtin),
+            (r'[a-zA-Z_]\w*', Name),
         ],
         'root': [
             include('whitespace'),
@@ -431,9 +478,9 @@ from pygments.token import Keyword, Name, Comment, String, Error, \
      Number, Operator, Generic, Whitespace
 
 class FpStyle(Style):
-	default_style = "default"
-	style = {
-		Text:	'#ffffff'
+        default_style = "default"
+        style = {
+                Text: '#ffffff'
 }
 
 class FingerprintLexer(RegexLexer):
@@ -447,9 +494,9 @@ class FingerprintLexer(RegexLexer):
             #(r'.*: ', Text),
             #(r'PASS', Keyword),
             #(r'FAILED', String),
-	    (r'(.* : )(PASS)?(FAILED)?(ERROR)?',
+            (r'(.* : )(PASS)?(FAILED)?(ERROR)?',
              bygroups(Name.Entity, Name.Builtin, String, String)),
-	    (r'.*?\n', Name.Entity),
+            (r'.*?\n', Name.Entity),
         ],
     }
 

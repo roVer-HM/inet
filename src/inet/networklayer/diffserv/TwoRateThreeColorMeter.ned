@@ -7,20 +7,22 @@
 
 package inet.networklayer.diffserv;
 
+import inet.common.SimpleModule;
+
 //
-// This module implements a Two Rate Three Color Meter (RFC 2698).
+// Implements a Two Rate Three Color Meter (RFC 2698).
 //
 // It classifies IP packets based on two rates, Peak Information Rate (PIR)
 // and Committed Information Rate (CIR), and their associated burst sizes
-// to be either green, yellow or red.
+// to be either green, yellow, or red.
 //
 // The green traffic is guaranteed to be under (in bits)
 // <pre>
-//   pir * (t1 - t0) + 8 * pbs and cir * (t1 - t0) + 8 * cbs
+//   PIR * (t1 - t0) + 8 * PBS and CIR * (t1 - t0) + 8 * CBS
 // </pre>
 // and yellow traffic to be under
 // <pre>
-//   pir * (t1 - t0) + 8 * pbs
+//   PIR * (t1 - t0) + 8 * PBS
 // </pre>
 // in every [t0,t1] interval.
 //
@@ -28,16 +30,17 @@ package inet.networklayer.diffserv;
 // a packet that was colored by a previous marker to a lesser
 // conforming color.
 //
-simple TwoRateThreeColorMeter
+simple TwoRateThreeColorMeter extends SimpleModule
 {
     parameters:
+        @class(TwoRateThreeColorMeter);
         @display("i=block/timer");
         string interfaceTableModule;   // The path to the InterfaceTable module
-        string pir;       // peak information rate, either absolute bitrate (e.g. "100kbps"), or relative to the link's datarate (e.g. "20%")
-        int pbs @unit(B); // peak burst size
-        string cir;       // committed information rate, either absolute or relative bitrate; must be smaller than pir
-        int cbs @unit(B); // committed burst size
-        bool colorAwareMode = default(false); // enables color-aware mode
+        string pir;       // Peak information rate, either absolute bitrate (e.g. "100kbps") or relative to the link's datarate (e.g. "20%")
+        int pbs @unit(B); // Peak burst size
+        string cir;       // Committed information rate, either absolute or relative bitrate; must be smaller than the PIR
+        int cbs @unit(B); // Committed burst size
+        bool colorAwareMode = default(false); // Enables color-aware mode
     gates:
         input in;
         output greenOut;

@@ -14,13 +14,15 @@ import inet.queueing.contract.IPacketDelayer;
 import inet.queueing.contract.IPacketFlow;
 
 //
-// This module provides a layer that combines the decision for local delivery
+// Provides a layer that combines the decision for local delivery
 // with the service of reversing the direction of an incoming packet to outgoing
 // for packet forwarding.
 //
 module DirectionReverserLayer like IProtocolLayer
 {
     parameters:
+        string interfaceTableModule; // Relative module path of the interface table
+        *.interfaceTableModule = default(this.interfaceTableModule);
         @display("i=block/layer");
     gates:
         input upperLayerIn;

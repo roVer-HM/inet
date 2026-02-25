@@ -39,14 +39,14 @@ void GridNeighborCache::initialize(int stage)
     else if (stage == INITSTAGE_PHYSICAL_LAYER_NEIGHBOR_CACHE) {
         constraintAreaMin = radioMedium->getMediumLimitCache()->getMinConstraintArea();
         constraintAreaMax = radioMedium->getMediumLimitCache()->getMaxConstraintArea();
-        maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get();
+        maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get<mps>();
         const Coord constraintAreaSize = constraintAreaMax - constraintAreaMin;
         if (std::isnan(cellSize.x))
-            cellSize.x = constraintAreaSize.x / par("cellCountX").doubleValue();
+            cellSize.x = constraintAreaSize.x / par("cellCountX").intValue();
         if (std::isnan(cellSize.y))
-            cellSize.y = constraintAreaSize.y / par("cellCountY").doubleValue();
+            cellSize.y = constraintAreaSize.y / par("cellCountY").intValue();
         if (std::isnan(cellSize.z))
-            cellSize.z = constraintAreaSize.z / par("cellCountZ").doubleValue();
+            cellSize.z = constraintAreaSize.z / par("cellCountZ").intValue();
         fillCubeVector();
         scheduleAfter(refillPeriod, refillCellsTimer);
     }
@@ -86,7 +86,7 @@ void GridNeighborCache::addRadio(const IRadio *radio)
 {
     radios.push_back(radio);
     Coord radioPos = radio->getAntenna()->getMobility()->getCurrentPosition();
-    maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get();
+    maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get<mps>();
     if (maxSpeed != 0 && !refillCellsTimer->isScheduled() && initialized())
         scheduleAfter(refillPeriod, refillCellsTimer);
     Coord newConstraintAreaMin = radioMedium->getMediumLimitCache()->getMinConstraintArea();
@@ -113,7 +113,7 @@ void GridNeighborCache::removeRadio(const IRadio *radio)
             constraintAreaMin = newConstraintAreaMin;
             constraintAreaMax = newConstraintAreaMax;
         }
-        maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get();
+        maxSpeed = radioMedium->getMediumLimitCache()->getMaxSpeed().get<mps>();
         fillCubeVector();
         if (maxSpeed == 0 && initialized())
             cancelEvent(refillCellsTimer);

@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.INetworkNodeVisualizer;
 
 //
-// This module integrates canvas and osg node visualizers into a single module.
+// Integrates canvas and osg node visualizers into a single module.
 //
 // @see ~NetworkNodeCanvasVisualizer, ~NetworkNodeOsgVisualizer, ~NetworkNodeVisualizerBase, ~INetworkNodeVisualizer
 //
@@ -18,8 +18,10 @@ module NetworkNodeVisualizer like INetworkNodeVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("NetworkNodeCanvasVisualizer"))> like INetworkNodeVisualizer if typename != "" {
             parameters:

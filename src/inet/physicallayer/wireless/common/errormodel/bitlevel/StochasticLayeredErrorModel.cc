@@ -7,7 +7,7 @@
 
 #include "inet/physicallayer/wireless/common/errormodel/bitlevel/StochasticLayeredErrorModel.h"
 
-#include "inet/physicallayer/wireless/apsk/bitlevel/ApskSymbol.h"
+#include "inet/physicallayer/wireless/common/modulation/ApskSymbol.h"
 #include "inet/physicallayer/wireless/common/base/packetlevel/ApskModulationBase.h"
 #include "inet/physicallayer/wireless/common/radio/bitlevel/SignalBitModel.h"
 #include "inet/physicallayer/wireless/common/radio/bitlevel/SignalPacketModel.h"
@@ -46,22 +46,22 @@ std::ostream& StochasticLayeredErrorModel::printToStream(std::ostream& stream, i
     return stream;
 }
 
-const IReceptionPacketModel *StochasticLayeredErrorModel::computePacketModel(const LayeredTransmission *transmission, const ISnir *snir) const
+const IReceptionPacketModel *StochasticLayeredErrorModel::computePacketModel(const ISnir *snir) const
 {
     throw cRuntimeError("Not yet implemented");
 }
 
-const IReceptionBitModel *StochasticLayeredErrorModel::computeBitModel(const LayeredTransmission *transmission, const ISnir *snir) const
+const IReceptionBitModel *StochasticLayeredErrorModel::computeBitModel(const ISnir *snir) const
 {
-    return LayeredErrorModelBase::computeBitModel(transmission, bitErrorRate);
+    return LayeredErrorModelBase::computeBitModel(snir->getReception()->getTransmission(), bitErrorRate);
 }
 
-const IReceptionSymbolModel *StochasticLayeredErrorModel::computeSymbolModel(const LayeredTransmission *transmission, const ISnir *snir) const
+const IReceptionSymbolModel *StochasticLayeredErrorModel::computeSymbolModel(const ISnir *snir) const
 {
-    return LayeredErrorModelBase::computeSymbolModel(transmission, symbolErrorRate);
+    return LayeredErrorModelBase::computeSymbolModel(snir->getReception()->getTransmission(), symbolErrorRate);
 }
 
-const IReceptionSampleModel *StochasticLayeredErrorModel::computeSampleModel(const LayeredTransmission *transmission, const ISnir *snir) const
+const IReceptionSampleModel *StochasticLayeredErrorModel::computeSampleModel(const ISnir *snir) const
 {
     throw cRuntimeError("Not yet implemented");
 }

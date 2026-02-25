@@ -9,6 +9,7 @@
 #include "inet/common/INETUtils.h"
 #include "inet/common/socket/SocketTag_m.h"
 #include "inet/common/stlutils.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/linklayer/common/FcsMode_m.h"
 #include "inet/linklayer/common/Ieee802Ctrl.h"
 #include "inet/linklayer/common/InterfaceTag_m.h"
@@ -147,9 +148,8 @@ void EthernetEncapsulation::processCommandFromHigherLayer(Request *msg)
 void EthernetEncapsulation::refreshDisplay() const
 {
     OperationalBase::refreshDisplay();
-    char buf[80];
-    sprintf(buf, "passed up: %ld\nsent: %ld", totalFromMAC, totalFromHigherLayer);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = "passed up: " + std::to_string(totalFromMAC) + "\nsent: " + std::to_string(totalFromHigherLayer);
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void EthernetEncapsulation::processPacketFromHigherLayer(Packet *packet)
@@ -187,6 +187,7 @@ void EthernetEncapsulation::processPacketFromHigherLayer(Packet *packet)
     packet->insertAtFront(ethHeader);
     const auto& ethernetFcs = makeShared<EthernetFcs>();
     ethernetFcs->setFcsMode(fcsMode);
+    ethernetFcs->setFcs(computeEthernetFcs(packet, fcsMode));
     packet->insertAtBack(ethernetFcs);
     protocolTag->setProtocol(&Protocol::ethernetMac);
     packet->removeTagIfPresent<DispatchProtocolReq>();
@@ -275,9 +276,8 @@ void EthernetEncapsulation::handleSendPause(cMessage *msg)
     EV_DETAIL << "Creating and sending PAUSE frame, with duration = " << pauseUnits << " units\n";
 
     // create Ethernet frame
-    char framename[40];
-    sprintf(framename, "pause-%d-%d", getId(), seqNum++);
-    auto packet = new Packet(framename);
+    std::string framename = "pause-" + std::to_string(getId()) + "-" + std::to_string(seqNum++);
+    auto packet = new Packet(framename.c_str());
     const auto& frame = makeShared<EthernetPauseFrame>();
     const auto& hdr = makeShared<EthernetMacHeader>();
     frame->setPauseTime(pauseUnits);
@@ -289,6 +289,7 @@ void EthernetEncapsulation::handleSendPause(cMessage *msg)
     packet->insertAtFront(hdr);
     const auto& ethernetFcs = makeShared<EthernetFcs>();
     ethernetFcs->setFcsMode(fcsMode);
+    ethernetFcs->setFcs(computeEthernetFcs(packet, fcsMode));
     packet->insertAtBack(ethernetFcs);
     packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ethernetMac);
 

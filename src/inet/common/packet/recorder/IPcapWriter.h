@@ -205,13 +205,13 @@ class INET_API IPcapWriter
   public:
     virtual ~IPcapWriter() {}
 
-    virtual void open(const char *filename, unsigned int snaplen) = 0;
+    virtual void open(const char *filename, unsigned int snaplen, int timePrecision) = 0;
     virtual void close() = 0;
     virtual bool isOpen() const = 0;
 
     virtual void setFlush(bool flush) = 0;
 
-    virtual void writePacket(simtime_t time, const Packet *packet, Direction direction, NetworkInterface *ie, PcapLinkType linkType) = 0;
+    virtual void writePacket(simtime_t time, const Packet *packet, b frontOffset, b backOffset, Direction direction, NetworkInterface *ie, PcapLinkType linkType) = 0;
 };
 
 } // namespace inet

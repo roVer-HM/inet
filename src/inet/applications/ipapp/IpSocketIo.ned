@@ -7,18 +7,21 @@
 
 package inet.applications.ipapp;
 
+import inet.common.SimpleModule;
+
 //
-// This module provides IP socket handling for generic applications.
+// Provides IP socket handling for generic applications.
 //
-simple IpSocketIo
+simple IpSocketIo extends SimpleModule
 {
     parameters:
+        @class(IpSocketIo);
         string interfaceTableModule;
         string localAddress = default("");
         string destAddress = default("");
         string protocol = default("");
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation finishes
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
         @lifecycleSupport();
         @display("i=block/socket");
         @signal[packetSent](type=inet::Packet);

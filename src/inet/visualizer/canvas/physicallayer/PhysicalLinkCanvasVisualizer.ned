@@ -11,7 +11,7 @@ import inet.visualizer.base.PhysicalLinkVisualizerBase;
 import inet.visualizer.contract.IPhysicalLinkVisualizer;
 
 //
-// This module visualizes physical layer links on a 2D canvas. It displays an
+// Visualizes physical layer links on a 2D canvas. It displays an
 // arrow for each active link in the network. See the documentation of the base
 // module for what constitutes an active link. The arrow points from the source
 // towards the destination. If a link is used in both directions then there are
@@ -24,7 +24,7 @@ import inet.visualizer.contract.IPhysicalLinkVisualizer;
 simple PhysicalLinkCanvasVisualizer extends PhysicalLinkVisualizerBase like IPhysicalLinkVisualizer
 {
     parameters:
-        double zIndex = default(1); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(1); // Determines the drawing order of figures relative to other visualizers
         @class(PhysicalLinkCanvasVisualizer);
 }
 

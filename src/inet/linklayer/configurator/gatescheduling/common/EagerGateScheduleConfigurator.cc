@@ -116,7 +116,7 @@ simtime_t EagerGateScheduleConfigurator::computeStartOffsetForPathFragments(Inpu
             if (!strcmp(pathFragment->networkNodes.front()->module->getFullName(), std::get<0>(todo).c_str())) {
                 simtime_t nextGateOpenTime = std::get<1>(todo);
                 std::vector<std::string> extendedPath = std::get<2>(todo);
-                for (int i = 0; i < pathFragment->networkNodes.size() - 1; i++) {
+                for (size_t i = 0; i < pathFragment->networkNodes.size() - 1; i++) {
                     auto networkNodeName = pathFragment->networkNodes[i]->module->getFullName();
                     extendedPath.push_back(networkNodeName);
                     auto networkNode = getParentModule()->getSubmodule(networkNodeName);
@@ -126,14 +126,14 @@ simtime_t EagerGateScheduleConfigurator::computeStartOffsetForPathFragments(Inpu
                     auto networkInterface = interface->networkInterface;
                     auto& interfaceSchedule = interfaceSchedules[networkInterface];
                     bps interfaceDatarate = bps(networkInterface->getDatarate());
-                    simtime_t transmissionDuration = s(packetLength / interfaceDatarate).get();
-                    simtime_t interFrameGap = s(b(96) / interfaceDatarate).get();
+                    simtime_t transmissionDuration = (packetLength / interfaceDatarate).get<s>();
+                    simtime_t interFrameGap = (b(96) / interfaceDatarate).get<s>();
                     auto channel = dynamic_cast<cDatarateChannel *>(networkInterface->getTxTransmissionChannel());
                     simtime_t propagationDelay = channel != nullptr ? channel->getDelay() : 0;
                     simtime_t gateOpenDuration = transmissionDuration;
                     simtime_t gateOpenTime = nextGateOpenTime;
                     simtime_t gateCloseTime = gateOpenTime + gateOpenDuration;
-                    for (int i = 0; i < interfaceSchedule.size(); i++) {
+                    for (size_t i = 0; i < interfaceSchedule.size(); i++) {
                         if (interfaceSchedule[i].gateCloseTime + interFrameGap <= gateOpenTime || gateCloseTime + interFrameGap <= interfaceSchedule[i].gateOpenTime)
                             continue;
                         else {
@@ -187,7 +187,7 @@ void EagerGateScheduleConfigurator::addGateSchedulingForPathFragments(Input::Flo
             if (!strcmp(pathFragment->networkNodes.front()->module->getFullName(), std::get<0>(todo).c_str())) {
                 simtime_t nextGateOpenTime = std::get<1>(todo);
                 std::vector<std::string> extendedPath = std::get<2>(todo);
-                for (int i = 0; i < pathFragment->networkNodes.size() - 1; i++) {
+                for (size_t i = 0; i < pathFragment->networkNodes.size() - 1; i++) {
                     auto networkNodeName = pathFragment->networkNodes[i]->module->getFullName();
                     extendedPath.push_back(networkNodeName);
                     auto networkNode = getParentModule()->getSubmodule(networkNodeName);
@@ -197,14 +197,14 @@ void EagerGateScheduleConfigurator::addGateSchedulingForPathFragments(Input::Flo
                     auto networkInterface = interface->networkInterface;
                     auto& interfaceSchedule = interfaceSchedules[networkInterface];
                     bps interfaceDatarate = bps(networkInterface->getDatarate());
-                    simtime_t transmissionDuration = s(packetLength / interfaceDatarate).get();
-                    simtime_t interFrameGap = s(b(96) / interfaceDatarate).get();
+                    simtime_t transmissionDuration = (packetLength / interfaceDatarate).get<s>();
+                    simtime_t interFrameGap = (b(96) / interfaceDatarate).get<s>();
                     auto channel = dynamic_cast<cDatarateChannel *>(networkInterface->getTxTransmissionChannel());
                     simtime_t propagationDelay = channel != nullptr ? channel->getDelay() : 0;
                     simtime_t gateOpenDuration = transmissionDuration;
                     simtime_t gateOpenTime = nextGateOpenTime;
                     simtime_t gateCloseTime = gateOpenTime + gateOpenDuration;
-                    for (int i = 0; i < interfaceSchedule.size(); i++) {
+                    for (size_t i = 0; i < interfaceSchedule.size(); i++) {
                         if (interfaceSchedule[i].gateCloseTime + interFrameGap <= gateOpenTime || gateCloseTime + interFrameGap <= interfaceSchedule[i].gateOpenTime)
                             continue;
                         else {

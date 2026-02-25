@@ -8,6 +8,7 @@
 #ifndef __INET_TCPGENERICSERVERAPP_H
 #define __INET_TCPGENERICSERVERAPP_H
 
+#include "inet/common/SimpleModule.h"
 #include "inet/common/lifecycle/LifecycleUnsupported.h"
 #include "inet/common/packet/ChunkQueue.h"
 #include "inet/transportlayer/contract/tcp/TcpSocket.h"
@@ -20,12 +21,13 @@ namespace inet {
  *
  * @see GenericAppMsg, TcpAppBase
  */
-class INET_API TcpGenericServerApp : public cSimpleModule, public LifecycleUnsupported
+class INET_API TcpGenericServerApp : public SimpleModule, public LifecycleUnsupported
 {
   protected:
     TcpSocket socket;
     simtime_t delay;
     simtime_t maxMsgDelay;
+    bool autoRead = true;
 
     long msgsRcvd;
     long msgsSent;
@@ -37,6 +39,7 @@ class INET_API TcpGenericServerApp : public cSimpleModule, public LifecycleUnsup
   protected:
     virtual void sendBack(cMessage *msg);
     virtual void sendOrSchedule(cMessage *msg, simtime_t delay);
+    virtual void sendOrScheduleReadCommandIfNeeded(int connId);
 
     virtual void initialize(int stage) override;
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }

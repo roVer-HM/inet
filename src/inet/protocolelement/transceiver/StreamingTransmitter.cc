@@ -19,7 +19,6 @@ void StreamingTransmitter::handleMessageWhenUp(cMessage *message)
         endTx();
     else
         PacketTransmitterBase::handleMessageWhenUp(message);
-    updateDisplayString();
 }
 
 void StreamingTransmitter::handleStopOperation(LifecycleOperation *operation)
@@ -34,12 +33,11 @@ void StreamingTransmitter::handleCrashOperation(LifecycleOperation *operation)
         abortTx();
 }
 
-void StreamingTransmitter::pushPacket(Packet *packet, cGate *gate)
+void StreamingTransmitter::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
     startTx(packet);
-    updateDisplayString();
 }
 
 void StreamingTransmitter::startTx(Packet *packet)
@@ -76,10 +74,9 @@ void StreamingTransmitter::endTx()
     txStartTime = -1;
     txStartClockTime = -1;
     // 4. notify producer
-    auto gate = inputGate->getPathStartGate();
     if (producer != nullptr) {
-        producer->handlePushPacketProcessed(packet, gate, true);
-        producer->handleCanPushPacketChanged(gate);
+        producer.handlePushPacketProcessed(packet, true);
+        producer.handleCanPushPacketChanged();
     }
 }
 
@@ -92,7 +89,7 @@ void StreamingTransmitter::abortTx()
     // TODO we can't just simply cut the packet proportionally with time because it's not always the case (modulation, scrambling, etc.)
     simtime_t timePosition = simTime() - txStartTime;
     b dataPosition = b(std::floor(txDatarate.get() * timePosition.dbl()));
-    packet->eraseAtBack(packet->getTotalLength() - dataPosition);
+    packet->eraseAtBack(packet->getDataLength() - dataPosition);
     packet->setBitError(true);
     auto signal = encodePacket(packet);
     signal->setDuration(timePosition);
@@ -108,10 +105,9 @@ void StreamingTransmitter::abortTx()
     txStartTime = -1;
     txStartClockTime = -1;
     // 6. notify producer
-    auto gate = inputGate->getPathStartGate();
     if (producer != nullptr) {
-        producer->handlePushPacketProcessed(packet, gate, true);
-        producer->handleCanPushPacketChanged(gate);
+        producer.handlePushPacketProcessed(packet, true);
+        producer.handleCanPushPacketChanged();
     }
 }
 

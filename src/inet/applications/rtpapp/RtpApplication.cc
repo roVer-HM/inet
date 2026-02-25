@@ -21,7 +21,7 @@ Define_Module(RtpApplication)
 
 void RtpApplication::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     // because of L3AddressResolver, we need to wait until interfaces are registered,
     // address auto-assignment takes place etc.
@@ -41,7 +41,7 @@ void RtpApplication::initialize(int stage)
 
         // fileName of file to be transmitted
         // nullptr or "" means this system acts only as a receiver
-        fileName = par("fileName");
+        fileName = getEnvir()->getConfig()->substituteVariables(par("fileName"));
 
         // payload type of file to transmit
         payloadType = par("payloadType");
@@ -160,12 +160,12 @@ void RtpApplication::handleMessage(cMessage *msgIn)
                 case RTP_IFP_SESSION_ENTERED: {
                     EV_INFO << "Session Entered" << endl;
                     ssrc = (check_and_cast<RtpCiSessionEntered *>(ci))->getSsrc();
-                    if (opp_strcmp(fileName, "")) {
+                    if (!fileName.empty()) {
                         EV_INFO << "CreateSenderModule" << endl;
                         RtpCiCreateSenderModule *ci = new RtpCiCreateSenderModule();
                         ci->setSsrc(ssrc);
                         ci->setPayloadType(payloadType);
-                        ci->setFileName(fileName);
+                        ci->setFileName(fileName.c_str());
                         cMessage *msg = new RtpControlMsg("createSenderModule()");
                         msg->setControlInfo(ci);
                         send(msg, "rtpOut");

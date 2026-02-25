@@ -34,7 +34,7 @@ cGate *EthernetSocketPacketProcessor::getRegistrationForwardingGate(cGate *gate)
         throw cRuntimeError("Unknown gate");
 }
 
-void EthernetSocketPacketProcessor::pushPacket(Packet *packet, cGate *gate)
+void EthernetSocketPacketProcessor::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -60,7 +60,6 @@ void EthernetSocketPacketProcessor::pushPacket(Packet *packet, cGate *gate)
         delete packet;
     else
         pushOrSendPacket(packet, outputGate, consumer);
-    updateDisplayString();
 }
 
 } // namespace inet

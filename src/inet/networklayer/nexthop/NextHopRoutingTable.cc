@@ -47,7 +47,7 @@ NextHopRoutingTable::~NextHopRoutingTable()
 
 void NextHopRoutingTable::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
         // get a pointer to the IInterfaceTable
@@ -195,9 +195,9 @@ void NextHopRoutingTable::refreshDisplay() const
 // TODO
 //    char buf[80];
 //    if (routerId.isUnspecified())
-//        sprintf(buf, "%d+%d routes", (int)routes.size(), (int)multicastRoutes.size());
+//        snprintf(buf, sizeof(buf), "%d+%d routes", (int)routes.size(), (int)multicastRoutes.size());
 //    else
-//        sprintf(buf, "routerId: %s\n%d+%d routes", routerId.str().c_str(), (int)routes.size(), (int)multicastRoutes.size());
+//        snprintf(buf, sizeof(buf), "routerId: %s\n%d+%d routes", routerId.str().c_str(), (int)routes.size(), (int)multicastRoutes.size());
 //    getDisplayString().setTagArg("t", 0, buf);
 }
 

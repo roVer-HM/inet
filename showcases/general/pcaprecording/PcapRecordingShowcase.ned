@@ -5,8 +5,8 @@ import inet.node.ethernet.Eth100M;
 import inet.node.inet.AdhocHost;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
-import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211ScalarRadioMedium;
-import inet.visualizer.common.IntegratedMultiVisualizer;
+import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211RadioMedium;
+import inet.visualizer.canvas.integrated.IntegratedMultiCanvasVisualizer;
 
 
 network PcapRecordingShowcase
@@ -16,10 +16,10 @@ network PcapRecordingShowcase
         configurator: Ipv4NetworkConfigurator {
             @display("p=87,57");
         }
-        visualizer: IntegratedMultiVisualizer {
+        visualizer: IntegratedMultiCanvasVisualizer {
             @display("p=87,130");
         }
-        radioMedium: Ieee80211ScalarRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=86,192");
         }
         host1: AdhocHost {

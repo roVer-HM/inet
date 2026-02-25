@@ -15,7 +15,7 @@
 #include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/FragmentationTag_m.h"
 #include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo_m.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 
 namespace inet {
 
@@ -59,7 +59,7 @@ void UdpBasicBurst::initialize(int stage)
         destAddrRNG = par("destAddrRNG");
         const char *addrModeStr = par("chooseDestAddrMode");
         std::string addrModeEnumStr = opp_replacesubstring(opp_strupper(addrModeStr), "PER", "PER_", false);
-        int addrMode = cEnum::get("inet::UdpBasicBurst::ChooseDestAddrMode")->lookup(addrModeEnumStr.c_str());
+        int addrMode = cEnum::get(opp_typename(typeid(ChooseDestAddrMode)))->lookup(addrModeEnumStr.c_str());
         if (addrMode == -1)
             throw cRuntimeError("Invalid chooseDestAddrMode: '%s'", addrModeStr);
         chooseDestAddrMode = static_cast<ChooseDestAddrMode>(addrMode);
@@ -87,10 +87,9 @@ L3Address UdpBasicBurst::chooseDestAddr()
 
 Packet *UdpBasicBurst::createPacket()
 {
-    char msgName[32];
-    sprintf(msgName, "UDPBasicAppData-%lu", (unsigned long)counter++);
+    std::string msgName = "UDPBasicAppData-" + std::to_string((unsigned long)counter++);
     long msgByteLength = *messageLengthPar;
-    Packet *pk = new Packet(msgName);
+    Packet *pk = new Packet(msgName.c_str());
     const auto& payload = makeShared<ApplicationPacket>();
     payload->setChunkLength(B(msgByteLength));
     payload->setSequenceNumber(numSent);
@@ -216,9 +215,8 @@ void UdpBasicBurst::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
 
-    char buf[100];
-    sprintf(buf, "rcvd: %d pks\nsent: %d pks", numReceived, numSent);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = "rcvd: " + std::to_string(numReceived) + " pks\nsent: " + std::to_string(numSent) + " pks";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void UdpBasicBurst::processPacket(Packet *pk)

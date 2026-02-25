@@ -11,10 +11,10 @@
 
 #include <vector>
 
-#include "inet/common/checksum/TcpIpChecksum.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/networklayer/ipv4/Ipv4InterfaceData.h"
-#include "inet/routing/ospfv2/Ospfv2Crc.h"
+#include "inet/routing/ospfv2/Ospfv2Checksum.h"
 #include "inet/routing/ospfv2/Ospfv2PacketSerializer.h"
 #include "inet/routing/ospfv2/interface/Ospfv2InterfaceStateDown.h"
 #include "inet/routing/ospfv2/messagehandler/MessageHandler.h"
@@ -30,7 +30,7 @@ using namespace ospf;
 Ospfv2Interface::Ospfv2Interface(Ospfv2Interface::Ospfv2InterfaceType ifType) :
     interfaceType(ifType),
     interfaceMode(ACTIVE),
-    crcMode(CRC_MODE_UNDEFINED),
+    checksumMode(CHECKSUM_MODE_UNDEFINED),
     interfaceName(""),
     ifIndex(0),
     mtu(0),
@@ -208,14 +208,14 @@ void Ospfv2Interface::sendHelloPacket(Ipv4Address destination, short ttl)
         helloPacket->setNeighbor(k, neighbors[k]);
     }
 
-    helloPacket->setPacketLengthField(B(OSPFv2_HEADER_LENGTH + OSPFv2_HELLO_HEADER_LENGTH + B(initedNeighborCount * 4)).get());
+    helloPacket->setPacketLengthField((OSPFv2_HEADER_LENGTH + OSPFv2_HELLO_HEADER_LENGTH + B(initedNeighborCount * 4)).get<B>());
     helloPacket->setChunkLength(B(helloPacket->getPacketLengthField()));
 
     for (int i = 0; i < 8; i++) {
         helloPacket->setAuthentication(i, authenticationKey.bytes[i]);
     }
 
-    setOspfCrc(helloPacket, crcMode);
+    setOspfChecksum(helloPacket, checksumMode);
 
     Packet *pk = new Packet();
     pk->insertAtBack(helloPacket);
@@ -236,14 +236,14 @@ void Ospfv2Interface::sendLsAcknowledgement(const Ospfv2LsaHeader *lsaHeader, Ip
     lsAckPacket->setLsaHeadersArraySize(1);
     lsAckPacket->setLsaHeaders(0, *lsaHeader);
 
-    lsAckPacket->setPacketLengthField(B(OSPFv2_HEADER_LENGTH + OSPFv2_LSA_HEADER_LENGTH).get());
+    lsAckPacket->setPacketLengthField((OSPFv2_HEADER_LENGTH + OSPFv2_LSA_HEADER_LENGTH).get<B>());
     lsAckPacket->setChunkLength(B(lsAckPacket->getPacketLengthField()));
 
     for (int i = 0; i < 8; i++) {
         lsAckPacket->setAuthentication(i, authenticationKey.bytes[i]);
     }
 
-    setOspfCrc(lsAckPacket, crcMode);
+    setOspfChecksum(lsAckPacket, checksumMode);
 
     Packet *pk = new Packet();
     pk->insertAtBack(lsAckPacket);
@@ -500,7 +500,7 @@ Packet *Ospfv2Interface::createUpdatePacket(const Ospfv2Lsa *lsa)
             lsaHeader.setLsAge(lsAge);
             auto lsaSize = calculateLSASize(lsa);
             ASSERT(lsaSize == B(lsaHeader.getLsaLength()));
-            setLsaCrc(*lsa, crcMode);
+            setLsaChecksum(*lsa, checksumMode);
             packetLength += lsaSize;
         }
         break;
@@ -509,14 +509,14 @@ Packet *Ospfv2Interface::createUpdatePacket(const Ospfv2Lsa *lsa)
             throw cRuntimeError("Invalid LSA type: %d", lsaType);
     }
 
-    updatePacket->setPacketLengthField(B(packetLength).get());
+    updatePacket->setPacketLengthField(packetLength.get<B>());
     updatePacket->setChunkLength(packetLength);
 
     for (int j = 0; j < 8; j++) {
         updatePacket->setAuthentication(j, authenticationKey.bytes[j]);
     }
 
-    setOspfCrc(updatePacket, crcMode);
+    setOspfChecksum(updatePacket, checksumMode);
 
     Packet *pk = new Packet();
     pk->insertAtBack(updatePacket);
@@ -572,14 +572,14 @@ void Ospfv2Interface::sendDelayedAcknowledgements()
                     packetSize += OSPFv2_LSA_HEADER_LENGTH;
                 }
 
-                ackPacket->setPacketLengthField(B(packetSize - IPv4_MAX_HEADER_LENGTH).get());
+                ackPacket->setPacketLengthField((packetSize - IPv4_MAX_HEADER_LENGTH).get<B>());
                 ackPacket->setChunkLength(B(ackPacket->getPacketLengthField()));
 
                 for (int i = 0; i < 8; i++) {
                     ackPacket->setAuthentication(i, authenticationKey.bytes[i]);
                 }
 
-                setOspfCrc(ackPacket, crcMode);
+                setOspfChecksum(ackPacket, checksumMode);
 
                 Packet *pk = new Packet();
                 pk->insertAtBack(ackPacket);
@@ -653,6 +653,21 @@ std::ostream& operator<<(std::ostream& stream, const Ospfv2Interface& intf)
                   << "designatedRouterInterface: " << intf.designatedRouter.ipInterfaceAddress << " "
                   << "backupDesignatedRouterID: " << intf.backupDesignatedRouter.routerID << " "
                   << "backupDesignatedRouterInterface: " << intf.backupDesignatedRouter.ipInterfaceAddress;
+}
+
+const char *Ospfv2Interface::getStateString()
+{
+    return getStateString(state->getState());
+}
+
+std::string Ospfv2Interface::getNeighbors()
+{
+    std::string neighbors = "";
+    for (auto& neighbor : neighboringRoutersByID) {
+        std::string neighborState = Neighbor::getStateString((neighbor.second)->getState());
+        neighbors = neighbors + (neighbor.first).str() + " (" + neighborState + ")  ";
+    }
+    return neighbors;
 }
 
 } // namespace ospfv2

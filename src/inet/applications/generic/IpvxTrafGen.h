@@ -31,6 +31,7 @@ class INET_API IpvxTrafGen : public ApplicationBase
     simtime_t stopTime;
     cPar *sendIntervalPar = nullptr;
     cPar *packetLengthPar = nullptr;
+    int protocolNumber = -1;
     const Protocol *protocol = nullptr;
     std::vector<L3Address> destAddresses;
     int numPackets = 0;
@@ -53,7 +54,6 @@ class INET_API IpvxTrafGen : public ApplicationBase
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
     virtual void initialize(int stage) override;
     virtual void handleMessageWhenUp(cMessage *msg) override;
-    virtual void refreshDisplay() const override;
     virtual void startApp();
 
     virtual void printPacket(Packet *msg);
@@ -71,4 +71,3 @@ class INET_API IpvxTrafGen : public ApplicationBase
 } // namespace inet
 
 #endif
-

@@ -11,7 +11,7 @@ import inet.queueing.base.ActivePacketSourceBase;
 import inet.queueing.contract.IActivePacketSource;
 
 //
-// This module is an active packet source which pushes packets into the connected
+// An active packet source which pushes packets into the connected
 // packet consumer. All pushed packets are read from a PCAP file.
 //
 // Available packet name format directives:
@@ -26,8 +26,8 @@ import inet.queueing.contract.IActivePacketSource;
 simple PcapFilePacketProducer extends ActivePacketSourceBase like IActivePacketSource
 {
     parameters:
-        string filename; // the PCAP file to be read
-        packetNameFormat = default("Pcap-%p-%t-%n"); // determines the name of the packets read from the PCAP file
+        string filename; // The PCAP file to be read
+        packetNameFormat = default("Pcap-%p-%t-%n"); // Determines the name of the packets read from the PCAP file
         @class(PcapFilePacketProducer);
     gates:
         output out @labels(push);

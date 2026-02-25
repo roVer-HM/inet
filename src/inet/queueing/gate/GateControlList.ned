@@ -7,16 +7,20 @@
 
 package inet.queueing.gate;
 
+import inet.common.SimpleModule;
+
 //
-// This module configures PeriodicGate.
+// Configures multiple `PeriodicGate` modules according to a gate control list.
+// The modules are looked for at the `^.transmissionGate[*]` relative module path.
 //
-simple GateControlList
+simple GateControlList extends SimpleModule
 {
     parameters:
-        int numGates = default(8);
-        double offset @mutable @unit(s) = default(0s);
-        object durations @mutable @unit(s) = default([]); // list of entry durations. E.g., [4ms, 2ms, 2ms, 2ms]
-        object gateStates @mutable = default([]); // list of gateStates. E.g., ["10000000", "01111111", "10000000", "01111111"]
+        @class(GateControlList);
+        object durations @unit(s) = default([]); // List of entry durations, e.g. [4ms, 2ms, 2ms, 2ms]
+        object gateStates = default([]); // List of gate states, e.g. ["10000000", "01111111", "10000000", "01111111"]
+        int numGates = default(8); // Number of configured PeriodicGate modules
+        string mapping; // String specifying the gate index for the ith gate state, e.g. "76543210" means reverse gate index order
         @class(GateControlList);
         @display("i=block/table");
 }

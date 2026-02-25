@@ -7,6 +7,7 @@
 
 package inet.networklayer.ldp;
 
+import inet.common.SimpleModule;
 import inet.applications.contract.IApp;
 
 //
@@ -27,9 +28,10 @@ import inet.applications.contract.IApp;
 //
 // @author Vojta Janota
 //
-simple Ldp like IApp
+simple Ldp extends SimpleModule like IApp
 {
     parameters:
+        @class(Ldp);
         string interfaceTableModule;   // The path to the InterfaceTable module
         string routingTableModule;
         string libTableModule;
@@ -38,11 +40,11 @@ simple Ldp like IApp
         double helloInterval @unit(s) = default(5s);
         @display("i=block/control");
         @lifecycleSupport;
-        double stopOperationExtraTime @unit(s) = default(-1s);    // extra time after lifecycle stop operation finished
-        double stopOperationTimeout @unit(s) = default(2s);    // timeout value for lifecycle stop operation
+        double stopOperationExtraTime @unit(s) = default(-1s);    // Extra time after lifecycle stop operation finished
+        double stopOperationTimeout @unit(s) = default(2s);    // Timeout value for lifecycle stop operation
 
     gates:
-        input socketIn @labels(TcpCommand/up,UdpControlInfo/up);
-        output socketOut @labels(TcpCommand/down,UdpControlInfo/down);
+        input socketIn @labels(TcpCommand/up,UdpCommand/up);
+        output socketOut @labels(TcpCommand/down,UdpCommand/down);
 }
 

@@ -7,19 +7,26 @@
 
 package inet.networklayer.common;
 
+import inet.common.Module;
 import inet.clock.contract.IClock;
 import inet.common.packet.recorder.PcapRecorder;
 
 //
-// This module serves as the base module for all network interfaces.
+// Serves as the base module for all network interfaces.
 //
-module NetworkInterface
+// Display string directives:
+// - %i: interface ID
+// - %m: MAC address
+// - %n: interface name
+// - %a: network address
+//
+module NetworkInterface extends Module
 {
     parameters:
-        string displayStringTextFormat = default("%a (%i)\n%m");
+        displayStringTextFormat = default("%a (%i)\n%m");
         bool recordPcap = default(false);
         int numPcapRecorders = default(recordPcap ? 1 : 0);
-        pcapRecorder[*].pcapFile = default("results/" + expand("${configname}-") + fullPath() + ".pcap");
+        pcapRecorder[*].pcapFile = default("${resultdir}/${configname}-#${runnumber}" + fullPath() + ".pcap");
         **.clockModule = default(exists(clock) ? absPath(".clock") : "");
         @networkInterface;
         @lifecycleSupport;

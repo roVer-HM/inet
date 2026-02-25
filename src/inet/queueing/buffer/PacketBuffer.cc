@@ -27,8 +27,6 @@ void PacketBuffer::initialize(int stage)
         dataCapacity = b(par("dataCapacity"));
         packetDropperFunction = createDropperFunction(par("dropperClass"));
     }
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
 }
 
 IPacketDropperFunction *PacketBuffer::createDropperFunction(const char *dropperClass) const
@@ -49,7 +47,7 @@ b PacketBuffer::getTotalLength() const
 {
     b totalLength = b(0);
     for (auto packet : packets)
-        totalLength += packet->getTotalLength();
+        totalLength += packet->getDataLength();
     return totalLength;
 }
 
@@ -79,7 +77,6 @@ void PacketBuffer::addPacket(Packet *packet)
         else
             throw cRuntimeError("Buffer is overloaded but packet dropper function is not specified");
     }
-    updateDisplayString();
 }
 
 void PacketBuffer::removePacket(Packet *packet)
@@ -88,7 +85,6 @@ void PacketBuffer::removePacket(Packet *packet)
     EV_INFO << "Removing packet" << EV_FIELD(packet) << EV_ENDL;
     emit(packetRemovedSignal, packet);
     packets.erase(find(packets, packet));
-    updateDisplayString();
     auto queue = dynamic_cast<cPacketQueue *>(packet->getOwner());
     if (queue != nullptr) {
         ICallback *callback = dynamic_cast<ICallback *>(queue->getOwner());
@@ -112,7 +108,6 @@ void PacketBuffer::removeAllPackets()
                 callback->handlePacketRemoved(packet);
         }
     }
-    updateDisplayString();
 }
 
 Packet *PacketBuffer::getPacket(int index) const

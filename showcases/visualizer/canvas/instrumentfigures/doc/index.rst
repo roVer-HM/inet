@@ -13,7 +13,7 @@ various gauges and meters.
 
 This showcase demonstrates the use of multiple instrument figures.
 
-| INET version: ``4.1``
+| Verified with INET version: ``4.6``
 | Source files location: `inet/showcases/visualizer/instrumentfigures <https://github.com/inet-framework/inet/tree/master/showcases/visualizer/instrumentfigures>`__
 
 About Instrument Figures
@@ -96,7 +96,7 @@ We would like the following statistics to be displayed using instrument figures:
    displayed by an ``indexedImage`` figure. IDLE means nothing to send,
    DEFER means the channel is in use, IFS\_AND\_BACKOFF means the channel is
    free and contending to acquire channel;
--  Download progress should be displayed by a ``progessMeter`` figure;
+-  Download progress should be displayed by a ``progressMeter`` figure;
 -  The number of socket data transfers to the client application should be
    displayed by a ``counter`` figure.
 
@@ -203,6 +203,40 @@ Further information
 
 For more information, refer to the :ref:`ug:cha:instrument-figures` chapter
 of the INET User's Guide.
+
+
+Try It Yourself
+---------------
+
+If you already have INET and OMNeT++ installed, start the IDE by typing
+``omnetpp``, import the INET project into the IDE, then navigate to the
+``inet/showcases/visualizer/canvas/instrumentfigures`` folder in the `Project Explorer`. There, you can view
+and edit the showcase files, run simulations, and analyze results.
+
+Otherwise, there is an easy way to install INET and OMNeT++ using `opp_env
+<https://omnetpp.org/opp_env>`__, and run the simulation interactively.
+Ensure that ``opp_env`` is installed on your system, then execute:
+
+.. code-block:: bash
+
+    $ opp_env run inet-4.6 --init -w inet-workspace --install --build-modes=release --chdir \
+       -c 'cd inet-4.6.*/showcases/visualizer/canvas/instrumentfigures && inet'
+
+This command creates an ``inet-workspace`` directory, installs the appropriate
+versions of INET and OMNeT++ within it, and launches the ``inet`` command in the
+showcase directory for interactive simulation.
+
+Alternatively, for a more hands-on experience, you can first set up the
+workspace and then open an interactive shell:
+
+.. code-block:: bash
+
+    $ opp_env install --init -w inet-workspace --build-modes=release inet-4.6
+    $ cd inet-workspace
+    $ opp_env shell
+
+Inside the shell, start the IDE by typing ``omnetpp``, import the INET project,
+then start exploring.
 
 Discussion
 ----------

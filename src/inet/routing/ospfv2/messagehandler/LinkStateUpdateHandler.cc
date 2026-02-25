@@ -6,7 +6,7 @@
 
 #include "inet/routing/ospfv2/messagehandler/LinkStateUpdateHandler.h"
 
-#include "inet/routing/ospfv2/Ospfv2Crc.h"
+#include "inet/routing/ospfv2/Ospfv2Checksum.h"
 #include "inet/routing/ospfv2/neighbor/Ospfv2Neighbor.h"
 #include "inet/routing/ospfv2/router/Ospfv2Area.h"
 #include "inet/routing/ospfv2/router/Ospfv2Common.h"
@@ -267,7 +267,7 @@ void LinkStateUpdateHandler::acknowledgeLSA(const Ospfv2LsaHeader& lsaHeader,
         ackPacket->setLsaHeadersArraySize(1);
         ackPacket->setLsaHeaders(0, lsaHeader);
 
-        ackPacket->setPacketLengthField(B(OSPFv2_HEADER_LENGTH + OSPFv2_LSA_HEADER_LENGTH).get());
+        ackPacket->setPacketLengthField((OSPFv2_HEADER_LENGTH + OSPFv2_LSA_HEADER_LENGTH).get<B>());
         ackPacket->setChunkLength(B(ackPacket->getPacketLengthField()));
 
         AuthenticationKeyType authKey = intf->getAuthenticationKey();
@@ -275,7 +275,7 @@ void LinkStateUpdateHandler::acknowledgeLSA(const Ospfv2LsaHeader& lsaHeader,
             ackPacket->setAuthentication(i, authKey.bytes[i]);
         }
 
-        setOspfCrc(ackPacket, intf->getCrcMode());
+        setOspfChecksum(ackPacket, intf->getChecksumMode());
 
         Packet *pk = new Packet();
         pk->insertAtBack(ackPacket);

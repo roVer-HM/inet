@@ -15,6 +15,7 @@
 #include "inet/linklayer/base/MacProtocolBase.h"
 #include "inet/linklayer/common/FcsMode_m.h"
 #include "inet/linklayer/common/MacAddress.h"
+#include "inet/linklayer/ethernet/base/EthernetModes.h"
 #include "inet/linklayer/ethernet/common/EthernetMacHeader_m.h"
 #include "inet/networklayer/common/NetworkInterface.h"
 #include "inet/physicallayer/wired/ethernet/EthernetSignal_m.h"
@@ -61,31 +62,12 @@ class INET_API EthernetMacBase : public MacProtocolBase, public queueing::IActiv
         ENDPAUSE
     };
 
-    enum {
-        NUM_OF_ETHERDESCRS = 11
-    };
-
-    struct EtherDescr {
-        double txrate;
-        double halfBitTime; // transmission time of a half bit
-        // for half-duplex operation:
-        short int maxFramesInBurst;
-        B maxBytesInBurst; // including IFG and preamble, etc.
-        B halfDuplexFrameMinBytes; // minimal frame length in half-duplex mode; -1 means half duplex is not supported
-        B frameInBurstMinBytes; // minimal frame length in burst mode, after first frame
-        double slotTime; // slot time
-        double maxPropagationDelay; // used for detecting longer cables than allowed
-    };
-
-    // MAC constants for bitrates and modes
-    static const EtherDescr etherDescrs[NUM_OF_ETHERDESCRS];
-    static const EtherDescr nullEtherDescr;
-
     // configuration
-    const char *displayStringTextFormat = nullptr;
     bool sendRawBytes = false;
+    bool allowNonstandardBitrate = true;
     FcsMode fcsMode = FCS_MODE_UNDEFINED;
-    const EtherDescr *curEtherDescr = nullptr; // constants for the current Ethernet mode, e.g. txrate
+    EthernetModes::EthernetMode curEtherDescr = EthernetModes::nullEthernetMode; // constants for the current Ethernet mode, e.g. txrate
+    simtime_t halfBitTime = SIMTIME_ZERO; // transmission time of a half bit
     bool connected = false; // true if connected to a network, set automatically by exploring the network configuration
     bool promiscuous = false; // if true, passes up all received frames
     bool duplexMode = false; // true if operating in full-duplex mode
@@ -133,15 +115,12 @@ class INET_API EthernetMacBase : public MacProtocolBase, public queueing::IActiv
     static simsignal_t receptionStateChangedSignal;
 
   public:
-    static const double SPEED_OF_LIGHT_IN_CABLE;
-
-  public:
     EthernetMacBase();
     virtual ~EthernetMacBase();
 
     virtual MacAddress getMacAddress() { return networkInterface ? networkInterface->getMacAddress() : MacAddress::UNSPECIFIED_ADDRESS; }
 
-    double getTxRate() { return curEtherDescr->txrate; }
+    double getTxRate() { return curEtherDescr.bitrate; }
     bool isActive() { return connected; }
 
     MacTransmitState getTransmitState() { return transmitState; }
@@ -158,8 +137,8 @@ class INET_API EthernetMacBase : public MacProtocolBase, public queueing::IActiv
     void addPaddingAndSetFcs(Packet *packet, B requiredMinByteLength = MIN_ETHERNET_FRAME_BYTES) const;
 
     // IActivePacketSink:
-    virtual queueing::IPassivePacketSource *getProvider(cGate *gate) override;
-    virtual void handlePullPacketProcessed(Packet *packet, cGate *gate, bool successful) override;
+    virtual queueing::IPassivePacketSource *getProvider(const cGate *gate) override;
+    virtual void handlePullPacketProcessed(Packet *packet, const cGate *gate, bool successful) override;
 
   protected:
     // initialization
@@ -187,13 +166,15 @@ class INET_API EthernetMacBase : public MacProtocolBase, public queueing::IActiv
     virtual void decapsulate(Packet *packet);
 
     /// Verify ethernet packet: check FCS and payload length
-    bool verifyCrcAndLength(Packet *packet);
+    bool verifyFcsAndLength(Packet *packet);
 
     // MacBase
     virtual void configureNetworkInterface() override;
 
     // display
     virtual void refreshDisplay() const override;
+
+    virtual std::string resolveDirective(char directive) const override;
 
     // model change related functions
     virtual void receiveSignal(cComponent *src, simsignal_t signalId, cObject *obj, cObject *details) override;

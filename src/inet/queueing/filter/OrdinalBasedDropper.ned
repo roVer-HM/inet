@@ -10,14 +10,14 @@ package inet.queueing.filter;
 import inet.queueing.base.PacketFilterBase;
 
 //
-// This module drops packets based on the ordinal number of the packet in the
+// Drops packets based on the ordinal number of the packet in the
 // received stream of packets.
 //
 simple OrdinalBasedDropper extends PacketFilterBase
 {
     parameters:
-        string dropsVector = default(""); // the dropsVector format is "<packetNumber>;<packetNumber>;...;"
-                                          // packet numbers in ascending order e.g. "5;6;12;13;"
+        string dropsVector = default(""); // The dropsVector format is "<packetNumber>;<packetNumber>;...;"
+                                          // Packet numbers in ascending order e.g. "5;6;12;13;"
         @class(OrdinalBasedDropper);
 }
 

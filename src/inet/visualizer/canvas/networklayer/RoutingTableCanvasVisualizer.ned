@@ -11,7 +11,7 @@ import inet.visualizer.base.RoutingTableVisualizerBase;
 import inet.visualizer.contract.IRoutingTableVisualizer;
 
 //
-// This module visualizes routes in the routing tables on a 2D canvas. It displays
+// Visualizes routes in the routing tables on a 2D canvas. It displays
 // an arrow for each route in the routing tables of the network. The arrow points
 // from the node containing the routing table towards the gateway. The arrow
 // automatically follows the movement of mobile nodes.
@@ -21,7 +21,7 @@ import inet.visualizer.contract.IRoutingTableVisualizer;
 simple RoutingTableCanvasVisualizer extends RoutingTableVisualizerBase like IRoutingTableVisualizer
 {
     parameters:
-        double zIndex = default(0); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(0); // Determines the drawing order of figures relative to other visualizers
         @class(RoutingTableCanvasVisualizer);
 }
 

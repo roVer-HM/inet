@@ -11,20 +11,24 @@ import inet.applications.contract.IApp;
 import inet.common.MessageDispatcher;
 
 //
-// This module is a generic TCP server application with a TCP server listener
-// that creates TCP server connections.
+// A generic, modular TCP server application. It is composed of a
+// listener module that listens on a port to accept TCP connections, and for each
+// incoming TCP connection it dynamically creates a new module in the connection[]
+// submodule vector to handle the connection.
 //
 // @see ~TcpClientApp, ~TcpServerListener, ~TcpServerConnection
 //
 module TcpServerApp like IApp
 {
     parameters:
+        string interfaceTableModule; // Relative module path of the interface table
+        *.interfaceTableModule = default(this.interfaceTableModule);
         @display("i=block/app");
     gates:
         input socketIn;
         output socketOut;
     submodules:
-        listener: <default("TcpServerListener")> like IApp {
+        listener: TcpServerListener {
             parameters:
                 @display("p=100,100");
         }

@@ -45,7 +45,7 @@ unsigned int TcpLwipSendQueue::getBytesForTcpLayer(void *bufferP, unsigned int b
 {
     ASSERT(bufferP);
 
-    unsigned int length = B(dataBuffer.getLength()).get();
+    unsigned int length = dataBuffer.getLength().get<B>();
     if (bufferLengthP < length)
         length = bufferLengthP;
     if (length == 0)
@@ -62,7 +62,7 @@ void TcpLwipSendQueue::dequeueTcpLayerMsg(unsigned int msgLengthP)
 
 unsigned long TcpLwipSendQueue::getBytesAvailable() const
 {
-    return B(dataBuffer.getLength()).get();
+    return dataBuffer.getLength().get<B>();
 }
 
 Packet *TcpLwipSendQueue::createSegmentWithBytes(const void *tcpDataP, unsigned int tcpLengthP)
@@ -80,7 +80,7 @@ Packet *TcpLwipSendQueue::createSegmentWithBytes(const void *tcpDataP, unsigned 
 //    payload->removeFromBeginning(tcpHdr->getChunkLength());
 
     char msgname[80];
-    sprintf(msgname, "%.10s%s%s%s(l=%lu bytes)",
+    snprintf(msgname, sizeof(msgname), "%.10s%s%s%s(l=%lu bytes)",
             "tcpHdr",
             tcpHdr->getSynBit() ? " SYN" : "",
             tcpHdr->getFinBit() ? " FIN" : "",
@@ -124,12 +124,12 @@ void TcpLwipReceiveQueue::enqueueTcpLayerData(void *dataP, unsigned int dataLeng
     dataBuffer.push(makeShared<BytesChunk>(static_cast<uint8_t *>(dataP), dataLengthP));
 }
 
-unsigned long TcpLwipReceiveQueue::getExtractableBytesUpTo() const
+B TcpLwipReceiveQueue::getExtractableBytesUpTo() const
 {
-    return B(dataBuffer.getLength()).get();
+    return B(dataBuffer.getLength());
 }
 
-Packet *TcpLwipReceiveQueue::extractBytesUpTo()
+Packet *TcpLwipReceiveQueue::extractBytesUpTo(B length)
 {
     ASSERT(connM);
 
@@ -147,12 +147,12 @@ Packet *TcpLwipReceiveQueue::extractBytesUpTo()
 
 uint32_t TcpLwipReceiveQueue::getAmountOfBufferedBytes() const
 {
-    return B(dataBuffer.getLength()).get();
+    return dataBuffer.getLength().get<B>();
 }
 
 uint32_t TcpLwipReceiveQueue::getQueueLength() const
 {
-    return B(dataBuffer.getLength()).get();
+    return dataBuffer.getLength().get<B>();
 }
 
 void TcpLwipReceiveQueue::getQueueStatus() const

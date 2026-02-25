@@ -23,6 +23,9 @@ void EthernetSocketIo::initialize(int stage)
 {
     ApplicationBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
+        const char *protocolAsString = par("protocol");
+        if (!opp_isempty(protocolAsString))
+            protocol = Protocol::getProtocol(protocolAsString);
         numSent = 0;
         numReceived = 0;
         WATCH(numSent);
@@ -80,9 +83,8 @@ void EthernetSocketIo::finish()
 void EthernetSocketIo::refreshDisplay() const
 {
     ApplicationBase::refreshDisplay();
-    char buf[100];
-    sprintf(buf, "rcvd: %d pks\nsent: %d pks", numReceived, numSent);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = "rcvd: " + std::to_string(numReceived) + " pks\nsent: " + std::to_string(numSent) + " pks";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void EthernetSocketIo::setSocketOptions()
@@ -94,7 +96,7 @@ void EthernetSocketIo::setSocketOptions()
         networkInterface = interfaceTable->findInterfaceByName(interface);
         if (networkInterface == nullptr)
             throw cRuntimeError("Cannot find network interface");
-        if (!localAddress.isUnspecified())
+        if (!localAddress.isUnspecified() && localAddress.isMulticast())
             networkInterface->addMulticastMacAddress(localAddress);
         socket.setNetworkInterface(networkInterface);
     }
@@ -126,7 +128,7 @@ void EthernetSocketIo::handleStartOperation(LifecycleOperation *operation)
     setSocketOptions();
     socket.setOutputGate(gate("socketOut"));
     if (!localAddress.isUnspecified())
-        socket.bind(localAddress, remoteAddress, nullptr, true);
+        socket.bind(localAddress, remoteAddress, protocol, par("steal"));
 }
 
 void EthernetSocketIo::handleStopOperation(LifecycleOperation *operation)

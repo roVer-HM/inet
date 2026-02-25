@@ -8,21 +8,28 @@
 
 package inet.transportlayer.tcp_lwip;
 
+//
+// Represents a single TCP connection in the LwIP (Lightweight IP) TCP stack
+// implementation. Manages connection state, processes application commands,
+// handles data transfer through send and receive queues, and provides
+// statistics about connection parameters such as window sizes and sequence
+// numbers.
+//
 simple TcpLwipConnection {
     parameters:
         @signal[state];    // FSM state
-        @signal[sndWnd];    // snd_wnd
-        @signal[sndNxt];    // sent seqNo
-        @signal[sndAck];    // sent ackNo
-        @signal[rcvWnd];    // rcv_wnd
-        @signal[rcvSeq];    // received seqNo
-        @signal[rcvAck];    // received ackNo (=snd_una)
+        @signal[sndWnd];    // Snd_wnd
+        @signal[sndNxt];    // Sent seqNo
+        @signal[sndAck];    // Sent ackNo
+        @signal[rcvWnd];    // Rcv_wnd
+        @signal[rcvSeq];    // Received seqNo
+        @signal[rcvAck];    // Received ackNo (=snd_una)
 
-        @statistic[sndWnd](record=vector; interpolationmode=sample-hold);    // snd_wnd
-        @statistic[sndNxt](record=vector; interpolationmode=sample-hold);    // sent seqNo
-        @statistic[sndAck](record=vector; interpolationmode=sample-hold);    // sent ackNo
-        @statistic[rcvWnd](record=vector; interpolationmode=sample-hold);    // rcv_wnd
-        @statistic[rcvSeq](record=vector; interpolationmode=sample-hold);    // received seqNo
-        @statistic[rcvAck](record=vector; interpolationmode=sample-hold);    // received ackNo (=snd_una)
+        @statistic[sndWnd](record=vector; interpolationmode=sample-hold);    // Snd_wnd
+        @statistic[sndNxt](record=vector; interpolationmode=sample-hold);    // Sent seqNo
+        @statistic[sndAck](record=vector; interpolationmode=sample-hold);    // Sent ackNo
+        @statistic[rcvWnd](record=vector; interpolationmode=sample-hold);    // Rcv_wnd
+        @statistic[rcvSeq](record=vector; interpolationmode=sample-hold);    // Received seqNo
+        @statistic[rcvAck](record=vector; interpolationmode=sample-hold);    // Received ackNo (=snd_una)
 }
 

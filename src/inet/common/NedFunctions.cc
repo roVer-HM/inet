@@ -34,7 +34,7 @@ cNEDValue nedf_hasModule(cComponent *context, cNEDValue argv[], int argc)
     auto types = cModuleType::findAll(name); // by simple name
     for (cModuleType *type : types)
         if (type && type->isAvailable())
-        return true;
+            return true;
     return false;
 #endif
 }
@@ -218,16 +218,11 @@ static cNedValue nedf_intWithUnit(cComponent *context, cNedValue argv[], int arg
             return cNedValue(checked_int_cast<intval_t>(floor(argv[0].doubleValueRaw())), argv[0].getUnit());
         case cNedValue::STRING:
             throw cRuntimeError("intWithUnit(): Cannot convert string to int");
-#if OMNETPP_BUILDNUM < 1527
-        case cNedValue::OBJECT:
-            throw cRuntimeError("intWithUnit(): Cannot convert cObject to int");
-#else
         case cNedValue::POINTER:
             if (argv[0].containsXML())
                 throw cRuntimeError("intWithUnit(): Cannot convert xml to int");
             else
                 throw cRuntimeError("intWithUnit(): Cannot convert pointer to int");
-#endif
         default:
             throw cRuntimeError("Internal error: Invalid cNedValue type");
     }
@@ -238,15 +233,23 @@ Define_NED_Function2(nedf_intWithUnit,
     "conversion",
     "Converts x to an integer (C++ long), and returns the result. A boolean argument becomes 0 or 1; a double is converted using floor(); a string or an XML argument causes an error.");
 
+cNEDValue nedf_par(cComponent *context, cNEDValue argv[], int argc)
+{
+    const char *modulePath = argv[0].stringValue();
+    cModule *module = context->getModuleByPath(modulePath);
+    const char *paramName = argv[1].stringValue();
+    return module->par(paramName).getValue();
+}
+
+Define_NED_Function2(nedf_par,
+    "any par(string modulePath, string parameterName)",
+    "string",
+    "Returns the value of the module parameter. The module path may be absolute, or relative to the evaluation context.");
+
 cNedValue nedf_xmlattr(cComponent *context, cNedValue argv[], int argc)
 {
-#if OMNETPP_BUILDNUM < 1527
-    if (argv[0].getType() != cNedValue::OBJECT)
-        throw cRuntimeError("xmlattr(): xmlNode argument must be an xml node");
-#else
     if (argv[0].getType() != cNedValue::POINTER || !argv[0].containsXML())
         throw cRuntimeError("xmlattr(): xmlNode argument must be an xml node");
-#endif
     if (argv[1].getType() != cNEDValue::STRING)
         throw cRuntimeError("xmlattr(): attributeName argument must be a string");
 
@@ -297,6 +300,45 @@ Define_NED_Function2(nedf_getId,
     "int getId()",
     "ned",
     "Returns the id of the module or channel in context.")
+
+cNEDValue nedf_seq(cComponent *context, cNEDValue argv[], int argc)
+{
+    static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::NedFunctions::seq");
+    auto& seqs = getSimulationOrSharedDataManager()->getSharedVariable<std::map<std::string, int>>(handle);
+    auto key = argv[0].stringValue();
+    auto it = seqs.find(key);
+    if (it == seqs.end())
+        seqs[key] = 0;
+    else
+        seqs[key]++;
+    return cNEDValue(seqs[key]);
+}
+
+Define_NED_Function2(nedf_seq,
+        "int seq(string id)",
+        "misc",
+        "Returns the next integer (starting from 0) associated to the first argument which must be a string."
+        );
+
+cNEDValue nedf_iterate(cComponent *context, cNEDValue argv[], int argc)
+{
+    static int handle = cSimulationOrSharedDataManager::registerSharedVariableName("inet::NedFunctions::iterate");
+    auto& seqs = getSimulationOrSharedDataManager()->getSharedVariable<std::map<std::string, int>>(handle);
+    auto key = context->getFullPath();
+    auto it = seqs.find(key);
+    if (it == seqs.end())
+        seqs[key] = 0;
+    else
+        seqs[key]++;
+    auto array = check_and_cast<cValueArray *>(argv[0].objectValue());
+    return array->get(seqs[key]);
+}
+
+Define_NED_Function2(nedf_iterate,
+        "any iterate(any array)",
+        "misc",
+        "Returns the next number (starting from the front of the array) each time the expression is evaluated. The index is stored as associated to the full path of the context component."
+        );
 
 } // namespace utils
 

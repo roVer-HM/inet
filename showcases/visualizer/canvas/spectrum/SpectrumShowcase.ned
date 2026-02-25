@@ -4,8 +4,8 @@ import inet.environment.common.PhysicalEnvironment;
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.AdhocHost;
 import inet.node.wireless.Probe;
-import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211DimensionalRadioMedium;
-import inet.visualizer.common.IntegratedVisualizer;
+import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211RadioMedium;
+import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
 
 network SpectrumShowcaseSpectrumFigureSpectrogramNetwork
@@ -27,10 +27,10 @@ network SpectrumShowcaseSpectrumFigureSpectrogramNetwork
         configurator: Ipv4NetworkConfigurator {
             @display("p=75,55");
         }
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             @display("p=75,125");
         }
-        radioMedium: Ieee80211DimensionalRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=75,184");
         }
         physicalEnvironment: PhysicalEnvironment {
@@ -60,10 +60,10 @@ network SpectrumShowcasePowerDensityMapNetwork
         configurator: Ipv4NetworkConfigurator {
             @display("p=75,55");
         }
-        visualizer: IntegratedVisualizer {
+        visualizer: IntegratedCanvasVisualizer {
             @display("p=75,125");
         }
-        radioMedium: Ieee80211DimensionalRadioMedium {
+        radioMedium: Ieee80211RadioMedium {
             @display("p=74,184");
         }
         physicalEnvironment: PhysicalEnvironment {

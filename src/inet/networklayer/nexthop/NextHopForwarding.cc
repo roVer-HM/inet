@@ -86,16 +86,16 @@ void NextHopForwarding::refreshDisplay() const
 {
     OperationalBase::refreshDisplay();
 
-    char buf[80] = "";
+    std::string buf;
     if (numForwarded > 0)
-        sprintf(buf + strlen(buf), "fwd:%d ", numForwarded);
+        buf += "fwd:" + std::to_string(numForwarded) + " ";
     if (numLocalDeliver > 0)
-        sprintf(buf + strlen(buf), "up:%d ", numLocalDeliver);
+        buf += "up:" + std::to_string(numLocalDeliver) + " ";
     if (numDropped > 0)
-        sprintf(buf + strlen(buf), "DROP:%d ", numDropped);
+        buf += "DROP:%d" + std::to_string(numDropped) + " ";
     if (numUnroutable > 0)
-        sprintf(buf + strlen(buf), "UNROUTABLE:%d ", numUnroutable);
-    getDisplayString().setTagArg("t", 0, buf);
+        buf += "UNROUTABLE:" + std::to_string(numUnroutable) + " ";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 void NextHopForwarding::handleMessageWhenUp(cMessage *msg)
@@ -166,7 +166,7 @@ void NextHopForwarding::handlePacketFromNetwork(Packet *packet)
 {
     if (packet->hasBitError()) {
         // TODO emit packetDropped signal
-        EV_WARN << "CRC error found, drop packet\n";
+        EV_WARN << "Checksum error found, drop packet\n";
         PacketDropDetails details;
         details.setReason(INCORRECTLY_RECEIVED);
         emit(packetDroppedSignal, packet, &details);

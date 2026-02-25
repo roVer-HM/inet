@@ -8,7 +8,7 @@
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
-#include "inet/common/checksum/TcpIpChecksum.h"
+#include "inet/common/checksum/Checksum.h"
 #include "inet/common/lifecycle/LifecycleOperation.h"
 #include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/lifecycle/NodeStatus.h"
@@ -51,13 +51,12 @@ void Tcp::initialize(int stage)
     OperationalBase::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
-        const char *crcModeString = par("crcMode");
-        crcMode = parseCrcMode(crcModeString, false);
+        const char *checksumModeString = par("checksumMode");
+        checksumMode = parseChecksumMode(checksumModeString, false);
 
         lastEphemeralPort = EPHEMERAL_PORTRANGE_START;
 
         msl = par("msl");
-        useDataNotification = par("useDataNotification");
 
         WATCH(lastEphemeralPort);
         WATCH_PTRMAP(tcpConnMap);
@@ -66,21 +65,21 @@ void Tcp::initialize(int stage)
     else if (stage == INITSTAGE_TRANSPORT_LAYER) {
         registerService(Protocol::tcp, gate("appIn"), gate("appOut"));
         registerProtocol(Protocol::tcp, gate("ipOut"), gate("ipIn"));
-        if (crcMode == CRC_COMPUTED) {
-            cModuleType *moduleType = cModuleType::get("inet.transportlayer.tcp_common.TcpCrcInsertionHook");
-            auto crcInsertion = check_and_cast<TcpCrcInsertionHook *>(moduleType->create("crcInsertion", this));
-            crcInsertion->finalizeParameters();
-            crcInsertion->callInitialize();
+        if (checksumMode == CHECKSUM_COMPUTED) {
+            cModuleType *moduleType = cModuleType::get("inet.transportlayer.tcp_common.TcpChecksumInsertionHook");
+            auto checksumInsertion = check_and_cast<TcpChecksumInsertionHook *>(moduleType->create("checksumInsertion", this));
+            checksumInsertion->finalizeParameters();
+            checksumInsertion->callInitialize();
 
 #ifdef INET_WITH_IPv4
             auto ipv4 = dynamic_cast<INetfilter *>(findModuleByPath("^.ipv4.ip"));
             if (ipv4 != nullptr)
-                ipv4->registerHook(0, crcInsertion);
+                ipv4->registerHook(0, checksumInsertion);
 #endif
 #ifdef INET_WITH_IPv6
             auto ipv6 = dynamic_cast<INetfilter *>(findModuleByPath("^.ipv6.ipv6"));
             if (ipv6 != nullptr)
-                ipv6->registerHook(0, crcInsertion);
+                ipv6->registerHook(0, checksumInsertion);
 #endif
         }
     }
@@ -137,8 +136,8 @@ void Tcp::handleLowerPacket(Packet *packet)
 {
     auto protocol = packet->getTag<PacketProtocolTag>()->getProtocol();
     if (protocol == &Protocol::tcp) {
-        if (!checkCrc(packet)) {
-            EV_WARN << "Tcp segment has wrong CRC, dropped\n";
+        if (!checkChecksum(packet)) {
+            EV_WARN << "Tcp segment has wrong checksum, dropped\n";
             PacketDropDetails details;
             details.setReason(INCORRECTLY_RECEIVED);
             emit(packetDroppedSignal, packet, &details);
@@ -161,7 +160,7 @@ void Tcp::handleLowerPacket(Packet *packet)
         // process segment
         TcpConnection *conn = findConnForSegment(tcpHeader, srcAddr, destAddr);
         if (conn) {
-            TcpStateVariables *state = conn->getState();
+            TcpStateVariables *state = conn->getStateForUpdate();
             if (state && state->ect) {
                 // This may be true only in receiver side. According to RFC 3168, page 20:
                 // pure acknowledgement packets (e.g., packets that do not contain
@@ -189,7 +188,7 @@ TcpConnection *Tcp::createConnection(int socketId)
 {
     auto moduleType = cModuleType::get("inet.transportlayer.tcp.TcpConnection");
     char submoduleName[24];
-    sprintf(submoduleName, "conn-%d", socketId);
+    snprintf(submoduleName, sizeof(submoduleName), "conn-%d", socketId);
     auto module = check_and_cast<TcpConnection *>(moduleType->createScheduleInit(submoduleName, this));
     module->initConnection(this, socketId);
     return module;
@@ -348,7 +347,7 @@ void Tcp::updateSockPair(TcpConnection *conn, L3Address localAddr, L3Address rem
     // then update addresses/ports, and re-insert it with new key into tcpConnMap
     key.localAddr = conn->localAddr = localAddr;
     key.remoteAddr = conn->remoteAddr = remoteAddr;
-    ASSERT(conn->localPort == localPort);
+    ASSERT(conn->getLocalPort() == localPort);
     key.remotePort = conn->remotePort = remotePort;
     tcpConnMap[key] = conn;
 
@@ -394,13 +393,13 @@ void Tcp::reset()
 }
 
 // packet contains the tcpHeader
-bool Tcp::checkCrc(Packet *tcpSegment)
+bool Tcp::checkChecksum(Packet *tcpSegment)
 {
     auto tcpHeader = tcpSegment->peekAtFront<TcpHeader>();
 
-    switch (tcpHeader->getCrcMode()) {
-        case CRC_COMPUTED: {
-            // check CRC:
+    switch (tcpHeader->getChecksumMode()) {
+        case CHECKSUM_COMPUTED: {
+            // check checksum:
             auto networkProtocol = tcpSegment->getTag<NetworkProtocolInd>()->getProtocol();
             const std::vector<uint8_t> tcpBytes = tcpSegment->peekDataAsBytes()->getBytes();
             auto pseudoHeader = makeShared<TransportPseudoHeader>();
@@ -422,17 +421,17 @@ bool Tcp::checkCrc(Packet *tcpSegment)
             MemoryOutputStream stream;
             Chunk::serialize(stream, pseudoHeader);
             Chunk::serialize(stream, tcpSegment->peekData());
-            uint16_t crc = TcpIpChecksum::checksum(stream.getData());
-            return crc == 0;
+            uint16_t checksum = internetChecksum(stream.getData());
+            return checksum == 0;
         }
-        case CRC_DECLARED_CORRECT:
+        case CHECKSUM_DECLARED_CORRECT:
             return true;
-        case CRC_DECLARED_INCORRECT:
+        case CHECKSUM_DECLARED_INCORRECT:
             return false;
         default:
             break;
     }
-    throw cRuntimeError("unknown CRC mode: %d", tcpHeader->getCrcMode());
+    throw cRuntimeError("unknown checksum mode: %d", tcpHeader->getChecksumMode());
 }
 
 void Tcp::refreshDisplay() const
@@ -504,35 +503,33 @@ void Tcp::refreshDisplay() const
         }
     }
 
-    char buf2[200];
-    buf2[0] = '\0';
-
+    std::ostringstream buf2;
     if (numINIT > 0)
-        sprintf(buf2 + strlen(buf2), "init:%d ", numINIT);
+        buf2 << "init:" << numINIT << " ";
     if (numCLOSED > 0)
-        sprintf(buf2 + strlen(buf2), "closed:%d ", numCLOSED);
+        buf2 << "closed:" << numCLOSED << " ";
     if (numLISTEN > 0)
-        sprintf(buf2 + strlen(buf2), "listen:%d ", numLISTEN);
+        buf2 << "listen:" << numLISTEN << " ";
     if (numSYN_SENT > 0)
-        sprintf(buf2 + strlen(buf2), "syn_sent:%d ", numSYN_SENT);
+        buf2 << "syn_sent:" << numSYN_SENT << " ";
     if (numSYN_RCVD > 0)
-        sprintf(buf2 + strlen(buf2), "syn_rcvd:%d ", numSYN_RCVD);
+        buf2 << "syn_rcvd:" << numSYN_RCVD << " ";
     if (numESTABLISHED > 0)
-        sprintf(buf2 + strlen(buf2), "estab:%d ", numESTABLISHED);
+        buf2 << "estab:" << numESTABLISHED << " ";
     if (numCLOSE_WAIT > 0)
-        sprintf(buf2 + strlen(buf2), "close_wait:%d ", numCLOSE_WAIT);
+        buf2 << "close_wait:" << numCLOSE_WAIT << " ";
     if (numLAST_ACK > 0)
-        sprintf(buf2 + strlen(buf2), "last_ack:%d ", numLAST_ACK);
+        buf2 << "last_ack:" << numLAST_ACK << " ";
     if (numFIN_WAIT_1 > 0)
-        sprintf(buf2 + strlen(buf2), "fin_wait_1:%d ", numFIN_WAIT_1);
+        buf2 << "fin_wait_1:" << numFIN_WAIT_1 << " ";
     if (numFIN_WAIT_2 > 0)
-        sprintf(buf2 + strlen(buf2), "fin_wait_2:%d ", numFIN_WAIT_2);
+        buf2 << "fin_wait_2:" << numFIN_WAIT_2 << " ";
     if (numCLOSING > 0)
-        sprintf(buf2 + strlen(buf2), "closing:%d ", numCLOSING);
+        buf2 << "closing:" << numCLOSING << " ";
     if (numTIME_WAIT > 0)
-        sprintf(buf2 + strlen(buf2), "time_wait:%d ", numTIME_WAIT);
+        buf2 << "time_wait:" << numTIME_WAIT << " ";
 
-    getDisplayString().setTagArg("t", 0, buf2);
+    getDisplayString().setTagArg("t", 0, buf2.str().c_str());
 }
 
 std::ostream& operator<<(std::ostream& os, const Tcp::SockPair& sp)
@@ -544,10 +541,10 @@ std::ostream& operator<<(std::ostream& os, const Tcp::SockPair& sp)
 
 std::ostream& operator<<(std::ostream& os, const TcpConnection& conn)
 {
-    os << "socketId=" << conn.socketId << " ";
+    os << "socketId=" << conn.getSocketId() << " ";
     os << "fsmState=" << TcpConnection::stateName(conn.getFsmState()) << " ";
     os << "connection=" << (conn.getState() == nullptr ? "<empty>" : conn.getState()->str()) << " ";
-    os << "ttl=" << (conn.ttl == -1 ? "<default>" : std::to_string(conn.ttl)) << " ";
+    os << "ttl=" << (conn.getTtl() == -1 ? "<default>" : std::to_string(conn.getTtl())) << " ";
     return os;
 }
 

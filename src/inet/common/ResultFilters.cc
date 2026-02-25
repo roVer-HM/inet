@@ -18,7 +18,8 @@
 #include "inet/networklayer/common/L3AddressTag_m.h"
 
 #ifdef INET_WITH_PHYSICALLAYERWIRELESSCOMMON
-#include "inet/physicallayer/wireless/common/base/packetlevel/FlatReceptionBase.h"
+#include "inet/physicallayer/wireless/common/base/packetlevel/ReceptionBase.h"
+#include "inet/physicallayer/wireless/common/contract/packetlevel/INarrowbandSignalAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/SignalTag_m.h"
 #endif
 
@@ -48,13 +49,89 @@ class INET_API PacketRegionValue : public cObject
     cValue value;
 };
 
+Register_ResultFilter("duplicatePacket", DuplicatePacketFilter);
+
+void DuplicatePacketFilter::init(Context *ctx)
+{
+    cObjectResultFilter::init(ctx);
+    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".duplicatePacket";
+    cConfiguration *cfg = getEnvir()->getConfig();
+    auto sizeLimitValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "sizeLimit");
+    sizeLimit = cfg->parseLong(sizeLimitValue, nullptr, 100);
+}
+
+void DuplicatePacketFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    auto packet = check_and_cast<Packet *>(object);
+    const char *packetName = packet->getFullName();
+    const char *packetIndexAsString = strrchr(packetName, '-');
+    if (packetIndexAsString != nullptr) {
+        int packetIndex = atoi(packetIndexAsString + 1);
+        if (packetIndices.find(packetIndex) != packetIndices.end())
+            fire(this, t, object, details);
+        packetIndices.insert(packetIndex);
+        if (packetIndices.size() > sizeLimit)
+            packetIndices.erase(packetIndices.begin());
+    }
+    else
+        throw cRuntimeError("Cannot find index in packet name: '%s'", packetName);
+}
+
+Register_ResultFilter("outOfOrderPacket", OutOfOrderPacketFilter);
+
+void OutOfOrderPacketFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    auto packet = check_and_cast<Packet *>(object);
+    const char *packetName = packet->getFullName();
+    const char *packetIndexAsString = strrchr(packetName, '-');
+    if (packetIndexAsString != nullptr) {
+        int packetIndex = atoi(packetIndexAsString + 1);
+        if (packetIndex != maxIndex + 1)
+            fire(this, t, object, details);
+        maxIndex = std::max(packetIndex, maxIndex);
+    }
+    else
+        throw cRuntimeError("Cannot find index in packet name: '%s'", packetName);
+}
+
+Register_ResultFilter("missingPacketIndex", MissingPacketIndexFilter);
+
+void MissingPacketIndexFilter::init(Context *ctx)
+{
+    cObjectResultFilter::init(ctx);
+    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".missingPacketIndex";
+    cConfiguration *cfg = getEnvir()->getConfig();
+    auto sizeLimitValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "sizeLimit");
+    sizeLimit = cfg->parseDouble(sizeLimitValue, nullptr, nullptr, 100);
+}
+
+void MissingPacketIndexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    auto packet = check_and_cast<Packet *>(object);
+    const char *packetName = packet->getFullName();
+    const char *packetIndexAsString = strrchr(packetName, '-');
+    if (packetIndexAsString != nullptr) {
+        int packetIndex = atoi(packetIndexAsString + 1);
+        packetIndices.insert(packetIndex);
+        if (packetIndices.size() > sizeLimit) {
+            int removedIndex = *packetIndices.erase(packetIndices.begin());
+            if (lastRemovedIndex != -1)
+                for (int i = lastRemovedIndex + 1; i < removedIndex; i++)
+                    fire(this, t, (intval_t)i, details);
+            lastRemovedIndex = removedIndex;
+        }
+    }
+    else
+        throw cRuntimeError("Cannot find index in packet name: '%s'", packetName);
+}
+
 Register_ResultFilter("dataAge", DataAgeFilter);
 
 void DataAgeFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     if (auto packet = dynamic_cast<Packet *>(object)) {
         for (auto& region : packet->peekData()->getAllTags<CreationTimeTag>()) {
-            WeightedHistogramRecorder::cWeight weight(region.getLength().get());
+            WeightedHistogramRecorder::cWeight weight(region.getLength().get<b>());
             fire(this, t, t - region.getTag()->getCreationTime(), &weight);
         }
     }
@@ -89,8 +166,8 @@ Register_ResultFilter("receptionMinSignalPower", ReceptionMinSignalPowerFilter);
 void ReceptionMinSignalPowerFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
 #ifdef INET_WITH_PHYSICALLAYERWIRELESSCOMMON
-    if (auto reception = dynamic_cast<inet::physicallayer::FlatReceptionBase *>(object)) {
-        W minReceptionPower = reception->computeMinPower(reception->getStartTime(), reception->getEndTime());
+    if (auto reception = dynamic_cast<inet::physicallayer::ReceptionBase *>(object)) {
+        W minReceptionPower = check_and_cast<const inet::physicallayer::INarrowbandSignalAnalogModel *>(reception->getAnalogModel())->computeMinPower(reception->getStartTime(), reception->getEndTime());
         fire(this, t, minReceptionPower.get(), details);
     }
 #endif // INET_WITH_PHYSICALLAYERWIRELESSCOMMON
@@ -168,7 +245,7 @@ Register_ResultFilter("packetLength", PacketLengthFilter);
 void PacketLengthFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     auto packet = check_and_cast<Packet *>(object);
-    fire(this, t, packet->getDataLength().get(), details);
+    fire(this, t, packet->getDataLength().get<b>(), details);
 }
 
 Register_ResultFilter("flowPacketLength", FlowPacketLengthFilter);
@@ -179,7 +256,7 @@ void FlowPacketLengthFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t
     auto flow = check_and_cast<Flow *>(details);
     b length = b(0);
     packet->mapAllRegionTags<FlowTag>(b(0), packet->getTotalLength(), [&] (b o, b l, const Ptr<const FlowTag>& flowTag) {
-        for (int i = 0; i < flowTag->getNamesArraySize(); i++) {
+        for (size_t i = 0; i < flowTag->getNamesArraySize(); i++) {
             if (!strcmp(flowTag->getNames(i), flow->getName()))
                 length += l;
         }
@@ -261,7 +338,7 @@ Register_ResultFilter("utilization", UtilizationFilter);
 void UtilizationFilter::init(Context *ctx)
 {
     cNumericResultFilter::init(ctx);
-    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".throughput";
+    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".utilization";
     cConfiguration *cfg = getEnvir()->getConfig();
     auto intervalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "interval");
     interval = cfg->parseDouble(intervalValue, "s", nullptr, 0.1);
@@ -328,7 +405,7 @@ void UtilizationFilter::updateTotalValue(simtime_t time)
     totalValueTime = time;
 }
 
-void UtilizationFilter::finish(cComponent *component, simsignal_t signal)
+void UtilizationFilter::finish(cResultFilter *prev)
 {
     const simtime_t now = simTime();
     if (lastSignalTime < now) {
@@ -364,7 +441,7 @@ void MaxPerGroupFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cOb
     lastTime = t;
 }
 
-void MaxPerGroupFilter::finish(cComponent *component, simsignal_t signal)
+void MaxPerGroupFilter::finish(cResultFilter *prev)
 {
     if (!lastIdentifier.empty())
         fire(this, lastTime, max, nullptr);
@@ -388,7 +465,7 @@ void WeighedMeanPerGroupFilter::receiveSignal(cResultFilter *prev, simtime_t_cre
     lastTime = t;
 }
 
-void WeighedMeanPerGroupFilter::finish(cComponent *component, simsignal_t signal)
+void WeighedMeanPerGroupFilter::finish(cResultFilter *prev)
 {
     if (!lastIdentifier.empty())
         fire(this, lastTime, sum / weight, nullptr);
@@ -410,7 +487,7 @@ void WeighedSumPerGroupFilter::receiveSignal(cResultFilter *prev, simtime_t_cref
     lastTime = t;
 }
 
-void WeighedSumPerGroupFilter::finish(cComponent *component, simsignal_t signal)
+void WeighedSumPerGroupFilter::finish(cResultFilter *prev)
 {
     if (!lastIdentifier.empty())
         fire(this, lastTime, sum, nullptr);
@@ -479,7 +556,7 @@ void DemuxFlowFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObje
     else
         packet = check_and_cast<Packet *>(check_and_cast<cPacket *>(object)->getEncapsulatedPacket());
     packet->mapAllRegionTags<FlowTag>(b(0), packet->getTotalLength(), [&] (b o, b l, const Ptr<const FlowTag>& flowTag) {
-        for (int i = 0; i < flowTag->getNamesArraySize(); i++) {
+        for (size_t i = 0; i < flowTag->getNamesArraySize(); i++) {
             auto flowName = flowTag->getNames(i);
             cMatchableString matchableFlowName(flowName);
             if (flows.find(flowName) == flows.end() && flowNameMatcher.matches(&matchableFlowName)) {
@@ -490,6 +567,75 @@ void DemuxFlowFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObje
         }
     });
 }
+
+Register_ResultFilter("demuxRegex", DemuxRegexFilter);
+
+void DemuxRegexFilter::init(Context *ctx)
+{
+    DemuxFilter::init(ctx);
+    std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".demuxRegex";
+    auto config = getEnvir()->getConfig();
+    search = cConfiguration::parseString(config->getPerObjectConfigValue(fullPath.c_str(), "search"), getDefaultSearch());
+    replace = cConfiguration::parseString(config->getPerObjectConfigValue(fullPath.c_str(), "replace"), getDefaultReplace());
+}
+
+const char *DemuxRegexFilter::CategoryFinder::getFullName() const
+{
+    if (object == nullptr)
+        return "";
+    else {
+        if (!std::regex_search(object->getFullName(), filter->search))
+            return "";
+        else {
+            result = std::regex_replace(object->getFullName(), filter->search, filter->replace);
+            return result.c_str();
+        }
+    }
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, bool b, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, b, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, intval_t l, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, l, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, uintval_t l, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, l, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, double d, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, d, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, const SimTime& v, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, v, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, const char *s, cObject *details)
+{
+    CategoryFinder c(this, details);
+    DemuxFilter::receiveSignal(prev, t, s, &c);
+}
+
+void DemuxRegexFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    CategoryFinder c(this, details != nullptr ? details : object);
+    DemuxFilter::receiveSignal(prev, t, object, &c);
+}
+
+Register_ResultFilter("demuxApp", DemuxAppFilter);
 
 Register_ResultFilter("residenceTimePerRegion", ResidenceTimePerRegionFilter);
 
@@ -510,6 +656,22 @@ void ResidenceTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_
         }
     });
 }
+
+
+Register_ResultFilter("packetLifeTime", PacketLifeTimeFilter);
+
+void PacketLifeTimeFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    int count = 0;
+    simtime_t lifeTime = -1;
+    auto packet = check_and_cast<Packet *>(object);
+    for (auto& region : packet->peekData()->getAllTags<CreationTimeTag>()) {
+        lifeTime = simTime() - region.getTag()->getCreationTime();
+        count++;
+    }
+    fire(this, t, count == 1 ? lifeTime.dbl() : NaN, details != nullptr ? details : object);
+}
+
 
 Register_ResultFilter("lifeTimePerRegion", LifeTimePerRegionFilter);
 
@@ -535,7 +697,7 @@ void ElapsedTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_cr
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<ElapsedTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const ElapsedTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -557,7 +719,7 @@ void DelayingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_c
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<DelayingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const DelayingTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -579,7 +741,7 @@ void ProcessingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<ProcessingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const ProcessingTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -601,7 +763,7 @@ void QueueingTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_t_c
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<QueueingTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const QueueingTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -623,7 +785,7 @@ void PropagationTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime_
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<PropagationTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const PropagationTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -645,7 +807,7 @@ void TransmissionTimePerRegionFilter::receiveSignal(cResultFilter *prev, simtime
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<TransmissionTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const TransmissionTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -667,7 +829,7 @@ void PacketTransmissionTimePerRegionFilter::receiveSignal(cResultFilter *prev, s
     auto packet = check_and_cast<Packet *>(object);
     auto flow = dynamic_cast<Flow *>(details);
     packet->mapAllRegionTags<TransmissionTimeTag>(b(0), packet->getDataLength(), [&] (b o, b l, const Ptr<const TransmissionTimeTag>& tag) {
-        for (int i = 0; i < (int)tag->getBitTotalTimesArraySize(); i++) {
+        for (size_t i = 0; i < tag->getBitTotalTimesArraySize(); i++) {
             auto flowName = tag->getFlowNames(i);
             if (flow == nullptr || !strcmp(flowName, flow->getName())) {
                 PacketRegionValue packetRegionValue;
@@ -680,6 +842,20 @@ void PacketTransmissionTimePerRegionFilter::receiveSignal(cResultFilter *prev, s
             }
         }
     });
+}
+
+Register_ResultFilter("interarrivalTime", InterarrivalTimeFilter);
+
+void InterarrivalTimeFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
+{
+    if (dynamic_cast<cPacket *>(object)) {
+        if (prevArrivalTime > 0){
+            // Time spacing between the two arrivals
+            simtime_t interArrivalTime = simTime() - prevArrivalTime;
+            fire(this, t, interArrivalTime, details);
+        }
+        prevArrivalTime = simTime();
+    }
 }
 
 Register_ResultFilter("packetRate", PacketRateFilter);
@@ -711,7 +887,7 @@ void PacketRateFilter::emitPacketRate(simtime_t endInterval, cObject *details)
 
 void PacketRateFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
-    if (auto packet = dynamic_cast<cPacket *>(object)) {
+    if (dynamic_cast<cPacket *>(object)) {
         const simtime_t now = simTime();
         if (lastSignalTime + interval <= now) {
             emitPacketRate(lastSignalTime + interval, details);
@@ -730,7 +906,7 @@ void PacketRateFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObj
     }
 }
 
-void PacketRateFilter::finish(cComponent *component, simsignal_t signalID)
+void PacketRateFilter::finish(cResultFilter *prev)
 {
     const simtime_t now = simTime();
     if (lastSignalTime < now) {
@@ -752,17 +928,11 @@ void ThroughputFilter::init(Context *ctx)
 {
     cObjectResultFilter::init(ctx);
     std::string fullPath = ctx->component->getFullPath() + "." + ctx->attrsProperty->getIndex() + ".throughput";
-    
     cConfiguration *cfg = getEnvir()->getConfig();
     auto intervalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "interval");
     interval = cfg->parseDouble(intervalValue, "s", nullptr, 0.1);
     auto numLengthLimitValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "numLengthLimit");
     numLengthLimit = cfg->parseLong(numLengthLimitValue, nullptr, 100);
-    auto dropLastSignalValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "dropLastSignal");
-    dropLastSignal = cConfiguration::parseBool(dropLastSignalValue, nullptr, false);
-    auto emitIntermediateZerosValue = cfg->getPerObjectConfigValue(fullPath.c_str(), "emitIntermediateZerosValue");
-    emitIntermediateZeros = cConfiguration::parseBool(emitIntermediateZerosValue, nullptr, true);
-
     lastSignalTime = simTime();
 }
 
@@ -817,7 +987,7 @@ void ThroughputFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObj
         receiveSignal(prev, t, packet->getBitLength(), details);
 }
 
-void ThroughputFilter::finish(cComponent *component, simsignal_t signalID)
+void ThroughputFilter::finish(cResultFilter *prev)
 {
     const simtime_t now = simTime();
     if (lastSignalTime < now) {
@@ -829,9 +999,7 @@ void ThroughputFilter::finish(cComponent *component, simsignal_t signalID)
                     emitThroughput(lastSignalTime + interval, details);
             }
         }
-        if (dropLastSignal){ // last interval will be smaller. Do not emit if dropLastSignal=true
-            emitThroughput(now, details);
-        }
+        emitThroughput(now, details);
     }
 }
 
@@ -876,7 +1044,7 @@ void LiveThroughputFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, 
 void LiveThroughputFilter::receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details)
 {
     if (auto packet = dynamic_cast<cPacket *>(object))
-        receiveSignal(prev, t, packet->getByteLength(), details);
+        receiveSignal(prev, t, packet->getBitLength(), details);
 }
 
 void LiveThroughputFilter::timerExpired()
@@ -896,7 +1064,7 @@ void LiveThroughputFilter::timerDeleted()
     event = nullptr;
 }
 
-void LiveThroughputFilter::finish(cComponent *component, simsignal_t signalID)
+void LiveThroughputFilter::finish(cResultFilter *prev)
 {
     simtime_t now = simTime();
     if (lastSignal < now) {

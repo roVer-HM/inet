@@ -47,10 +47,20 @@ Router::~Router()
 
 void Router::addWatches()
 {
-    WATCH(routerID);
     WATCH_PTRVECTOR(areas);
     WATCH_PTRVECTOR(asExternalLSAs);
     WATCH_PTRVECTOR(ospfRoutingTable);
+}
+
+std::string Router::getInterfaceInfo() const
+{
+   std::string str;
+   const char *sep = "area ";
+   for (auto area : areas) {
+       str += sep + area->getAreaID().str(false) + "\n" + area->getInterfaceInfo();
+       sep = "\narea ";
+   }
+   return str;
 }
 
 void Router::addArea(Ospfv2Area *area)
@@ -1402,7 +1412,7 @@ void Router::updateExternalRoute(Ipv4Address networkAddress, const Ospfv2AsExter
 
     externalRoutes[networkAddress] = externalRouteContents;
 
-    lsaHeader.setLsaLength(B(calculateLsaSize(*asExternalLSA)).get());
+    lsaHeader.setLsaLength(calculateLsaSize(*asExternalLSA).get<B>());
 
     bool rebuild = installASExternalLSA(asExternalLSA);
     floodLSA(asExternalLSA, BACKBONE_AREAID);

@@ -27,9 +27,9 @@ void TcpHeaderSerializer::serialize(MemoryOutputStream& stream, const Ptr<const 
     struct tcphdr tcp;
 
     // fill Tcp header structure
-    if (tcpHeader->getCrcMode() != CRC_COMPUTED)
-        throw cRuntimeError("Cannot serialize Tcp header without a properly computed CRC");
-    tcp.th_sum = htons(tcpHeader->getCrc());
+    if (tcpHeader->getChecksumMode() != CHECKSUM_COMPUTED)
+        throw cRuntimeError("Cannot serialize Tcp header without a properly computed checksum");
+    tcp.th_sum = htons(tcpHeader->getChecksum());
     tcp.th_sport = htons(tcpHeader->getSrcPort());
     tcp.th_dport = htons(tcpHeader->getDestPort());
     tcp.th_seq = htonl(tcpHeader->getSequenceNo());
@@ -58,9 +58,9 @@ void TcpHeaderSerializer::serialize(MemoryOutputStream& stream, const Ptr<const 
     tcp.th_flags = flags;
     tcp.th_win = htons(tcpHeader->getWindow());
     tcp.th_urp = htons(tcpHeader->getUrgentPointer());
-    if (B(tcpHeader->getHeaderLength()).get() % 4 != 0)
+    if (tcpHeader->getHeaderLength().get<B>() % 4 != 0)
         throw cRuntimeError("invalid Tcp header length=%s: must be dividable by 4 bytes", tcpHeader->getHeaderLength().str().c_str());
-    tcp.th_offs = B(tcpHeader->getHeaderLength()).get() / 4;
+    tcp.th_offs = tcpHeader->getHeaderLength().get<B>() / 4;
 
     stream.writeBytes((uint8_t *)&tcp, TCP_MIN_HEADER_LENGTH);
 
@@ -157,7 +157,7 @@ void TcpHeaderSerializer::serializeOption(MemoryOutputStream& stream, const TcpO
 const Ptr<Chunk> TcpHeaderSerializer::deserialize(MemoryInputStream& stream) const
 {
     auto position = stream.getPosition();
-    uint8_t *buffer = new uint8_t[B(TCP_MIN_HEADER_LENGTH).get()];
+    uint8_t *buffer = new uint8_t[TCP_MIN_HEADER_LENGTH.get<B>()];
     stream.readBytes(buffer, TCP_MIN_HEADER_LENGTH);
     auto tcpHeader = makeShared<TcpHeader>();
     const struct tcphdr& tcp = *static_cast<const struct tcphdr *>((void *)buffer);
@@ -192,8 +192,8 @@ const Ptr<Chunk> TcpHeaderSerializer::deserialize(MemoryInputStream& stream) con
         }
     }
     tcpHeader->setHeaderLength(headerLength);
-    tcpHeader->setCrc(ntohs(tcp.th_sum));
-    tcpHeader->setCrcMode(CRC_COMPUTED);
+    tcpHeader->setChecksum(ntohs(tcp.th_sum));
+    tcpHeader->setChecksumMode(CHECKSUM_COMPUTED);
     delete [] buffer;
     return tcpHeader;
 }

@@ -10,12 +10,12 @@ package inet.linklayer.bmac;
 import inet.linklayer.common.WirelessInterface;
 
 //
-// This module implements a wireless network interface using the B-MAC protocol.
+// Implements a wireless network interface using the B-MAC protocol.
 //
 module BMacInterface extends WirelessInterface
 {
     parameters:
-        radio.typename = default("ApskScalarRadio");
+        radio.typename = default("ApskRadio");
         mac.typename = "BMac";
         queue.typename = default("DropTailQueue");
         queue.packetCapacity = default(20);

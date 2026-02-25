@@ -8,12 +8,12 @@
 package inet.visualizer.contract;
 
 //
-// This module interface allows configuring different ~IRadioVisualizer
+// Interface allows configuring different ~IRadioVisualizer
 // submodules from INI files. Such a visualizer displays radios.
 //
 // @see ~RadioCanvasVisualizer, ~RadioOsgVisualizer, ~RadioVisualizer, ~RadioVisualizerBase
 //
-moduleinterface IRadioVisualizer
+moduleinterface IRadioVisualizer extends IVisualizer
 {
     parameters:
         @display("i=block/app");

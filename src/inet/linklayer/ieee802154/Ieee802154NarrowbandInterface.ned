@@ -14,7 +14,7 @@ import inet.queueing.contract.IPacketQueue;
 
 
 //
-// This module implements an IEEE 802.15.4 narrowband network interface.
+// Implements an IEEE 802.15.4 narrowband network interface.
 //
 module Ieee802154NarrowbandInterface extends NetworkInterface like IWirelessInterface
 {
@@ -38,7 +38,7 @@ module Ieee802154NarrowbandInterface extends NetworkInterface like IWirelessInte
             parameters:
                 @display("p=300,100");
         }
-        radio: <default("Ieee802154NarrowbandScalarRadio")> like IRadio {
+        radio: <default("Ieee802154NarrowbandRadio")> like IRadio {
             parameters:
                 @display("p=300,200");
         }

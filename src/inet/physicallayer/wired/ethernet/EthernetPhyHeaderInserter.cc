@@ -26,7 +26,7 @@ void EthernetPhyHeaderInserter::processPacket(Packet *packet)
     packetProtocolTag->setBackOffset(b(0));
 }
 
-void EthernetPhyHeaderInserter::pushPacketStart(Packet *packet, cGate *gate, bps datarate)
+void EthernetPhyHeaderInserter::pushPacketStart(Packet *packet, const cGate *gate, bps datarate)
 {
     Enter_Method("pushPacketStart");
     take(packet);
@@ -34,7 +34,6 @@ void EthernetPhyHeaderInserter::pushPacketStart(Packet *packet, cGate *gate, bps
     startPacketStreaming(packet);
     processPacket(packet);
     pushOrSendPacketProgress(packet, outputGate, consumer, datarate, B(8), b(0), packet->getTransmissionId());
-    updateDisplayString();
 }
 
 } // namespace physicallayer

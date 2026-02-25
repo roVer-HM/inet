@@ -29,14 +29,13 @@ void PcapReader::openPcap(const char *filename, const char *packetNameFormat)
     if (opp_isempty(filename))
         throw cRuntimeError("Cannot open pcap file: file name is empty");
     this->packetNameFormat = packetNameFormat;
-    inet::utils::makePathForFile(filename);
     file = fopen(filename, "rb");
     if (file == nullptr)
         throw cRuntimeError("Cannot open pcap file [%s] for reading: %s", filename, strerror(errno));
     struct pcap_hdr fh;
     auto err = fread(&fh, sizeof(fh), 1, file);
     if (err != 1)
-        throw cRuntimeError("Cannot read fileheader from file '%s', errno is %zu.", filename, err);
+        throw cRuntimeError("Cannot read fileheader from file '%s', errno is %u.", filename, (unsigned int)err);
     if (fh.magic == 0xa1b2c3d4)
         swapByteOrder = false;
     else if (fh.magic == 0xd4c3b2a1)
@@ -62,12 +61,12 @@ std::pair<simtime_t, Packet *> PcapReader::readPacket()
     struct pcaprec_hdr packetHeader;
     auto err = fread(&packetHeader, sizeof(packetHeader), 1, file);
     if (err != 1)
-        throw cRuntimeError("Cannot read packetheader, errno is %zu.", err);
+        throw cRuntimeError("Cannot read packetheader, errno is %u.", (unsigned int)err);
     uint8_t buffer[1 << 16];
     memset(buffer, 0, sizeof(buffer));
     err = fread(buffer, packetHeader.incl_len, 1, file);
     if (err != 1)
-        throw cRuntimeError("Cannot read packet, errno is %zu.", err);
+        throw cRuntimeError("Cannot read packet, errno is %u.", (unsigned int)err);
     if (swapByteOrder) {
         packetHeader.ts_sec = swapByteOrder32(packetHeader.ts_sec);
         packetHeader.ts_usec = swapByteOrder32(packetHeader.ts_usec);

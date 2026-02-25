@@ -16,7 +16,7 @@ void DeaggregatorBase::initialize(int stage)
         deleteSelf = par("deleteSelf");
 }
 
-void DeaggregatorBase::pushPacket(Packet *aggregatedPacket, cGate *gate)
+void DeaggregatorBase::pushPacket(Packet *aggregatedPacket, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(aggregatedPacket);
@@ -27,7 +27,6 @@ void DeaggregatorBase::pushPacket(Packet *aggregatedPacket, cGate *gate)
     }
     processedTotalLength += aggregatedPacket->getDataLength();
     numProcessedPackets++;
-    updateDisplayString();
     delete aggregatedPacket;
     if (deleteSelf)
         deleteModule();

@@ -39,7 +39,7 @@ void DscpMarker::initialize(int stage)
     PacketProcessorBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         outputGate = gate("out");
-        consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+        consumer.reference(outputGate, false);
         parseDSCPs(par("dscps"), "dscps", dscps);
         if (dscps.empty())
             dscps.push_back(DSCP_BE);
@@ -59,7 +59,7 @@ void DscpMarker::handleMessage(cMessage *message)
     pushPacket(packet, packet->getArrivalGate());
 }
 
-void DscpMarker::pushPacket(Packet *packet, cGate *inputGate)
+void DscpMarker::pushPacket(Packet *packet, const cGate *inputGate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -74,12 +74,12 @@ void DscpMarker::pushPacket(Packet *packet, cGate *inputGate)
 
 void DscpMarker::refreshDisplay() const
 {
-    char buf[50] = "";
+    std::string buf;
     if (numRcvd > 0)
-        sprintf(buf + strlen(buf), "rcvd: %d ", numRcvd);
+        buf += "rcvd: " + std::to_string(numRcvd) + " ";
     if (numMarked > 0)
-        sprintf(buf + strlen(buf), "mark:%d ", numMarked);
-    getDisplayString().setTagArg("t", 0, buf);
+        buf += "mark:" + std::to_string(numMarked) + " ";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 bool DscpMarker::markPacket(Packet *packet, int dscp)
@@ -112,7 +112,7 @@ bool DscpMarker::markPacket(Packet *packet, int dscp)
         packet->removeTagIfPresent<NetworkProtocolInd>();
         auto ipv4Header = packet->removeDataAt<Ipv4Header>(offset);
         ipv4Header->setDscp(dscp);
-        ipv4Header->updateCrc(); // recalculate IP header checksum
+        ipv4Header->updateChecksum(); // recalculate IP header checksum
         auto networkProtocolInd = packet->addTagIfAbsent<NetworkProtocolInd>();
         networkProtocolInd->setProtocol(protocol);
         networkProtocolInd->setNetworkProtocolHeader(ipv4Header);

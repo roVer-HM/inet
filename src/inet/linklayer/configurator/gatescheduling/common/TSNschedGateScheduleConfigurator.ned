@@ -11,8 +11,8 @@ import inet.linklayer.configurator.gatescheduling.base.GateScheduleConfiguratorB
 import inet.linklayer.configurator.gatescheduling.contract.IGateScheduleConfigurator;
 
 //
-// This module provides a gate scheduling configurator that uses the TSNsched
-// tool that is available at https://github.com/ACassimiro/TSNsched
+// Provides a gate scheduling configurator that uses the TSNsched
+// tool which is available at https://github.com/ACassimiro/TSNsched.
 // Tested revision: 3f3bf663d196ec6c03e81a1e1392d4aefd158e3e
 //
 // In order to be able to use this module, the above tool must be installed

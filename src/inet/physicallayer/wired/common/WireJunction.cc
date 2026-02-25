@@ -6,7 +6,9 @@
 
 #include "inet/physicallayer/wired/common/WireJunction.h"
 
+#include "inet/common/PacketEventTag.h"
 #include "inet/common/Simsignals.h"
+#include "inet/common/TimeTag.h"
 
 namespace inet {
 namespace physicallayer {
@@ -86,6 +88,9 @@ void WireJunction::handleMessage(cMessage *msg)
     numMessages++;
     emit(packetReceivedSignal, signal);
 
+    if (signal->findPar("originalSender") == -1)
+        signal->addPar("originalSender").setPointerValue(signal->getSenderModule());
+
     if (numPorts <= 1) {
         delete signal;
         return;
@@ -117,6 +122,13 @@ void WireJunction::handleMessage(cMessage *msg)
             }
 
             // send
+            if (auto channel = dynamic_cast<cDatarateChannel *>(ogate->findTransmissionChannel())) {
+                auto packet = check_and_cast_nullable<Packet *>(outSignal->getEncapsulatedPacket());
+                if (packet != nullptr) {
+                    insertPacketEvent(this, packet, PEK_PROPAGATED, 0, channel->getDelay());
+                    increaseTimeTag<PropagationTimeTag>(packet, channel->getDelay(), channel->getDelay());
+                }
+            }
             send(outSignal, sendOptions, ogate);
         }
     }
@@ -138,7 +150,7 @@ WireJunction::TxInfo *WireJunction::findTxInfo(long incomingTxId, int port)
     // find transmission, purge expired ones
     int txIndex = -1;
     simtime_t now = getSimulation()->getSimTime();
-    for (int i = 0; i < (int)txList.size(); i++) {
+    for (size_t i = 0; i < txList.size(); i++) {
         if (txList[i].finishTime < now) {
             txList[i] = txList.back(); // no-op if txList[i] is the last item (i.e. txList.back())
             txList.pop_back();

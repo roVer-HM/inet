@@ -62,7 +62,7 @@ std::string NetworkInterfaceChangeDetails::str() const
 }
 
 bool NetworkInterface::LocalGate::deliver(cMessage *msg, const SendOptions &options, simtime_t t) {
-    if (networkInterface->isDown()) {
+    if (!networkInterface->isUp()) {
         if (networkInterface->upperLayerIn == this) {
             auto packet = check_and_cast<Packet*>(msg);
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
@@ -122,8 +122,8 @@ void NetworkInterface::initialize(int stage)
         else
             wireless = rxIn == nullptr && txOut == nullptr;
 
-        upperLayerInConsumer = findConnectedModule<IPassivePacketSink>(upperLayerIn, 1);
-        upperLayerOutConsumer = findConnectedModule<IPassivePacketSink>(upperLayerOut, 1);
+        upperLayerInConsumer.reference(upperLayerIn, false, 1);
+        upperLayerOutConsumer.reference(upperLayerOut, false, 1);
         interfaceTable.reference(this, "interfaceTableModule", false);
         setInterfaceName(utils::stripnonalnum(getFullName()).c_str());
         setCarrier(computeCarrier());
@@ -186,7 +186,7 @@ void NetworkInterface::arrived(cMessage *message, cGate *gate, const SendOptions
     cModule::arrived(message, gate, options, time);
 }
 
-bool NetworkInterface::canPushSomePacket(cGate *gate) const
+bool NetworkInterface::canPushSomePacket(const cGate *gate) const
 {
     auto pathEndGate = gate->getPathEndGate();
     if (auto packetSink = dynamic_cast<IPassivePacketSink *>(pathEndGate->getOwnerModule()))
@@ -195,7 +195,7 @@ bool NetworkInterface::canPushSomePacket(cGate *gate) const
         return true;
 }
 
-bool NetworkInterface::canPushPacket(Packet *packet, cGate *gate) const
+bool NetworkInterface::canPushPacket(Packet *packet, const cGate *gate) const
 {
     auto pathEndGate = gate->getPathEndGate();
     if (auto packetSink = dynamic_cast<IPassivePacketSink *>(pathEndGate->getOwnerModule()))
@@ -204,12 +204,12 @@ bool NetworkInterface::canPushPacket(Packet *packet, cGate *gate) const
         return true;
 }
 
-void NetworkInterface::pushPacket(Packet *packet, cGate *gate)
+void NetworkInterface::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
     if (gate == upperLayerIn) {
-        if (isDown()) {
+        if (!isUp()) {
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -228,12 +228,12 @@ void NetworkInterface::pushPacket(Packet *packet, cGate *gate)
         throw cRuntimeError("Unknown gate: %s", gate->getName());
 }
 
-void NetworkInterface::pushPacketStart(Packet *packet, cGate *gate, bps datarate)
+void NetworkInterface::pushPacketStart(Packet *packet, const cGate *gate, bps datarate)
 {
     Enter_Method("pushPacket");
     take(packet);
     if (gate == upperLayerIn) {
-        if (isDown()) {
+        if (!isUp()) {
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -253,12 +253,12 @@ void NetworkInterface::pushPacketStart(Packet *packet, cGate *gate, bps datarate
 }
 
 
-void NetworkInterface::pushPacketEnd(Packet *packet, cGate *gate)
+void NetworkInterface::pushPacketEnd(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacketEnd");
     take(packet);
     if (gate == upperLayerIn) {
-        if (isDown()) {
+        if (!isUp()) {
             EV_WARN << "Network interface is down, dropping packet" << EV_FIELD(packet) << EV_ENDL;
             dropPacket(packet, INTERFACE_DOWN);
         }
@@ -277,19 +277,6 @@ void NetworkInterface::pushPacketEnd(Packet *packet, cGate *gate)
         throw cRuntimeError("Unknown gate: %s", gate->getName());
 }
 
-void NetworkInterface::refreshDisplay() const
-{
-    updateDisplayString();
-}
-
-void NetworkInterface::updateDisplayString() const
-{
-    if (getEnvir()->isGUI()) {
-        auto text = StringFormat::formatString(par("displayStringTextFormat"), this);
-        getDisplayString().setTagArg("t", 0, text.c_str());
-    }
-}
-
 std::string NetworkInterface::resolveDirective(char directive) const
 {
     switch (directive) {
@@ -302,7 +289,7 @@ std::string NetworkInterface::resolveDirective(char directive) const
         case 'a':
             return getNetworkAddress().str();
         default:
-            throw cRuntimeError("Unknown directive: %c", directive);
+            return PacketProcessorBase::resolveDirective(directive);   
     }
 }
 

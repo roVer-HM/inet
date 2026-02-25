@@ -11,7 +11,7 @@ import inet.queueing.base.PacketSchedulerBase;
 import inet.queueing.contract.IPacketScheduler;
 
 //
-// This module connects one packet collector to multiple packet providers. It
+// Connects one packet collector to multiple packet providers. It
 // can be pulled for packets by the connected packet collector. When this
 // happens, the scheduler pulls a packet from one of its packet providers based
 // on the configured packet filters. The first matching expression determines
@@ -20,7 +20,7 @@ import inet.queueing.contract.IPacketScheduler;
 simple ContentBasedScheduler extends PacketSchedulerBase like IPacketScheduler
 {
     parameters:
-        int defaultGateIndex = default(0); // default gate index if no matching labels are found
-        object packetFilters; // array of packet filter expressions
+        int defaultGateIndex = default(0); // Default gate index if no matching labels are found
+        object packetFilters; // Array of packet filter expressions
         @class(ContentBasedScheduler);
 }

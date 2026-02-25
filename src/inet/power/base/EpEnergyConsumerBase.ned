@@ -7,17 +7,19 @@
 
 package inet.power.base;
 
+import inet.common.SimpleModule;
 import inet.power.contract.IEpEnergyConsumer;
 
 //
-// This is an abstract base module for power based energy consumer models.
+// This is an abstract base module for power-based energy consumer models.
 // It defines shared signals and statistics.
 //
 // @see ~EpEnergySourceBase, ~EpEnergyGeneratorBase, ~EpEnergySinkBase, ~EpEnergyStorageBase
 //
-simple EpEnergyConsumerBase like IEpEnergyConsumer
+simple EpEnergyConsumerBase extends SimpleModule like IEpEnergyConsumer
 {
     parameters:
+        @class(EpEnergyConsumerBase);
         @display("i=block/plug");
         @signal[powerConsumptionChanged](type=double);
         @statistic[powerConsumption](title="Power consumption"; source=powerConsumptionChanged; record=vector; interpolationmode=sample-hold; unit=W);

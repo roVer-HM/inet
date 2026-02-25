@@ -40,7 +40,8 @@ bool FingerprintCalculator::addEventIngredient(cEvent *event, cSingleFingerprint
             case NETWORK_COMMUNICATION_FILTER:
                 break;
             case NETWORK_NODE_PATH:
-                if (auto cpacket = dynamic_cast<cPacket *>(event)) {
+                if (event->isPacket()) {
+                    auto cpacket = static_cast<cPacket *>(event);
                     if (auto senderNode = findContainingNode(cpacket->getSenderModule()))
                         hasher_ << senderNode->getFullPath();
                     if (auto arrivalNode = findContainingNode(cpacket->getArrivalModule()))
@@ -48,7 +49,8 @@ bool FingerprintCalculator::addEventIngredient(cEvent *event, cSingleFingerprint
                 }
                 break;
             case NETWORK_INTERFACE_PATH:
-                if (auto cpacket = dynamic_cast<cPacket *>(event)) {
+                if (event->isPacket()) {
+                    auto cpacket = static_cast<cPacket *>(event);
                     if (auto senderInterface = findContainingNicModule(cpacket->getSenderModule()))
                         hasher_ << senderInterface->getInterfaceFullPath();
                     if (auto arrivalInterface = findContainingNicModule(cpacket->getArrivalModule()))
@@ -56,12 +58,13 @@ bool FingerprintCalculator::addEventIngredient(cEvent *event, cSingleFingerprint
                 }
                 break;
             case PACKET_DATA: {
-                if (auto cpacket = dynamic_cast<cPacket *>(event)) {
+                if (event->isPacket()) {
+                    auto cpacket = static_cast<cPacket *>(event);
                     auto packet = dynamic_cast<Packet *>(cpacket);
                     if (packet == nullptr)
                         packet = dynamic_cast<Packet *>(cpacket->getEncapsulatedPacket());
-                    if (packet != nullptr && packet->getTotalLength().get() > 0) {
-                        if (packet->getTotalLength().get() % 8 == 0) {
+                    if (packet != nullptr && packet->getTotalLength().get<b>() > 0) {
+                        if (packet->getTotalLength().get<b>() % 8 == 0) {
                             const auto& content = packet->peekAllAsBytes();
                             for (auto byte : content->getBytes())
                                 hasher_ << byte;

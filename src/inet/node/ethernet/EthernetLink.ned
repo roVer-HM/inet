@@ -7,13 +7,17 @@
 
 package inet.node.ethernet;
 
-import ned.DatarateChannel;
+import inet.common.Cable;
 
 //
-// Base for Ethernet link types. Propagation delay can be specified with the
-// length of the cable, i.e. in meters instead of nanoseconds or microseconds.
+// EthernetLink provides a base channel type for Ethernet connections with configurable
+// length and propagation delay. It extends the Cable type and calculates the delay
+// based on the physical length of the cable and the speed of light in the medium.
 //
-channel EthernetLink extends DatarateChannel
+// The EthernetLink serves as a base for specific Ethernet standards with different
+// data rates, from 10 Mbps to 400 Gbps.
+//
+channel EthernetLink extends Cable
 {
     double length @unit(m) = default(10m);
     delay = default(replaceUnit(length / 2e8, "s"));

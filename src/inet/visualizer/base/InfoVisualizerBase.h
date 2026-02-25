@@ -29,7 +29,7 @@ class INET_API InfoVisualizerBase : public VisualizerBase
         virtual ~InfoVisualization() {}
     };
 
-    class INET_API DirectiveResolver : public StringFormat::IDirectiveResolver {
+    class INET_API DirectiveResolver : public StringFormat::IResolver {
       protected:
         const cModule *module = nullptr;
 
@@ -47,7 +47,11 @@ class INET_API InfoVisualizerBase : public VisualizerBase
     StringFormat format;
     cFigure::Font font;
     cFigure::Color textColor;
+    cFigure::Alignment textAlignment;
     cFigure::Color backgroundColor;
+    cFigure::Color lineColor;
+    bool filled = true;
+    bool outlined = true;
     double opacity = NaN;
     Placement placementHint;
     double placementPriority;

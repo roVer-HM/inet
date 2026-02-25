@@ -44,11 +44,17 @@ void NetworkNodeCanvasVisualizer::initialize(int stage)
 
 void NetworkNodeCanvasVisualizer::refreshDisplay() const
 {
+    VisualizerBase::refreshDisplay();
     for (auto it : networkNodeVisualizations) {
         auto networkNode = getSimulation()->getModule(it.first);
         auto visualization = it.second;
         auto position = canvasProjection->computeCanvasPoint(getPosition(networkNode));
         visualization->setTransform(cFigure::Transform().translate(position.x, position.y));
+        auto imageFigure = visualization->getImageFigure();
+        if (imageFigure != nullptr) {
+            auto orientation = getOrientation(networkNode);
+            imageFigure->setTransform(cFigure::Transform().rotate(orientation.toEulerAngles().getAlpha().get<rad>()));
+        }
         visualization->refreshDisplay();
     }
 }

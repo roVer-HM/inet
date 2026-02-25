@@ -17,11 +17,7 @@ Define_Module(TSNschedGateScheduleConfigurator);
 static void printJson(std::ostream& stream, const cValue& value, int level = 0)
 {
     std::string indent(level * 2, ' ');
-#if OMNETPP_BUILDNUM < 1527
-    if (value.getType() == cValue::OBJECT) {
-#else
     if (value.getType() == cNedValue::POINTER && value.containsObject()) {
-#endif
         auto object = value.objectValue();
         if (auto array = dynamic_cast<cValueArray *>(object)) {
             if (array->size() == 0)
@@ -71,21 +67,21 @@ cValueMap *TSNschedGateScheduleConfigurator::convertInputToJson(const Input& inp
     }
     cValueArray *jsonSwitches = new cValueArray();
     json->set("switches", jsonSwitches);
-    for (int i = 0; i < input.switches.size(); i++) {
+    for (size_t i = 0; i < input.switches.size(); i++) {
         auto switch_ = input.switches[i];
         cValueMap *jsonSwitch = new cValueMap();
         jsonSwitches->add(jsonSwitch);
         // TODO KLUDGE this is a wild guess
         double guardBand = 0;
         for (auto flow : input.flows) {
-            double v = b(flow->startApplication->packetLength).get();
+            double v = flow->startApplication->packetLength.get<b>();
             if (guardBand < v)
                 guardBand = v;
         }
         auto jsonPorts = new cValueArray();
         jsonSwitch->set("name", switch_->module->getFullName());
         jsonSwitch->set("ports", jsonPorts);
-        for (int j = 0; j < switch_->ports.size(); j++) {
+        for (size_t j = 0; j < switch_->ports.size(); j++) {
             auto port = switch_->ports[j];
             auto jsonPort = new cValueMap();
             jsonPorts->add(jsonPort);
@@ -97,7 +93,7 @@ cValueMap *TSNschedGateScheduleConfigurator::convertInputToJson(const Input& inp
             jsonPort->set("timeToTravelUnit", "us");
 //            jsonPort->set("guardBandSize", guardBand);
 //            jsonPort->set("guardBandSizeUnit", "bit");
-            jsonPort->set("portSpeed", bps(port->datarate).get() / 1000000);
+            jsonPort->set("portSpeed", port->datarate.get<bps>() / 1000000);
             jsonPort->set("portSpeedSizeUnit", "bit");
             jsonPort->set("portSpeedTimeUnit", "us");
             jsonPort->set("scheduleType", "Hypercycle");
@@ -119,7 +115,7 @@ cValueMap *TSNschedGateScheduleConfigurator::convertInputToJson(const Input& inp
         jsonFlow->set("priorityValue", flow->gateIndex);
         jsonFlow->set("packetPeriodicity", flow->startApplication->packetInterval.dbl() * 1000000);
         jsonFlow->set("packetPeriodicityUnit", "us");
-        jsonFlow->set("packetSize", b(flow->startApplication->packetLength).get());
+        jsonFlow->set("packetSize", flow->startApplication->packetLength.get<b>());
         jsonFlow->set("packetSizeUnit", "bit");
         jsonFlow->set("hardConstraintTime", flow->startApplication->maxLatency.dbl() * 1000000);
         jsonFlow->set("hardConstraintTimeUnit", "us");
@@ -128,9 +124,9 @@ cValueMap *TSNschedGateScheduleConfigurator::convertInputToJson(const Input& inp
         endDevices->add(cValue(flow->endDevice->module->getFullName()));
         cValueArray *hops = new cValueArray();
         jsonFlow->set("hops", hops);
-        for (int j = 0; j < flow->pathFragments.size(); j++) {
+        for (size_t j = 0; j < flow->pathFragments.size(); j++) {
             auto pathFragment = flow->pathFragments[j];
-            for (int k = 0; k < pathFragment->networkNodes.size() - 1; k++) {
+            for (size_t k = 0; k < pathFragment->networkNodes.size() - 1; k++) {
                 auto networkNode = pathFragment->networkNodes[k];
                 auto nextNetworkNode = pathFragment->networkNodes[k + 1];
                 cValueMap *hop = new cValueMap();
@@ -208,7 +204,7 @@ TSNschedGateScheduleConfigurator::Output *TSNschedGateScheduleConfigurator::conv
         auto application = flow->startApplication;
         auto firstSendingTime = jsonFlow->get("firstSendingTime").doubleValue() / 1000000;
         bps datarate = application->device->ports[0]->datarate;
-        auto startTime = firstSendingTime - s(application->packetLength / datarate).get();
+        auto startTime = firstSendingTime - (application->packetLength / datarate).get<s>();
         while (startTime < 0)
             startTime += application->packetInterval.dbl();
         output->applicationStartTimes[application] = startTime;
@@ -246,7 +242,8 @@ void TSNschedGateScheduleConfigurator::executeTSNsched(std::string inputFileName
     std::string classpath = "${TSNSCHED_ROOT}/libs/com.microsoft.z3.jar";
     std::string command = std::string("java -classpath ") + classpath + " -jar ${TSNSCHED_ROOT}/libs/TSNsched.jar " + inputFileName + " -enableConsoleOutput";
     if (std::system(command.c_str()) != 0)
-        throw cRuntimeError("TSNsched command execution failed, make sure TSNSCHED_ROOT is set and Microsoft Z3 is installed");
+        throw cRuntimeError("TSNsched command execution failed -- make sure you have the TSNsched tool from https://github.com/ACassimiro/TSNsched installed, "
+                            "it works, and the TSNSCHED_ROOT environment variable points to its directory. Command was: %s", command.c_str());
 }
 
 TSNschedGateScheduleConfigurator::Output *TSNschedGateScheduleConfigurator::computeGateScheduling(const Input& input) const

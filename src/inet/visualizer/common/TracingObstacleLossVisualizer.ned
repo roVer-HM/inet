@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.ITracingObstacleLossVisualizer;
 
 //
-// This module integrates canvas and osg obstacle loss visualizers into a single module.
+// Integrates canvas and osg obstacle loss visualizers into a single module.
 //
 // @see ~TracingObstacleLossCanvasVisualizer, ~TracingObstacleLossOsgVisualizer, ~TracingObstacleLossVisualizerBase, ~ITracingObstacleLossVisualizer
 //
@@ -18,8 +18,10 @@ module TracingObstacleLossVisualizer like ITracingObstacleLossVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("TracingObstacleLossCanvasVisualizer"))> like ITracingObstacleLossVisualizer if typename != "" {
             parameters:

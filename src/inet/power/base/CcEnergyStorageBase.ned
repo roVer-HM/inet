@@ -7,17 +7,19 @@
 
 package inet.power.base;
 
+import inet.common.SimpleModule;
 import inet.power.contract.ICcEnergyStorage;
 
 //
-// This is an abstract base module for current based energy storage models.
+// This is an abstract base module for current-based energy storage models.
 // It defines shared signals and statistics.
 //
 // @see ~CcEnergyConsumerBase, ~CcEnergySourceBase, ~CcEnergyGeneratorBase, ~CcEnergySinkBase
 //
-simple CcEnergyStorageBase like ICcEnergyStorage
+simple CcEnergyStorageBase extends SimpleModule like ICcEnergyStorage
 {
     parameters:
+        @class(CcEnergyStorageBase);
         @display("i=block/plug");
         @signal[currentConsumptionChanged];
         @signal[currentGenerationChanged];

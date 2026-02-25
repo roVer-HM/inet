@@ -11,11 +11,11 @@ import inet.queueing.base.PacketTaggerBase;
 import inet.queueing.contract.IPacketMarker;
 
 //
-// This module attaches various request tags to packets.
+// Attaches various request tags to packets.
 //
 simple ContentBasedTagger extends PacketTaggerBase like IPacketMarker
 {
     parameters:
-        object packetFilter = default("*"); // packet filter expressions, matches all packets by default
+        object packetFilter = default("*"); // Packet filter expressions, matches all packets by default
         @class(ContentBasedTagger);
 }

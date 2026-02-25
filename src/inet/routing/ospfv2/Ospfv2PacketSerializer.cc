@@ -102,7 +102,7 @@ const Ptr<Chunk> Ospfv2PacketSerializer::deserialize(MemoryInputStream& stream) 
             helloPacket->setRouterDeadInterval(stream.readUint32Be());
             helloPacket->setDesignatedRouter(stream.readIpv4Address());
             helloPacket->setBackupDesignatedRouter(stream.readIpv4Address());
-            int numNeighbors = (B(packetLength) - OSPFv2_HEADER_LENGTH - OSPFv2_HELLO_HEADER_LENGTH).get() / 4;
+            int numNeighbors = (B(packetLength) - OSPFv2_HEADER_LENGTH - OSPFv2_HELLO_HEADER_LENGTH).get<B>() / 4;
             if (numNeighbors < 0)
                 helloPacket->markIncorrect();
             helloPacket->setNeighborArraySize(numNeighbors);
@@ -122,7 +122,7 @@ const Ptr<Chunk> Ospfv2PacketSerializer::deserialize(MemoryInputStream& stream) 
             ddOptions.M_More = stream.readBit();
             ddOptions.MS_MasterSlave = stream.readBit();
             ddPacket->setDdSequenceNumber(stream.readUint32Be());
-            int numLsaHeaders = ((B(packetLength) - OSPFv2_HEADER_LENGTH - OSPFv2_DD_HEADER_LENGTH) / OSPFv2_LSA_HEADER_LENGTH).get();
+            int numLsaHeaders = ((B(packetLength) - OSPFv2_HEADER_LENGTH - OSPFv2_DD_HEADER_LENGTH) / OSPFv2_LSA_HEADER_LENGTH).get<unit>();
             if (numLsaHeaders < 0)
                 ddPacket->markIncorrect();
             ddPacket->setLsaHeadersArraySize(numLsaHeaders);
@@ -136,7 +136,7 @@ const Ptr<Chunk> Ospfv2PacketSerializer::deserialize(MemoryInputStream& stream) 
         case LINKSTATE_REQUEST_PACKET: {
             auto requestPacket = makeShared<Ospfv2LinkStateRequestPacket>();
             copyHeaderFields(ospfPacket, requestPacket);
-            int numReq = (B(packetLength) - OSPFv2_HEADER_LENGTH).get() / OSPFv2_REQUEST_LENGTH.get();
+            int numReq = (B(packetLength) - OSPFv2_HEADER_LENGTH).get<B>() / OSPFv2_REQUEST_LENGTH.get<B>();
             if (numReq < 0)
                 requestPacket->markIncorrect();
             requestPacket->setRequestsArraySize(numReq);
@@ -162,7 +162,7 @@ const Ptr<Chunk> Ospfv2PacketSerializer::deserialize(MemoryInputStream& stream) 
         case LINKSTATE_ACKNOWLEDGEMENT_PACKET: {
             auto ackPacket = makeShared<Ospfv2LinkStateAcknowledgementPacket>();
             copyHeaderFields(ospfPacket, ackPacket);
-            int numHeaders = (B(packetLength) - OSPFv2_HEADER_LENGTH).get() / OSPFv2_LSA_HEADER_LENGTH.get();
+            int numHeaders = (B(packetLength) - OSPFv2_HEADER_LENGTH).get<B>() / OSPFv2_LSA_HEADER_LENGTH.get<B>();
             if (numHeaders < 0)
                 ackPacket->markIncorrect();
             ackPacket->setLsaHeadersArraySize(numHeaders);
@@ -187,10 +187,10 @@ void Ospfv2PacketSerializer::serializeOspfHeader(MemoryOutputStream& stream, con
     stream.writeUint16Be(ospfPacket->getPacketLengthField());
     stream.writeIpv4Address(ospfPacket->getRouterID());
     stream.writeIpv4Address(ospfPacket->getAreaID());
-    auto crcMode = ospfPacket->getCrcMode();
-    if (crcMode != CRC_COMPUTED)
-        throw cRuntimeError("Cannot serialize Ospf header without properly computed CRC");
-    stream.writeUint16Be(ospfPacket->getCrc());
+    auto checksumMode = ospfPacket->getChecksumMode();
+    if (checksumMode != CHECKSUM_COMPUTED)
+        throw cRuntimeError("Cannot serialize Ospf header without properly computed CHECKSUM");
+    stream.writeUint16Be(ospfPacket->getChecksum());
     stream.writeUint16Be(ospfPacket->getAuthenticationType());
     for (unsigned int i = 0; i < 8; ++i) {
         stream.writeByte(ospfPacket->getAuthentication(i));
@@ -212,8 +212,8 @@ uint16_t Ospfv2PacketSerializer::deserializeOspfHeader(MemoryInputStream& stream
     ospfPacket->setChunkLength(B(packetLength));
     ospfPacket->setRouterID(stream.readIpv4Address());
     ospfPacket->setAreaID(stream.readIpv4Address());
-    ospfPacket->setCrc(stream.readUint16Be());
-    ospfPacket->setCrcMode(CRC_COMPUTED);
+    ospfPacket->setChecksum(stream.readUint16Be());
+    ospfPacket->setChecksumMode(CHECKSUM_COMPUTED);
     ospfPacket->setAuthenticationType(stream.readUint16Be());
     for (int i = 0; i < 8; ++i) {
         ospfPacket->setAuthentication(i, stream.readUint8());
@@ -229,10 +229,10 @@ void Ospfv2PacketSerializer::serializeLsaHeader(MemoryOutputStream& stream, cons
     stream.writeIpv4Address(lsaHeader.getLinkStateID());
     stream.writeIpv4Address(lsaHeader.getAdvertisingRouter());
     stream.writeUint32Be(lsaHeader.getLsSequenceNumber());
-    auto crcMode = lsaHeader.getLsCrcMode();
-    if (crcMode != CRC_COMPUTED)
-        throw cRuntimeError("Cannot serialize Ospf LSA header without properly computed CRC");
-    stream.writeUint16Be(lsaHeader.getLsCrc());
+    auto checksumMode = lsaHeader.getLsChecksumMode();
+    if (checksumMode != CHECKSUM_COMPUTED)
+        throw cRuntimeError("Cannot serialize Ospf LSA header without properly computed CHECKSUM");
+    stream.writeUint16Be(lsaHeader.getLsChecksum());
     stream.writeUint16Be(lsaHeader.getLsaLength());
 }
 
@@ -244,9 +244,9 @@ void Ospfv2PacketSerializer::deserializeLsaHeader(MemoryInputStream& stream, Osp
     lsaHeader.setLinkStateID(stream.readIpv4Address());
     lsaHeader.setAdvertisingRouter(stream.readIpv4Address());
     lsaHeader.setLsSequenceNumber(stream.readUint32Be());
-    lsaHeader.setLsCrc(stream.readUint16Be());
+    lsaHeader.setLsChecksum(stream.readUint16Be());
     lsaHeader.setLsaLength(stream.readUint16Be());
-    lsaHeader.setLsCrcMode(CRC_COMPUTED);
+    lsaHeader.setLsChecksumMode(CHECKSUM_COMPUTED);
 }
 
 void Ospfv2PacketSerializer::serializeRouterLsa(MemoryOutputStream& stream, const Ospfv2RouterLsa& routerLsa)
@@ -319,7 +319,7 @@ void Ospfv2PacketSerializer::deserializeNetworkLsa(MemoryInputStream& stream, co
 {
     networkLsa.setNetworkMask(stream.readIpv4Address());
     int numAttachedRouters = (B(networkLsa.getHeader().getLsaLength()) -
-                              OSPFv2_LSA_HEADER_LENGTH - OSPFv2_NETWORKLSA_MASK_LENGTH).get() / OSPFv2_NETWORKLSA_ADDRESS_LENGTH.get();
+                              OSPFv2_LSA_HEADER_LENGTH - OSPFv2_NETWORKLSA_MASK_LENGTH).get<B>() / OSPFv2_NETWORKLSA_ADDRESS_LENGTH.get<B>();
     if (numAttachedRouters < 0)
         updatePacket->markIncorrect();
     else
@@ -348,7 +348,7 @@ void Ospfv2PacketSerializer::deserializeSummaryLsa(MemoryInputStream& stream, co
         updatePacket->markIncorrect();
     summaryLsa.setRouteCost(stream.readUint24Be());
     int numTos = (B(summaryLsa.getHeader().getLsaLength()) -
-                  OSPFv2_LSA_HEADER_LENGTH - OSPFv2_NETWORKLSA_MASK_LENGTH - B(4)).get() / OSPFv2_TOS_LENGTH.get();
+                  OSPFv2_LSA_HEADER_LENGTH - OSPFv2_NETWORKLSA_MASK_LENGTH - B(4)).get<B>() / OSPFv2_TOS_LENGTH.get();
     if (numTos < 0)
         updatePacket->markIncorrect();
     else
@@ -382,7 +382,7 @@ void Ospfv2PacketSerializer::deserializeAsExternalLsa(MemoryInputStream& stream,
     contents.setNetworkMask(stream.readIpv4Address());
 
     int numExternalTos = (B(asExternalLsa.getHeader().getLsaLength()) -
-                          OSPFv2_LSA_HEADER_LENGTH - OSPFv2_ASEXTERNALLSA_HEADER_LENGTH).get() / OSPFv2_ASEXTERNALLSA_TOS_INFO_LENGTH.get();
+                          OSPFv2_LSA_HEADER_LENGTH - OSPFv2_ASEXTERNALLSA_HEADER_LENGTH).get<B>() / OSPFv2_ASEXTERNALLSA_TOS_INFO_LENGTH.get<B>();
     if (numExternalTos < 0)
         updatePacket->markIncorrect();
     else
@@ -503,8 +503,8 @@ void Ospfv2PacketSerializer::copyHeaderFields(const Ptr<Ospfv2Packet> from, Ptr<
     to->setChunkLength(from->getChunkLength());
     to->setRouterID(from->getRouterID());
     to->setAreaID(from->getAreaID());
-    to->setCrc(from->getCrc());
-    to->setCrcMode(from->getCrcMode());
+    to->setChecksum(from->getChecksum());
+    to->setChecksumMode(from->getChecksumMode());
     to->setAuthenticationType(from->getAuthenticationType());
     for (int i = 0; i < 8; ++i) {
         to->setAuthentication(i, from->getAuthentication(i));

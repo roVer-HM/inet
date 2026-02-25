@@ -64,7 +64,7 @@ void Hcf::initialize(int stage)
 
 void Hcf::forEachChild(cVisitor *v)
 {
-    cSimpleModule::forEachChild(v);
+    SimpleModule::forEachChild(v);
     if (frameSequenceHandler != nullptr && frameSequenceHandler->getContext() != nullptr)
         v->visit(const_cast<FrameSequenceContext *>(frameSequenceHandler->getContext()));
 }
@@ -74,7 +74,6 @@ void Hcf::handleMessage(cMessage *msg)
     if (msg == startRxTimer) {
         if (!isReceptionInProgress()) {
             frameSequenceHandler->handleStartRxTimeout();
-            updateDisplayString();
         }
     }
     else if (msg == inactivityTimer) {
@@ -89,7 +88,7 @@ void Hcf::handleMessage(cMessage *msg)
         throw cRuntimeError("Unknown msg type");
 }
 
-void Hcf::updateDisplayString() const
+void Hcf::refreshDisplay() const
 {
     if (frameSequenceHandler->isSequenceRunning()) {
         auto history = frameSequenceHandler->getFrameSequence()->getHistory();
@@ -159,7 +158,11 @@ void Hcf::processLowerFrame(Packet *packet, const Ptr<const Ieee80211MacHeader>&
         // TODO always call processResponse?
         if ((!isForUs(header) && !startRxTimer->isScheduled()) || isForUs(header)) {
             frameSequenceHandler->processResponse(packet);
-            updateDisplayString();
+            // Only cancel RxTimer when the current running sequence has been handled by frameSequenceHandler->processResponse().
+            // If the received frame is not for us, we are still waiting to receive our ACK. In that case, don't cancel the timer.
+            // Otherwise, current frame sequence stucks in RX step and runs longer than intendeed, preventing sequence from
+            // another access category (AC) to start running (RuntimeError("Channel access granted while a frame sequence is running")).
+            cancelEvent(startRxTimer);
         }
         else {
             EV_INFO << "This frame is not for us" << std::endl;
@@ -168,7 +171,6 @@ void Hcf::processLowerFrame(Packet *packet, const Ptr<const Ieee80211MacHeader>&
             emit(packetDroppedSignal, packet, &details);
             delete packet;
         }
-        cancelEvent(startRxTimer);
     }
     else if (hcca->isOwning())
         throw cRuntimeError("Hcca is unimplemented!");
@@ -214,7 +216,6 @@ void Hcf::startFrameSequence(AccessCategory ac)
 {
     frameSequenceHandler->startFrameSequence(new HcfFs(), buildContext(ac), this);
     emit(IFrameSequenceHandler::frameSequenceStartedSignal, frameSequenceHandler->getContext());
-    updateDisplayString();
 }
 
 void Hcf::handleInternalCollision(std::vector<Edcaf *> internallyCollidedEdcafs)
@@ -361,7 +362,6 @@ void Hcf::transmissionComplete(Packet *packet, const Ptr<const Ieee80211MacHeade
     auto edcaf = edca->getChannelOwner();
     if (edcaf) {
         frameSequenceHandler->transmissionComplete();
-        updateDisplayString();
     }
     else if (hcca->isOwning())
         throw cRuntimeError("Hcca is unimplemented!");
@@ -620,7 +620,7 @@ void Hcf::originatorProcessReceivedDataFrame(const Ptr<const Ieee80211DataHeader
 
 bool Hcf::hasFrameToTransmit(AccessCategory ac)
 {
-    auto edcaf = edca->getChannelOwner();
+    auto edcaf = edca->getEdcaf(ac);
     if (edcaf)
         return !edcaf->getPendingQueue()->isEmpty() || edcaf->getInProgressFrames()->hasInProgressFrames();
     else
@@ -660,7 +660,7 @@ void Hcf::transmitFrame(Packet *packet, simtime_t ifs)
         }
         auto mode = rateSelection->computeMode(packet, header, txop);
         setFrameMode(packet, header, mode);
-        emit(IRateSelection::datarateSelectedSignal, mode->getDataMode()->getNetBitrate().get(), packet);
+        emit(IRateSelection::datarateSelectedSignal, mode->getDataMode()->getNetBitrate().get<bps>(), packet);
         EV_DEBUG << "Datarate for " << packet->getName() << " is set to " << mode->getDataMode()->getNetBitrate() << ".\n";
         if (txop->getProtectionMechanism() == TxopProcedure::ProtectionMechanism::SINGLE_PROTECTION) {
             auto pendingPacket = channelOwner->getInProgressFrames()->getPendingFrameFor(packet);
@@ -695,7 +695,7 @@ void Hcf::transmitControlResponseFrame(Packet *responsePacket, const Ptr<const I
     else
         throw cRuntimeError("Unknown received frame type");
     setFrameMode(responsePacket, responseHeader, responseMode);
-    emit(IRateSelection::datarateSelectedSignal, responseMode->getDataMode()->getNetBitrate().get(), responsePacket);
+    emit(IRateSelection::datarateSelectedSignal, responseMode->getDataMode()->getNetBitrate().get<bps>(), responsePacket);
     EV_DEBUG << "Datarate for " << responsePacket->getName() << " is set to " << responseMode->getDataMode()->getNetBitrate() << ".\n";
     tx->transmitFrame(responsePacket, responseHeader, modeSet->getSifsTime(), this);
     delete responsePacket;
@@ -755,7 +755,6 @@ void Hcf::corruptedFrameReceived()
     Enter_Method("corruptedFrameReceived");
     if (frameSequenceHandler->isSequenceRunning() && !startRxTimer->isScheduled()) {
         frameSequenceHandler->handleStartRxTimeout();
-        updateDisplayString();
     }
     else
         EV_DEBUG << "Ignoring received corrupt frame.\n";

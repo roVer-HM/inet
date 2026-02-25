@@ -10,7 +10,7 @@ package inet.visualizer.common;
 import inet.visualizer.contract.ITransportConnectionVisualizer;
 
 //
-// This module integrates canvas and osg transport connection visualizers into a single module.
+// Integrates canvas and osg transport connection visualizers into a single module.
 //
 // @see ~TransportConnectionCanvasVisualizer, ~TransportConnectionOsgVisualizer, ~TransportConnectionVisualizerBase, ~ITransportConnectionVisualizer
 //
@@ -18,8 +18,10 @@ module TransportConnectionVisualizer like ITransportConnectionVisualizer
 {
     parameters:
         @display("i=block/app");
-        *.visualizationTargetModule = default("^.^");
-        *.visualizationSubjectModule = default("^.^");
+        string visualizationTargetModule = default("^");
+        string visualizationSubjectModule = default("^");
+        *.visualizationTargetModule = default(absPath(this.visualizationTargetModule));
+        *.visualizationSubjectModule = default(absPath(this.visualizationSubjectModule));
     submodules:
         canvasVisualizer: <default(firstAvailableOrEmpty("TransportConnectionCanvasVisualizer"))> like ITransportConnectionVisualizer if typename != "" {
             parameters:

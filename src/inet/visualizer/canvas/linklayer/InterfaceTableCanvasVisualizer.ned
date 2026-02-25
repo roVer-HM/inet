@@ -11,7 +11,7 @@ import inet.visualizer.base.InterfaceTableVisualizerBase;
 import inet.visualizer.contract.IInterfaceTableVisualizer;
 
 //
-// This module visualizes interface tables on a 2D canvas. It displays a label
+// Visualizes interface tables on a 2D canvas. It displays a label
 // for each selected network interface at the owner network node.
 //
 // @see ~InterfaceTableOsgVisualizer, ~InterfaceTableVisualizer, ~InterfaceTableVisualizerBase, ~IInterfaceTableVisualizer
@@ -19,7 +19,8 @@ import inet.visualizer.contract.IInterfaceTableVisualizer;
 simple InterfaceTableCanvasVisualizer extends InterfaceTableVisualizerBase like IInterfaceTableVisualizer
 {
     parameters:
-        double zIndex = default(10); // determines the drawing order of figures relative to other visualizers
+        double zIndex = default(10); // Determines the drawing order of figures relative to other visualizers
+        string anchor @enum("l","r","t") = default("l"); // Specifies the beginning/end/middle
         @class(InterfaceTableCanvasVisualizer);
 }
 

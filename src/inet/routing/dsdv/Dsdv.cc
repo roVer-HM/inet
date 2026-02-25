@@ -16,6 +16,8 @@
 
 #include "inet/routing/dsdv/Dsdv.h"
 
+#include <sstream>
+
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
@@ -41,6 +43,7 @@ Dsdv::~Dsdv()
     stop();
     // Dispose of dynamically allocated the objects
     delete event;
+    delete purgeTimer;
     delete forwardList;
 //    delete Hello;
 }
@@ -60,6 +63,7 @@ void Dsdv::initialize(int stage)
         helloInterval = par("helloInterval");
         forwardList = new std::list<ForwardEntry *>();
         event = new cMessage("event");
+        purgeTimer = new cMessage("purge");
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) {
         registerProtocol(Protocol::manet, gate("ipOut"), gate("ipIn"));
@@ -109,6 +113,7 @@ void Dsdv::start()
 void Dsdv::stop()
 {
     cancelEvent(event);
+    cancelEvent(purgeTimer);
     while (!forwardList->empty()) {
         ForwardEntry *fh = forwardList->front();
         if (fh->event)
@@ -131,7 +136,7 @@ void Dsdv::handleSelfMessage(cMessage *msg)
     if (msg == event) {
         auto hello = makeShared<DsdvHello>();
 
-        rt->purge();
+        purge();
 
         // count non-loopback interfaces
 //        int numIntf = 0;
@@ -179,6 +184,10 @@ void Dsdv::handleSelfMessage(cMessage *msg)
         // schedule new brodcast hello message event
         scheduleAfter(helloInterval + broadcastDelay->doubleValue(), event);
         bubble("Sending new hello message");
+    }
+    else if (msg == purgeTimer) {
+        purge();
+        reschedulePurgeTimer();
     }
     else {
         for (auto it = forwardList->begin(); it != forwardList->end(); it++) {
@@ -285,6 +294,7 @@ void Dsdv::handleMessageWhenUp(cMessage *msg)
                     e->setSequencenumber(msgsequencenumber);
                     e->setExpiryTime(simTime() + routeLifetime);
                     rt->addRoute(e);
+                    reschedulePurgeTimer();
                 }
                 if (!isForwardHello) {
                     recHello->setNextAddress(source);
@@ -326,6 +336,37 @@ void Dsdv::handleMessageWhenUp(cMessage *msg)
     }
     else
         throw cRuntimeError("Message not supported %s", msg->getName());
+}
+
+void Dsdv::reschedulePurgeTimer()
+{
+    simtime_t purgeTime = SimTime::getMaxTime();
+    for (int i = 0; i < rt->getNumRoutes(); i++) {
+        auto route = dynamic_cast<DsdvIpv4Route *>(rt->getRoute(i));
+        if (route && !route->isExpired() && route->getExpiryTime() < purgeTime)
+            purgeTime = route->getExpiryTime();
+    }
+    cancelEvent(purgeTimer);
+    if (purgeTime != SimTime::getMaxTime())
+        scheduleAt(purgeTime, purgeTimer);
+}
+
+void Dsdv::purge()
+{
+    for (int i = 0; i < rt->getNumRoutes();) {
+        auto route = dynamic_cast<DsdvIpv4Route *>(rt->getRoute(i));
+        if (route && route->isExpired())
+            rt->deleteRoute(route);
+        else
+            i++;
+    }
+}
+
+std::string DsdvIpv4Route::str() const
+{
+    std::ostringstream out;
+    out << Ipv4Route::str() << " seqNo:" << getSequencenumber() << " expiryTime:" << getExpiryTime();
+    return out.str();
 }
 
 } // namespace inet

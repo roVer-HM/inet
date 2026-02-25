@@ -8,8 +8,8 @@ Testing PR-SCTP: prMethod=PR_RTX prValue=0
 
 [General]
 network = inet.test.moduletest.lib.SctpFeatureTest
-cmdenv-event-banners=false
-cmdenv-express-mode = false
+cmdenv-express-mode = true
+cmdenv-log-finalization = true
 ned-path = .;../../../../src;../../lib
 
 #omnetpp 5.0 - 5.1 compatibility:
@@ -60,11 +60,15 @@ snapshot-file = "${resultdir}/${configname}-${runnumber}.sna"
 #**.ppp[*].queue.packetCapacity = 100  # in routers
 #**.ppp[*].ppp.mtu = 1500 B
 %#--------------------------------------------------------------------------------------------------------------
-%postrun-command: grep "Association" test.out > test_assoc.out || true
+%contains: results/General-0.sca
+scalar SctpFeatureTest.sctp_client.sctp.assoc-1 "Fast RTX" 0
 %#--------------------------------------------------------------------------------------------------------------
-%contains: test_assoc.out
-Association 1: number of Fast RTX=0, number of Timer-Based RTX=0, path failures=0
+%contains: results/General-0.sca
+scalar SctpFeatureTest.sctp_client.sctp.assoc-1 "Timer-Based RTX" 0
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains-regex: test_assoc.out
-"Association 1\w* ForwardTsns=0"
+%contains: results/General-0.sca
+scalar SctpFeatureTest.sctp_client.sctp.assoc-1 "Path failures" 0
+%#--------------------------------------------------------------------------------------------------------------
+%not-contains-regex: results/General-0.sca
+scalar SctpFeatureTest.sctp_client.sctp.assoc-1\w+ "Forward TSN" 0
 %#--------------------------------------------------------------------------------------------------------------

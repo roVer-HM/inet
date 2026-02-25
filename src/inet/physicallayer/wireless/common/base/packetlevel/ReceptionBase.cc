@@ -11,8 +11,8 @@ namespace inet {
 
 namespace physicallayer {
 
-ReceptionBase::ReceptionBase(const IRadio *receiver, const ITransmission *transmission, const simtime_t startTime, const simtime_t endTime, const Coord& startPosition, const Coord& endPosition, const Quaternion& startOrientation, const Quaternion& endOrientation) :
-    receiver(receiver),
+ReceptionBase::ReceptionBase(const IRadio *receiverRadio, const ITransmission *transmission, const simtime_t startTime, const simtime_t endTime, const Coord& startPosition, const Coord& endPosition, const Quaternion& startOrientation, const Quaternion& endOrientation, const IReceptionAnalogModel *analogModel) :
+    receiverRadio(receiverRadio),
     transmission(transmission),
     startTime(startTime),
     endTime(endTime),
@@ -22,8 +22,14 @@ ReceptionBase::ReceptionBase(const IRadio *receiver, const ITransmission *transm
     startPosition(startPosition),
     endPosition(endPosition),
     startOrientation(startOrientation),
-    endOrientation(endOrientation)
+    endOrientation(endOrientation),
+    analogModel(analogModel)
 {
+}
+
+ReceptionBase::~ReceptionBase()
+{
+    delete analogModel;
 }
 
 std::ostream& ReceptionBase::printToStream(std::ostream& stream, int level, int evFlags) const
@@ -31,7 +37,7 @@ std::ostream& ReceptionBase::printToStream(std::ostream& stream, int level, int 
     if (level <= PRINT_LEVEL_DETAIL)
         stream << EV_FIELD(transmissionId, transmission->getId());
     if (level <= PRINT_LEVEL_TRACE)
-        stream << EV_FIELD(receiverId, receiver->getId())
+        stream << EV_FIELD(receiverdRadioId, receiverRadio->getId())
                << EV_FIELD(startTime)
                << EV_FIELD(endTime)
                << EV_FIELD(preambleDuration)
@@ -41,6 +47,8 @@ std::ostream& ReceptionBase::printToStream(std::ostream& stream, int level, int 
                << EV_FIELD(endPosition)
                << EV_FIELD(startOrientation)
                << EV_FIELD(endOrientation);
+    if (level <= PRINT_LEVEL_DETAIL)
+        stream << EV_FIELD(analogModel, printFieldToString(analogModel, level + 1, evFlags));
     return stream;
 }
 

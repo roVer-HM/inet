@@ -375,6 +375,7 @@ void Ieee80211MgmtSta::sendProbeRequest()
     EV << "Sending Probe Request, BSSID=" << scanning.bssid << ", SSID=\"" << scanning.ssid << "\"\n";
     const auto& body = makeShared<Ieee80211ProbeRequestFrame>();
     body->setSSID(scanning.ssid.c_str());
+    body->setSupportedRates(supportedRates);
     body->setChunkLength(B((2 + scanning.ssid.length()) + (2 + body->getSupportedRates().numRates)));
     sendManagementFrame("ProbeReq", body, ST_PROBEREQUEST, scanning.bssid);
 }
@@ -749,7 +750,7 @@ void Ieee80211MgmtSta::storeAPInfo(Packet *packet, const Ptr<const Ieee80211Mgmt
     ap->beaconInterval = body->getBeaconInterval();
     auto signalPowerInd = packet->getTag<SignalPowerInd>();
     if (signalPowerInd != nullptr) {
-        ap->rxPower = signalPowerInd->getPower().get();
+        ap->rxPower = signalPowerInd->getPower().get<W>();
         if (ap->address == assocAP.address)
             assocAP.rxPower = ap->rxPower;
     }

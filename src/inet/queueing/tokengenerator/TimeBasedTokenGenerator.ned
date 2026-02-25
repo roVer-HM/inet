@@ -8,16 +8,17 @@
 package inet.queueing.tokengenerator;
 
 import inet.queueing.base.TokenGeneratorBase;
+import inet.queueing.contract.ITokenGenerator;
 
 //
-// This module generates tokens for a ~TokenBasedServer repeatedly.
+// Generates tokens for a ~TokenBasedServer repeatedly.
 //
-simple TimeBasedTokenGenerator extends TokenGeneratorBase
+simple TimeBasedTokenGenerator extends TokenGeneratorBase like ITokenGenerator
 {
     parameters:
-        string clockModule = default(""); // relative path of a module that implements IClock; optional
-        volatile double generationInterval @unit(s); // time interval between two subsequent token generation events
-        volatile double numTokens = default(1); // number of tokens generated repeatedly
+        string clockModule = default(""); // Relative path of a module that implements IClock; optional
+        volatile double generationInterval @unit(s); // Time interval between two subsequent token generation events
+        volatile double numTokens = default(1); // Number of tokens generated repeatedly
         @class(TimeBasedTokenGenerator);
         @display("i=block/control");
 }

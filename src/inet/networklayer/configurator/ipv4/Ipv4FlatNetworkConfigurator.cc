@@ -21,7 +21,7 @@ Define_Module(Ipv4FlatNetworkConfigurator);
 
 void Ipv4FlatNetworkConfigurator::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_NETWORK_CONFIGURATION) {
         Topology topo("topo");
@@ -49,7 +49,7 @@ void Ipv4FlatNetworkConfigurator::initialize(int stage)
 void Ipv4FlatNetworkConfigurator::extractTopology(Topology& topo, NodeInfoVector& nodeInfo)
 {
     // extract topology
-    topo.extractByProperty("networkNode");
+    topo.extractFromNetwork(Topology::selectTopologyNode);
     EV_DEBUG << "Topology found " << topo.getNumNodes() << " nodes\n";
 
     // fill in isIPNode, ift and rt members in nodeInfo[]
@@ -205,9 +205,8 @@ void Ipv4FlatNetworkConfigurator::setDisplayString(Topology& topo, NodeInfoVecto
             numIPNodes++;
 
     // update display string
-    char buf[80];
-    sprintf(buf, "%d Ipv4 nodes\n%d non-Ipv4 nodes", numIPNodes, topo.getNumNodes() - numIPNodes);
-    getDisplayString().setTagArg("t", 0, buf);
+    std::string buf = std::to_string(numIPNodes) + " Ipv4 nodes\n" + std::to_string(topo.getNumNodes() - numIPNodes) + " non-Ipv4 nodes";
+    getDisplayString().setTagArg("t", 0, buf.c_str());
 }
 
 } // namespace inet

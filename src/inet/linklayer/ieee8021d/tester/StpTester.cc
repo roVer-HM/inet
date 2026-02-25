@@ -8,7 +8,7 @@
 #include "inet/linklayer/ieee8021d/tester/StpTester.h"
 
 #include "inet/common/lifecycle/NodeStatus.h"
-#include "inet/linklayer/configurator/Ieee8021dInterfaceData.h"
+#include "inet/linklayer/ieee8021d/common/Ieee8021dInterfaceData.h"
 
 namespace inet {
 
@@ -55,7 +55,7 @@ void StpTester::depthFirstSearch()
 {
     loop = false;
     numOfVisitedNodes = 0;
-    graph.extractByProperty("networkNode");
+    graph.extractFromNetwork(Topology::selectTopologyNode);
     numOfNodes = graph.getNumNodes();
 
     for (int i = 0; i < graph.getNumNodes(); i++) {

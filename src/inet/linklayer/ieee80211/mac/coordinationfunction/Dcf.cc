@@ -50,7 +50,7 @@ void Dcf::initialize(int stage)
 
 void Dcf::forEachChild(cVisitor *v)
 {
-    cSimpleModule::forEachChild(v);
+    SimpleModule::forEachChild(v);
     if (frameSequenceHandler != nullptr && frameSequenceHandler->getContext() != nullptr)
         v->visit(const_cast<FrameSequenceContext *>(frameSequenceHandler->getContext()));
 }
@@ -60,14 +60,13 @@ void Dcf::handleMessage(cMessage *msg)
     if (msg == startRxTimer) {
         if (!isReceptionInProgress()) {
             frameSequenceHandler->handleStartRxTimeout();
-            updateDisplayString();
         }
     }
     else
         throw cRuntimeError("Unknown msg type");
 }
 
-void Dcf::updateDisplayString() const
+void Dcf::refreshDisplay() const
 {
     if (frameSequenceHandler->isSequenceRunning()) {
         auto history = frameSequenceHandler->getFrameSequence()->getHistory();
@@ -84,7 +83,6 @@ void Dcf::channelGranted(IChannelAccess *channelAccess)
     if (!frameSequenceHandler->isSequenceRunning()) {
         frameSequenceHandler->startFrameSequence(new DcfFs(), buildContext(), this);
         emit(IFrameSequenceHandler::frameSequenceStartedSignal, frameSequenceHandler->getContext());
-        updateDisplayString();
     }
 }
 
@@ -113,7 +111,7 @@ void Dcf::transmitControlResponseFrame(Packet *responsePacket, const Ptr<const I
     else
         throw cRuntimeError("Unknown received frame type");
     RateSelection::setFrameMode(responsePacket, responseHeader, responseMode);
-    emit(IRateSelection::datarateSelectedSignal, responseMode->getDataMode()->getNetBitrate().get(), responsePacket);
+    emit(IRateSelection::datarateSelectedSignal, responseMode->getDataMode()->getNetBitrate().get<bps>(), responsePacket);
     EV_DEBUG << "Datarate for " << responsePacket->getName() << " is set to " << responseMode->getDataMode()->getNetBitrate() << ".\n";
     tx->transmitFrame(responsePacket, responseHeader, modeSet->getSifsTime(), this);
     delete responsePacket;
@@ -150,7 +148,6 @@ void Dcf::processLowerFrame(Packet *packet, const Ptr<const Ieee80211MacHeader>&
         // TODO always call processResponses
         if ((!isForUs(header) && !startRxTimer->isScheduled()) || isForUs(header)) {
             frameSequenceHandler->processResponse(packet);
-            updateDisplayString();
         }
         else {
             EV_INFO << "This frame is not for us" << std::endl;
@@ -178,7 +175,7 @@ void Dcf::transmitFrame(Packet *packet, simtime_t ifs)
     const auto& header = packet->peekAtFront<Ieee80211MacHeader>();
     auto mode = rateSelection->computeMode(packet, header);
     RateSelection::setFrameMode(packet, header, mode);
-    emit(IRateSelection::datarateSelectedSignal, mode->getDataMode()->getNetBitrate().get(), packet);
+    emit(IRateSelection::datarateSelectedSignal, mode->getDataMode()->getNetBitrate().get<bps>(), packet);
     EV_DEBUG << "Datarate for " << packet->getName() << " is set to " << mode->getDataMode()->getNetBitrate() << ".\n";
     auto pendingPacket = channelAccess->getInProgressFrames()->getPendingFrameFor(packet);
     auto duration = originatorProtectionMechanism->computeDurationField(packet, header, pendingPacket, pendingPacket == nullptr ? nullptr : pendingPacket->peekAtFront<Ieee80211DataOrMgmtHeader>());
@@ -252,7 +249,6 @@ void Dcf::transmissionComplete(Packet *packet, const Ptr<const Ieee80211MacHeade
     Enter_Method("transmissionComplete");
     if (frameSequenceHandler->isSequenceRunning()) {
         frameSequenceHandler->transmissionComplete();
-        updateDisplayString();
     }
     else
         recipientProcessTransmittedControlResponseFrame(packet, header);
@@ -387,7 +383,6 @@ void Dcf::corruptedFrameReceived()
     Enter_Method("corruptedFrameReceived");
     if (frameSequenceHandler->isSequenceRunning() && !startRxTimer->isScheduled()) {
         frameSequenceHandler->handleStartRxTimeout();
-        updateDisplayString();
     }
     else
         EV_DEBUG << "Ignoring received corrupt frame.\n";

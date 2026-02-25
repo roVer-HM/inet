@@ -11,15 +11,15 @@ import inet.queueing.base.PacketFlowBase;
 import inet.queueing.contract.IPacketFlow;
 
 //
-// This module extracts the source MAC address of the packet passing through and
+// Extracts the source MAC address of the packet passing through and
 // stores the mapping from this MAC address to the incoming network interface in
 // the MAC address table (forwarding information database).
 //
 simple RelayInterfaceLearner extends PacketFlowBase like IPacketFlow
 {
     parameters:
-        string macTableModule; // relative module path of MAC table
-        string interfaceTableModule; // relative module path of interface table
+        string macTableModule; // Relative module path of MAC table
+        string interfaceTableModule; // Relative module path of the interface table
         @class(RelayInterfaceLearner);
         @display("i=block/blackboard");
 }

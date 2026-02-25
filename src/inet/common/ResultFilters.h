@@ -10,6 +10,8 @@
 
 #include "inet/common/INETMath.h"
 
+#include <regex>
+
 namespace inet {
 
 namespace utils {
@@ -25,6 +27,54 @@ class INET_API VoidPtrWrapper : public cObject
     VoidPtrWrapper(void *object) : object(object) {}
 
     void *getObject() const { return object; }
+};
+
+/**
+ * Filter that expects a Packet with a name that has an index suffix (e.g. Foo-42),
+ * and outputs the packet if it is a duplicate according to its index.
+ */
+class INET_API DuplicatePacketFilter : public cObjectResultFilter
+{
+  protected:
+    size_t sizeLimit = -1;
+    std::set<int> packetIndices; // index of the last N packets
+
+  protected:
+    virtual void init(Context *ctx) override;
+
+  public:
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
+};
+
+/**
+ * Filter that expects a Packet with a name that has an index suffix (e.g. Foo-42),
+ * and outputs the packet if it arrived out of order.
+ */
+class INET_API OutOfOrderPacketFilter : public cObjectResultFilter
+{
+  protected:
+    int maxIndex = -1; // highest index ever received
+
+  public:
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
+};
+
+/**
+ * Filter that expects a Packet with a name that has an index suffix (e.g. Foo-42),
+ * and outputs an integer for the missing packet indices.
+ */
+class INET_API MissingPacketIndexFilter : public cObjectResultFilter
+{
+  protected:
+    size_t sizeLimit = 0;
+    int lastRemovedIndex = -1;
+    std::set<int> packetIndices; // index of the last N packets
+
+  protected:
+    virtual void init(Context *ctx) override;
+
+  public:
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
 };
 
 /**
@@ -201,7 +251,7 @@ class INET_API MaxPerGroupFilter : public cObjectResultFilter
 
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
 };
 
 class INET_API WeighedMeanPerGroupFilter : public cObjectResultFilter
@@ -214,7 +264,7 @@ class INET_API WeighedMeanPerGroupFilter : public cObjectResultFilter
 
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
 };
 
 class INET_API WeighedSumPerGroupFilter : public cObjectResultFilter
@@ -226,7 +276,7 @@ class INET_API WeighedSumPerGroupFilter : public cObjectResultFilter
 
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
 };
 
 class INET_API DropWeightFilter : public cObjectResultFilter
@@ -258,7 +308,55 @@ class INET_API DemuxFlowFilter : public DemuxFilter
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
 };
 
+class INET_API DemuxRegexFilter : public DemuxFilter
+{
+  protected:
+    class CategoryFinder : public cNamedObject
+    {
+      protected:
+        DemuxRegexFilter *filter = nullptr;
+        cObject *object = nullptr;
+        mutable std::string result;
+
+      public:
+        CategoryFinder(DemuxRegexFilter *filter, cObject *object) : filter(filter), object(object) {}
+
+        virtual const char *getFullName() const override;
+    };
+
+  protected:
+    std::regex search;
+    std::string replace;
+
+  protected:
+    virtual void init(Context *ctx) override;
+    virtual const char *getDefaultSearch() const { return ".*"; }
+    virtual const char *getDefaultReplace() const { return "$0"; }
+
+    // NOTE: these are overridden because getFullName() called from getDelegateStartIndexByLabel() cannot be overridden
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, bool b, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, intval_t, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, uintval_t, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, double d, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, const SimTime& v, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, const char *s, cObject *details) override;
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
+};
+
+class INET_API DemuxAppFilter : public DemuxRegexFilter
+{
+  protected:
+    virtual const char *getDefaultSearch() const override { return "(.*)-[0-9]+"; }
+    virtual const char *getDefaultReplace() const override { return "$1"; }
+};
+
 class INET_API ResidenceTimePerRegionFilter : public cObjectResultFilter
+{
+  public:
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
+};
+
+class INET_API PacketLifeTimeFilter : public cObjectResultFilter
 {
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
@@ -391,7 +489,19 @@ class INET_API UtilizationFilter : public cNumericResultFilter
     virtual void updateTotalValue(simtime_t time);
 
   public:
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
+};
+
+/**
+ * Filter that expects a Packet and outputs the interarrival time.
+ */
+class INET_API InterarrivalTimeFilter : public cObjectResultFilter
+{
+  protected:
+    simtime_t prevArrivalTime = 0;
+
+  public:
+    virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
 };
 
 /**
@@ -421,7 +531,7 @@ class INET_API PacketRateFilter : public cObjectResultFilter
 
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
 };
 
 /**
@@ -441,7 +551,6 @@ class INET_API ThroughputFilter : public cObjectResultFilter
   protected:
     simtime_t interval = -1;
     int numLengthLimit = -1;
-    bool dropLastSignal = false;
     bool emitIntermediateZeros = true;
 
     simtime_t lastSignalTime;
@@ -456,7 +565,7 @@ class INET_API ThroughputFilter : public cObjectResultFilter
   public:
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, intval_t value, cObject *details) override;
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
 };
 
 /**
@@ -482,7 +591,7 @@ class INET_API LiveThroughputFilter : public cObjectResultFilter
     virtual void init(Context *ctx) override;
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, intval_t value, cObject *details) override;
     virtual void receiveSignal(cResultFilter *prev, simtime_t_cref t, cObject *object, cObject *details) override;
-    virtual void finish(cComponent *component, simsignal_t signalID) override;
+    virtual void finish(cResultFilter *prev) override;
     virtual void timerExpired();
     virtual void timerDeleted();
 };

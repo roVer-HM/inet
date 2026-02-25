@@ -9,16 +9,17 @@
 #ifndef __INET_RTPAPPLICATION_H
 #define __INET_RTPAPPLICATION_H
 
+#include "inet/common/SimpleModule.h"
 #include "inet/common/lifecycle/LifecycleUnsupported.h"
 #include "inet/networklayer/contract/ipv4/Ipv4Address.h"
 
 namespace inet {
 
-class INET_API RtpApplication : public cSimpleModule, public LifecycleUnsupported
+class INET_API RtpApplication : public SimpleModule, public LifecycleUnsupported
 {
   protected:
     // parameters
-    const char *fileName = nullptr; // the name of the file to be transmitted
+    std::string fileName; // the name of the file to be transmitted
     const char *commonName = nullptr; // the CNAME of this participant.
     const char *profileName = nullptr; // the name of the used profile
     double bandwidth = 0; // the reserved bandwidth for rtp/rtcp in bytes/second

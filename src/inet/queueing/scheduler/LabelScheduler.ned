@@ -11,12 +11,12 @@ import inet.queueing.base.PacketSchedulerBase;
 import inet.queueing.contract.IPacketScheduler;
 
 //
-// This module schedules packets based on the attached labels in a ~LabelsTag.
+// Schedules packets based on the attached labels in a ~LabelsTag.
 //
 simple LabelScheduler extends PacketSchedulerBase like IPacketScheduler
 {
     parameters:
-        int defaultGateIndex = default(0); // default gate index if no matching labels are found
-        string labels; // space separated list of labels in the order of priority (highest first)
+        int defaultGateIndex = default(0); // Default gate index if no matching labels are found
+        string labels; // Space separated list of labels in the order of priority (highest first)
         @class(LabelScheduler);
 }

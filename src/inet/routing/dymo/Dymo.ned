@@ -7,20 +7,21 @@
 
 package inet.routing.dymo;
 
+import inet.common.SimpleModule;
 import inet.routing.contract.IManetRouting;
 
 //
-// This module provides Dynamic MANET On-demand (Dymo also known as AODVv2) Routing
+// Provides Dynamic MANET On-demand (Dymo also known as AODVv2) Routing
 // based on the IETF draft at http://tools.ietf.org/html/draft-ietf-manet-dymo-24.
 //
 // Module parameters are copied from the IETF draft and renamed for consistency with
 // INET naming conventions. Some parameters are not yet implemented.
 //
-simple Dymo like IManetRouting
+simple Dymo extends SimpleModule like IManetRouting
 {
     parameters:
         // properties
-        @class("dymo::Dymo");
+        @class(dymo::Dymo);
         @display("i=block/routing");
 
         // context parameters
@@ -56,7 +57,7 @@ simple Dymo like IManetRouting
         // double CONTROL_TRAFFIC_LIMIT
 
         // Dymo extension parameters
-        double maxJitter @unit(s) = default(10ms); // see IETF RFC5148 (Jitter Considerations in MANET)
+        double maxJitter @unit(s) = default(10ms); // See IETF RFC5148 (Jitter Considerations in MANET)
         bool sendIntermediateRREP = default(true);
         int minHopLimit = default(5);
         int maxHopLimit = default(10);

@@ -28,6 +28,7 @@ class INET_API PcapWriter : public IPcapWriter
     std::string fileName;
     FILE *dumpfile = nullptr; // pcap file
     unsigned int snaplen = 0; // max. length of packets in pcap file
+    int timePrecision = 6;
     PcapLinkType network = LINKTYPE_INVALID; // the network type header field in the PCAP file, see http://www.tcpdump.org/linktypes.html
     bool flush = false;
     bool needHeader = true;
@@ -51,7 +52,7 @@ class INET_API PcapWriter : public IPcapWriter
      * is the length that packets will be truncated to. Throws an exception
      * if the file cannot be opened.
      */
-    void open(const char *filename, unsigned int snaplen) override;
+    void open(const char *filename, unsigned int snaplen, int timePrecision) override;
 
     /**
      * Returns true if the pcap file is currently open.
@@ -62,7 +63,7 @@ class INET_API PcapWriter : public IPcapWriter
      * Records the given packet into the output file if it is open,
      * and throws an exception otherwise.
      */
-    void writePacket(simtime_t time, const Packet *packet, Direction direction, NetworkInterface *ie, PcapLinkType linkType) override;
+    void writePacket(simtime_t time, const Packet *packet, b frontOffset, b backOffset, Direction direction, NetworkInterface *ie, PcapLinkType linkType) override;
 
     /**
      * Closes the output file if it is open.

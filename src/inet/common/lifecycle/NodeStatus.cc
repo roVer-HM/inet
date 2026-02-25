@@ -22,7 +22,7 @@ simsignal_t NodeStatus::nodeStatusChangedSignal = registerSignal("nodeStatusChan
 
 void NodeStatus::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    SimpleModule::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
         state = getStateByName(par("initialStatus"));
@@ -96,8 +96,10 @@ bool NodeStatus::handleOperationStage(LifecycleOperation *operation, IDoneCallba
 
 void NodeStatus::setState(State s)
 {
-    state = s;
-    emit(nodeStatusChangedSignal, this);
+    if (state != s) {
+        state = s;
+        emit(nodeStatusChangedSignal, this);
+    }
 }
 
 void NodeStatus::refreshDisplay() const

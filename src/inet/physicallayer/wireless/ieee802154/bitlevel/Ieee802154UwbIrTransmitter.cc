@@ -19,8 +19,10 @@
 
 #include "inet/physicallayer/wireless/ieee802154/bitlevel/Ieee802154UwbIrTransmitter.h"
 
-#include "inet/physicallayer/wireless/common/analogmodel/packetlevel/DimensionalTransmission.h"
+#include "inet/common/math/Functions.h"
+#include "inet/physicallayer/wireless/common/analogmodel/dimensional/DimensionalTransmissionAnalogModel.h"
 #include "inet/physicallayer/wireless/common/contract/packetlevel/IRadio.h"
+#include "inet/physicallayer/wireless/ieee802154/packetlevel/Ieee802154Transmission.h"
 
 namespace inet {
 namespace physicallayer {
@@ -80,7 +82,7 @@ void Ieee802154UwbIrTransmitter::generateSyncPreamble(std::map<simsec, WpHz>& da
             if (Ieee802154UwbIrMode::C31[Ieee802154UwbIrMode::Ci - 1][pos] != 0) {
                 if (n == 0 && pos == 0)
                     // we slide the first pulse slightly in time to get the first point "inside" the signal
-                    time = 1E-12 + n * cfg.sync_symbol_duration + pos * cfg.spreadingdL * cfg.pulse_duration;
+                    time = SimTime::fromRaw(1) + n * cfg.sync_symbol_duration + pos * cfg.spreadingdL * cfg.pulse_duration;
                 else
                     time = n * cfg.sync_symbol_duration + pos * cfg.spreadingdL * cfg.pulse_duration;
 //                generatePulse(data, time, startTime, C31[Ci - 1][pos], IEEE802154A::maxPulse, IEEE802154A::mandatory_pulse);
@@ -92,7 +94,7 @@ void Ieee802154UwbIrTransmitter::generateSyncPreamble(std::map<simsec, WpHz>& da
 
 void Ieee802154UwbIrTransmitter::generateSFD(std::map<simsec, WpHz>& data, simtime_t& time, const simtime_t startTime) const
 {
-    const simtime_t sfdStart = cfg.NSync * cfg.sync_symbol_duration;
+    const simtime_t sfdStart = static_cast<int>(cfg.NSync) * cfg.sync_symbol_duration;
     for (short n = 0; n < 8; n = n + 1) {
         if (Ieee802154UwbIrMode::shortSFD[n] != 0) {
             for (short pos = 0; pos < cfg.CLength; pos = pos + 1) {
@@ -177,7 +179,7 @@ const ITransmission *Ieee802154UwbIrTransmitter::createTransmission(const IRadio
         EV_INFO << "Transmitted bit at " << i << " is " << (int)bitValue << endl;
         bits->push_back(bitValue);
     }
-    // KLUDGE add a fake CRC
+    // KLUDGE add a fake FCS
     for (int i = 0; i < 8; i++) {
         bits->push_back(0);
         for (int j = 0; j + i < bitLength; j += 8)
@@ -191,7 +193,8 @@ const ITransmission *Ieee802154UwbIrTransmitter::createTransmission(const IRadio
     const Quaternion& startOrientation = mobility->getCurrentAngularPosition();
     const Quaternion& endOrientation = mobility->getCurrentAngularPosition();
     const Ptr<const IFunction<WpHz, Domain<simsec, Hz>>>& powerFunction = generateIEEE802154AUWBSignal(startTime, bits);
-    return new DimensionalTransmission(transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation, packet->getTotalLength(), b(-1), nullptr, -1, cfg.centerFrequency, cfg.bandwidth, cfg.bitrate, NaN, powerFunction);
+    auto analogModel = new DimensionalTransmissionAnalogModel(-1, -1, duration, cfg.centerFrequency, cfg.bandwidth, powerFunction);
+    return new Ieee802154Transmission(transmitter, packet, startTime, endTime, -1, -1, -1, startPosition, endPosition, startOrientation, endOrientation, nullptr, nullptr, nullptr, nullptr, analogModel, b(-1), b(-1), nullptr, Hz(NaN), bps(NaN));
 }
 
 } // namespace physicallayer

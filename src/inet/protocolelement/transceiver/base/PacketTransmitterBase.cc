@@ -36,7 +36,7 @@ void PacketTransmitterBase::initialize(int stage)
     else if (stage == INITSTAGE_QUEUEING) {
         checkPacketOperationSupport(inputGate);
         if (producer != nullptr)
-            producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+            producer.handleCanPushPacketChanged();
     }
 }
 
@@ -55,7 +55,17 @@ void PacketTransmitterBase::handleMessageWhenUp(cMessage *message)
 void PacketTransmitterBase::handleStartOperation(LifecycleOperation *operation)
 {
     if (producer != nullptr)
-        producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+        producer.handleCanPushPacketChanged();
+}
+
+void PacketTransmitterBase::handleStopOperation(LifecycleOperation *operation)
+{
+    cancelClockEvent(txEndTimer);
+}
+
+void PacketTransmitterBase::handleCrashOperation(LifecycleOperation *operation)
+{
+    cancelClockEvent(txEndTimer);
 }
 
 Signal *PacketTransmitterBase::encodePacket(Packet *packet)
@@ -65,11 +75,11 @@ Signal *PacketTransmitterBase::encodePacket(Packet *packet)
     simtime_t packetTransmissionTime = CLOCKTIME_AS_SIMTIME(txDurationClockTime);
     simtime_t bitTransmissionTime = packet->getBitLength() != 0 ? CLOCKTIME_AS_SIMTIME(txDurationClockTime / packet->getBitLength()) : 0;
     auto packetEvent = new PacketTransmittedEvent();
-    packetEvent->setDatarate(packet->getTotalLength() / s(txDurationClockTime.dbl()));
-    insertPacketEvent(this, packet, PEK_TRANSMITTED, bitTransmissionTime, packetEvent);
+    packetEvent->setDatarate(packet->getDataLength() / s(txDurationClockTime.dbl()));
+    insertPacketEvent(this, packet, PEK_TRANSMITTED, bitTransmissionTime, 0, packetEvent);
     increaseTimeTag<TransmissionTimeTag>(packet, bitTransmissionTime, packetTransmissionTime);
     if (auto channel = dynamic_cast<cDatarateChannel *>(outputGate->findTransmissionChannel())) {
-        insertPacketEvent(this, packet, PEK_PROPAGATED, channel->getDelay());
+        insertPacketEvent(this, packet, PEK_PROPAGATED, 0, channel->getDelay());
         increaseTimeTag<PropagationTimeTag>(packet, channel->getDelay(), channel->getDelay());
     }
     auto signal = new Signal(packet->getName());
@@ -113,7 +123,7 @@ void PacketTransmitterBase::sendSignalEnd(Signal *signal, int transmissionId)
 
 clocktime_t PacketTransmitterBase::calculateClockTimeDuration(const Packet *packet) const
 {
-    s duration = packet->getTotalLength() / txDatarate;
+    s duration = packet->getDataLength() / txDatarate;
     EV_TRACE << "Calculating signal duration" << EV_FIELD(packet) << EV_FIELD(duration, simsec(duration)) << EV_ENDL;
     return duration.get();
 }

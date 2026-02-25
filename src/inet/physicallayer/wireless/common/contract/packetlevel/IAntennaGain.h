@@ -17,7 +17,7 @@ namespace physicallayer {
 /**
  * This interface represents the directional selectivity of an antenna.
  */
-class INET_API IAntennaGain : public IPrintableObject
+class INET_API IAntennaGain : public virtual IPrintableObject
 #if INET_PTR_IMPLEMENTATION == INET_INTRUSIVE_PTR
     , public IntrusivePtrCounter<IAntennaGain>
 #endif
@@ -37,7 +37,7 @@ class INET_API IAntennaGain : public IPrintableObject
      * Returns the antenna gain in the provided direction. The direction is
      * determined by rotating the X axis using the given quaternion. The direction
      * is to be interpreted in the local coordinate system of the radiation pattern.
-     * This way the gain depends only on the antenna radion pattern characteristics,
+     * This way the gain depends only on the antenna radiation pattern characteristics,
      * and not on the antenna orientation determined by the antenna's mobility model.
      *
      * For transmissions, it determines how well the antenna converts input

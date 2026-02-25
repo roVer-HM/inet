@@ -564,6 +564,7 @@ void PimSm::processRegisterPacket(Packet *pk)
             restartTimer(routeSG->keepAliveTimer, KAT);
         }
 
+        routeG->updateIpv4Route();
         if (!routeG->isInheritedOlistNull()) { // we have some active receivers
             routeSG->clearFlag(Route::PRUNED);
 
@@ -926,6 +927,7 @@ void PimSm::processExpiryTimer(cMessage *timer)
         delete timer;
 
         // upstream state machine
+        route->updateIpv4Route();
         if (route->isInheritedOlistNull()) {
             route->setFlags(Route::PRUNED);
             if (route->type == G && !IamRP(route->rpAddr))
@@ -960,6 +962,7 @@ void PimSm::processJoinTimer(cMessage *timer)
     ASSERT(timer == route->joinTimer);
     Ipv4Address joinAddr = route->type == G ? route->rpAddr : route->source;
 
+    route->updateIpv4Route();
     if (!route->isInheritedOlistNull()) {
         sendPIMJoin(route->group, joinAddr, route->upstreamInterface->nextHop, route->type);
         restartTimer(route->joinTimer, joinPrunePeriod);
@@ -1150,6 +1153,7 @@ void PimSm::multicastPacketArrivedOnRpfInterface(Route *route)
 {
     if (route->type == SG) { // (S,G) route
         // set KeepAlive timer
+        route->updateIpv4Route();
         if ( /*DirectlyConnected(route->source) ||*/
             (!route->isFlagSet(Route::PRUNED) && !route->isInheritedOlistNull()))
         {
@@ -1359,8 +1363,8 @@ void PimSm::sendPIMJoin(Ipv4Address group, Ipv4Address source, Ipv4Address upstr
             + ENCODED_GROUP_ADDRESS_LENGTH
             + B(4)
             + ENCODED_SOURCE_ADDRESS_LENGTH);
-    msg->setCrcMode(pimModule->getCrcMode());
-    Pim::insertCrc(msg);
+    msg->setChecksumMode(pimModule->getChecksumMode());
+    Pim::insertChecksum(msg);
 
     pk->insertAtFront(msg);
 
@@ -1396,8 +1400,8 @@ void PimSm::sendPIMPrune(Ipv4Address group, Ipv4Address source, Ipv4Address upst
             + ENCODED_GROUP_ADDRESS_LENGTH
             + B(4)
             + ENCODED_SOURCE_ADDRESS_LENGTH);
-    msg->setCrcMode(pimModule->getCrcMode());
-    Pim::insertCrc(msg);
+    msg->setChecksumMode(pimModule->getChecksumMode());
+    Pim::insertChecksum(msg);
 
     pk->insertAtFront(msg);
 
@@ -1420,8 +1424,8 @@ void PimSm::sendPIMRegisterNull(Ipv4Address multOrigin, Ipv4Address multGroup)
         msg->setN(true);
         msg->setB(false);
         msg->setChunkLength(PIM_HEADER_LENGTH + B(4));
-        msg->setCrcMode(pimModule->getCrcMode());
-        Pim::insertCrc(msg);
+        msg->setChecksumMode(pimModule->getChecksumMode());
+        Pim::insertChecksum(msg);
         pk->insertAtFront(msg);
 
         // set encapsulated packet (Ipv4 header only)
@@ -1431,8 +1435,8 @@ void PimSm::sendPIMRegisterNull(Ipv4Address multOrigin, Ipv4Address multGroup)
         ipv4Header->setProtocolId(IP_PROT_PIM);
         ipv4Header->setHeaderLength(IPv4_MIN_HEADER_LENGTH);
         ipv4Header->setTotalLengthField(IPv4_MIN_HEADER_LENGTH);
-        ipv4Header->setCrcMode(pimModule->getCrcMode());
-        ipv4Header->updateCrc();
+        ipv4Header->setChecksumMode(pimModule->getChecksumMode());
+        ipv4Header->updateChecksum();
         pk->insertAtBack(ipv4Header);
 
         emit(sentRegisterPkSignal, pk);
@@ -1455,8 +1459,8 @@ void PimSm::sendPIMRegister(Packet *ipv4Packet, Ipv4Address dest, int outInterfa
     msg->setB(false);
 
     msg->setChunkLength(PIM_HEADER_LENGTH + B(4));
-    msg->setCrcMode(pimModule->getCrcMode());
-    Pim::insertCrc(msg);
+    msg->setChecksumMode(pimModule->getChecksumMode());
+    Pim::insertChecksum(msg);
 
     pk->insertAtBack(ipv4Packet->peekDataAt(b(0), ipv4Packet->getDataLength()));
     pk->insertAtFront(msg);
@@ -1480,8 +1484,8 @@ void PimSm::sendPIMRegisterStop(Ipv4Address source, Ipv4Address dest, Ipv4Addres
     msg->getGroupAddressForUpdate().groupAddress = multGroup;
 
     msg->setChunkLength(B(PIM_HEADER_LENGTH + ENCODED_GROUP_ADDRESS_LENGTH + ENCODED_UNICODE_ADDRESS_LENGTH));
-    msg->setCrcMode(pimModule->getCrcMode());
-    Pim::insertCrc(msg);
+    msg->setChecksumMode(pimModule->getChecksumMode());
+    Pim::insertChecksum(msg);
     pk->insertAtFront(msg);
 
     emit(sentRegisterStopPkSignal, pk);
@@ -1508,8 +1512,8 @@ void PimSm::sendPIMAssert(Ipv4Address source, Ipv4Address group, AssertMetric me
             + ENCODED_GROUP_ADDRESS_LENGTH
             + ENCODED_UNICODE_ADDRESS_LENGTH
             + B(8));
-    pkt->setCrcMode(pimModule->getCrcMode());
-    Pim::insertCrc(pkt);
+    pkt->setChecksumMode(pimModule->getChecksumMode());
+    Pim::insertChecksum(pkt);
     pk->insertAtFront(pkt);
 
     emit(sentAssertPkSignal, pk);
@@ -1562,6 +1566,7 @@ void PimSm::updateJoinDesired(Route *route)
 {
     bool oldValue = route->joinDesired();
     bool newValue = false;
+    route->updateIpv4Route();
     if (route->type == RP)
         newValue = !route->isImmediateOlistNull();
     if (route->type == G)
@@ -1857,7 +1862,7 @@ Ipv4MulticastRoute *PimSm::createIpv4Route(Route *route)
     unsigned int numOutInterfaces = route->downstreamInterfaces.size();
     for (unsigned int i = 0; i < numOutInterfaces; ++i) {
         DownstreamInterface *downstream = route->downstreamInterfaces[i];
-        newRoute->addOutInterface(new PimSmOutInterface(downstream));
+        newRoute->addOutInterface(new Ipv4MulticastRoute::OutInterface(downstream->ie));
     }
     return newRoute;
 }
@@ -2023,6 +2028,22 @@ void PimSm::Route::removeDownstreamInterface(unsigned int i)
     DownstreamInterface *outInterface = downstreamInterfaces[i];
     downstreamInterfaces.erase(downstreamInterfaces.begin() + i);
     delete outInterface;
+}
+
+void PimSm::Route::updateIpv4Route()
+{
+    Ipv4MulticastRoute *ipv4Route = static_cast<PimSm *>(owner)->findIpv4Route(source, group);
+    // make sure that all interfaces are included in the Ipv4MulticastRoute iff the downstream interface is in the inheritedOlist
+    for (auto downstreamInterface : downstreamInterfaces) {
+        bool isInInheritedOlist = downstreamInterface->isInInheritedOlist();
+        bool hasOutInterface = ipv4Route->hasOutInterface(downstreamInterface->ie);
+        if (isInInheritedOlist && !hasOutInterface)
+            // add missing interface to the Ipv4MulticastRoute if it is in the olist
+            ipv4Route->addOutInterface(new Ipv4MulticastRoute::OutInterface(downstreamInterface->ie));
+        else if (!isInInheritedOlist && hasOutInterface)
+            // remove interface from the Ipv4MulticastRoute if it is not in the olist
+            ipv4Route->removeOutInterface(downstreamInterface->ie);
+    }
 }
 
 PimSm::PimsmInterface::PimsmInterface(Route *owner, NetworkInterface *ie)

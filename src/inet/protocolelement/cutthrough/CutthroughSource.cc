@@ -45,13 +45,13 @@ void CutthroughSource::handleMessage(cMessage *message)
         PacketDestreamer::handleMessage(message);
 }
 
-void CutthroughSource::pushPacketStart(Packet *packet, cGate *gate, bps datarate)
+void CutthroughSource::pushPacketStart(Packet *packet, const cGate *gate, bps datarate)
 {
     PacketDestreamer::pushPacketStart(packet, gate, datarate);
-    scheduleAfter(s(cutthroughPosition / datarate).get(), cutthroughTimer);
+    scheduleAfter((cutthroughPosition / datarate).get<s>(), cutthroughTimer);
 }
 
-void CutthroughSource::pushPacketEnd(Packet *packet, cGate *gate)
+void CutthroughSource::pushPacketEnd(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacketEnd");
     take(packet);
@@ -62,9 +62,8 @@ void CutthroughSource::pushPacketEnd(Packet *packet, cGate *gate)
     cutthroughBuffer->setStreamData(cutthroughData);
     cutthroughBuffer = nullptr;
     numProcessedPackets++;
-    processedTotalLength += packet->getTotalLength();
+    processedTotalLength += packet->getDataLength();
     delete packet;
-    updateDisplayString();
 }
 
 } // namespace inet

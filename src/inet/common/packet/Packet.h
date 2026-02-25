@@ -183,6 +183,7 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
     virtual void parsimUnpack(cCommBuffer *buffer) override;
     //@}
 
+  private:
     /** @name Unsupported cPacket interface functions */
     //@{
     virtual void encapsulate(cPacket *packet) override { throw cRuntimeError("Invalid operation"); }
@@ -191,6 +192,7 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
     virtual void setControlInfo(cObject *p) override { throw cRuntimeError("Invalid operation"); }
     virtual void setBitLength(int64_t value) override { throw cRuntimeError("Invalid operation"); }
     //@}
+  public:
 
     /** @name Length querying functions */
     //@{
@@ -204,7 +206,7 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
      * Returns the length in bits between the front and back offsets.
      * The returned value is in the range [0, +infinity).
      */
-    virtual int64_t getBitLength() const override { return b(getDataLength()).get(); }
+    virtual int64_t getBitLength() const override { return getDataLength().get<b>(); }
 
     /**
      * Returns the current length of the data part of the packet. This is the
@@ -1488,7 +1490,6 @@ class INET_API Packet : public cPacket, public IPrintableObject, public ITaggedO
      * Returns a human readable string representation.
      */
     virtual std::string str() const override;
-    virtual std::string tagStr() const;
     //@}
 };
 

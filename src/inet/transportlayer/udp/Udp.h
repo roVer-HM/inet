@@ -8,6 +8,7 @@
 #ifndef __INET_UDP_H
 #define __INET_UDP_H
 
+#include "inet/common/SimpleModule.h"
 #include <list>
 #include <map>
 
@@ -20,9 +21,9 @@
 #include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/networklayer/contract/INetfilter.h"
 #include "inet/transportlayer/base/TransportProtocolBase.h"
-#include "inet/transportlayer/common/CrcMode_m.h"
+#include "inet/common/checksum/ChecksumMode_m.h"
 #include "inet/transportlayer/common/TransportPseudoHeader_m.h"
-#include "inet/transportlayer/contract/udp/UdpControlInfo.h"
+#include "inet/transportlayer/contract/udp/UdpCommand_m.h"
 #include "inet/transportlayer/udp/UdpHeader_m.h"
 
 #ifdef INET_WITH_IPv4
@@ -37,7 +38,7 @@ namespace inet {
 
 const uint16_t UDP_MAX_MESSAGE_SIZE = 65535; // bytes
 
-class INET_API UdpCrcInsertionHook : public cSimpleModule, public NetfilterBase::HookBase
+class INET_API UdpChecksumInsertionHook : public SimpleModule, public NetfilterBase::HookBase
 {
   public:
     virtual Result datagramPreRoutingHook(Packet *packet) override { return ACCEPT; }
@@ -106,7 +107,7 @@ class INET_API Udp : public TransportProtocolBase
     typedef std::map<int, SockDescList> SocketsByPortMap;
 
   protected:
-    CrcMode crcMode = CRC_MODE_UNDEFINED;
+    ChecksumMode checksumMode = CHECKSUM_MODE_UNDEFINED;
 
     // sockets
     SocketsByIdMap socketsByIdMap;
@@ -167,7 +168,7 @@ class INET_API Udp : public TransportProtocolBase
     virtual SockDesc *findFirstSocketByLocalAddress(const L3Address& localAddr, ushort localPort);
     virtual void sendUp(Ptr<const UdpHeader>& header, Packet *payload, SockDesc *sd, ushort srcPort, ushort destPort);
     virtual void processUndeliverablePacket(Packet *udpPacket);
-    virtual void sendUpErrorIndication(SockDesc *sd, const L3Address& localAddr, ushort localPort, const L3Address& remoteAddr, ushort remotePort);
+    virtual void sendUpErrorIndication(SockDesc *sd, const L3Address& localAddr, ushort localPort, const L3Address& remoteAddr, ushort remotePort, Packet *quotedPacket);
 
     // process an ICMP error packet
     virtual void processICMPv4Error(Packet *icmpPacket);
@@ -194,10 +195,10 @@ class INET_API Udp : public TransportProtocolBase
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
   public:
-    // crc
-    static void insertCrc(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<UdpHeader>& udpHeader, Packet *udpPayload);
-    static bool verifyCrc(const Protocol *networkProtocol, const Ptr<const UdpHeader>& udpHeader, Packet *packet);
-    static uint16_t computeCrc(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<const UdpHeader>& udpHeader, const Ptr<const Chunk>& udpData);
+    // checksum
+    static void insertChecksum(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<UdpHeader>& udpHeader, Packet *udpPayload);
+    static bool verifyChecksum(const Protocol *networkProtocol, const Ptr<const UdpHeader>& udpHeader, Packet *packet);
+    static uint16_t computeChecksum(const Protocol *networkProtocol, const L3Address& srcAddress, const L3Address& destAddress, const Ptr<const UdpHeader>& udpHeader, const Ptr<const Chunk>& udpData);
 
   public:
     Udp();

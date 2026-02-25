@@ -24,8 +24,8 @@ void PacketQueue::initialize(int stage)
     PacketQueueBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         queue.setName("storage");
-        producer = findConnectedModule<IActivePacketSource>(inputGate);
-        collector = findConnectedModule<IActivePacketSink>(outputGate);
+        producer.reference(inputGate, false);
+        collector.reference(outputGate, false);
         packetCapacity = par("packetCapacity");
         dataCapacity = b(par("dataCapacity"));
         buffer = findModuleFromPar<IPacketBuffer>(par("bufferModule"), this);
@@ -38,10 +38,18 @@ void PacketQueue::initialize(int stage)
         checkPacketOperationSupport(inputGate);
         checkPacketOperationSupport(outputGate);
         if (producer != nullptr)
-            producer->handleCanPushPacketChanged(inputGate->getPathStartGate());
+            producer.handleCanPushPacketChanged();
     }
-    else if (stage == INITSTAGE_LAST)
-        updateDisplayString();
+}
+
+cGate *PacketQueue::getRegistrationForwardingGate(cGate *gate)
+{
+    if (gate == outputGate)
+        return inputGate;
+    else if (gate == inputGate)
+        return outputGate;
+    else
+        throw cRuntimeError("Unknown gate");
 }
 
 IPacketDropperFunction *PacketQueue::createDropperFunction(const char *dropperClass) const
@@ -78,7 +86,7 @@ Packet *PacketQueue::getPacket(int index) const
     return check_and_cast<Packet *>(queue.get(index));
 }
 
-void PacketQueue::pushPacket(Packet *packet, cGate *gate)
+void PacketQueue::pushPacket(Packet *packet, const cGate *gate)
 {
     Enter_Method("pushPacket");
     take(packet);
@@ -86,8 +94,11 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
     emit(packetPushStartedSignal, packet, &packetPushStartedDetails);
     EV_INFO << "Pushing packet" << EV_FIELD(packet) << EV_ENDL;
     queue.insert(packet);
-    if (buffer != nullptr)
+    if (buffer != nullptr) {
         buffer->addPacket(packet);
+        if (isOverloaded())
+            throw cRuntimeError("Queue is overloaded while using a packet buffer");
+    }
     else if (packetDropperFunction != nullptr) {
         while (isOverloaded()) {
             auto packet = packetDropperFunction->selectPacket(this);
@@ -96,15 +107,15 @@ void PacketQueue::pushPacket(Packet *packet, cGate *gate)
             dropPacket(packet, QUEUE_OVERFLOW);
         }
     }
-    ASSERT(!isOverloaded());
+    else if (isOverloaded())
+        throw cRuntimeError("Queue is overloaded without a packet dropper");
     if (collector != nullptr && getNumPackets() != 0)
-        collector->handleCanPullPacketChanged(outputGate->getPathEndGate());
+        collector.handleCanPullPacketChanged();
     cNamedObject packetPushEndedDetails("atomicOperationEnded");
     emit(packetPushEndedSignal, nullptr, &packetPushEndedDetails);
-    updateDisplayString();
 }
 
-Packet *PacketQueue::pullPacket(cGate *gate)
+Packet *PacketQueue::pullPacket(const cGate *gate)
 {
     Enter_Method("pullPacket");
     auto packet = check_and_cast<Packet *>(queue.front());
@@ -116,14 +127,12 @@ Packet *PacketQueue::pullPacket(cGate *gate)
     else
         queue.pop();
     auto queueingTime = simTime() - packet->getArrivalTime();
-    auto packetEvent = new PacketQueuedEvent();
-    packetEvent->setQueuePacketLength(getNumPackets());
-    packetEvent->setQueueDataLength(getTotalLength());
-    insertPacketEvent(this, packet, PEK_QUEUED, queueingTime, packetEvent);
+    auto packetEvent = new PacketEvent();
+    insertPacketEvent(this, packet, PEK_QUEUED, 0, queueingTime, packetEvent);
     increaseTimeTag<QueueingTimeTag>(packet, queueingTime, queueingTime);
     emit(packetPulledSignal, packet);
-    animatePullPacket(packet, outputGate);
-    updateDisplayString();
+    if (collector != nullptr)
+        animatePullPacket(packet, outputGate, collector.getReferencedGate());
     return packet;
 }
 
@@ -135,7 +144,6 @@ void PacketQueue::removePacket(Packet *packet)
     if (buffer != nullptr)
         buffer->removePacket(packet);
     emit(packetRemovedSignal, packet);
-    updateDisplayString();
 }
 
 void PacketQueue::removeAllPackets()
@@ -151,10 +159,9 @@ void PacketQueue::removeAllPackets()
         emit(packetRemovedSignal, packet);
         delete packet;
     }
-    updateDisplayString();
 }
 
-bool PacketQueue::canPushSomePacket(cGate *gate) const
+bool PacketQueue::canPushSomePacket(const cGate *gate) const
 {
     if (packetDropperFunction)
         return true;
@@ -165,7 +172,7 @@ bool PacketQueue::canPushSomePacket(cGate *gate) const
     return true;
 }
 
-bool PacketQueue::canPushPacket(Packet *packet, cGate *gate) const
+bool PacketQueue::canPushPacket(Packet *packet, const cGate *gate) const
 {
     if (packetDropperFunction)
         return true;
@@ -183,7 +190,6 @@ void PacketQueue::handlePacketRemoved(Packet *packet)
         EV_INFO << "Removing packet" << EV_FIELD(packet) << EV_ENDL;
         queue.remove(packet);
         emit(packetRemovedSignal, packet);
-        updateDisplayString();
     }
 }
 
